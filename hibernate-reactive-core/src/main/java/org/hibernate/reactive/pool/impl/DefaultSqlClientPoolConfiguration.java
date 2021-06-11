@@ -36,7 +36,7 @@ public class DefaultSqlClientPoolConfiguration implements SqlClientPoolConfigura
 
     private static final Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
-    private static final int DEFAULT_POOL_SIZE = 5;
+    private static final int DEFAULT_POOL_SIZE = 10;
 
     private int poolSize;
     private Integer maxWaitQueueSize;
