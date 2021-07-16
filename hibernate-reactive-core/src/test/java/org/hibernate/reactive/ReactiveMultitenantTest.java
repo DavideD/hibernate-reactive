@@ -139,7 +139,7 @@ public class ReactiveMultitenantTest extends BaseReactiveTest {
 	@AfterClass
 	public static void dropDatabases(TestContext context) {
 		if ( factoryManager.isStarted() ) {
-			test( context, staticSessionFactory()
+			test( context, getSessionFactory()
 					.withSession( session -> Arrays
 							.stream( values() )
 							.filter( tenant -> tenant != DEFAULT )
