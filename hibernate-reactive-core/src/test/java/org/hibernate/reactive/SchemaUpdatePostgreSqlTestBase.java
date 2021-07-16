@@ -35,9 +35,9 @@ import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.POS
 import static org.hibernate.tool.schema.JdbcMetadaAccessStrategy.GROUPED;
 import static org.hibernate.tool.schema.JdbcMetadaAccessStrategy.INDIVIDUALLY;
 
-public abstract class SchemaUpdatePostgreSqlTest extends BaseReactiveTest {
+public abstract class SchemaUpdatePostgreSqlTestBase extends BaseReactiveTest {
 
-	public static class IndividuallySchemaUpdatePostgreSqlTest extends SchemaUpdatePostgreSqlTest {
+	public static class IndividuallySchemaUpdatePostgreSqlTestBase extends SchemaUpdatePostgreSqlTestBase {
 
 		@Override
 		protected Configuration constructConfiguration(String hbm2DdlOption) {
@@ -47,7 +47,7 @@ public abstract class SchemaUpdatePostgreSqlTest extends BaseReactiveTest {
 		}
 	}
 
-	public static class GroupedSchemaUpdatePostgreSqlTest extends SchemaUpdatePostgreSqlTest {
+	public static class GroupedSchemaUpdatePostgreSqlTestBase extends SchemaUpdatePostgreSqlTestBase {
 
 		@Override
 		protected Configuration constructConfiguration(String hbm2DdlOption) {
