@@ -31,7 +31,6 @@ buildscript {
             mavenLocal()
         }
 
-        mavenLocal()
         mavenCentral()
 
         // Example: ./gradlew build -PenableJBossSnapshotsRep
