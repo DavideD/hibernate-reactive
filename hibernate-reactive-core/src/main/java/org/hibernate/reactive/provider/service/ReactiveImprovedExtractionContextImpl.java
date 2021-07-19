@@ -12,8 +12,6 @@ import java.util.concurrent.CompletionStage;
 
 import org.hibernate.boot.model.relational.Namespace;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
-import org.hibernate.internal.CoreLogging;
-import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.reactive.pool.ReactiveConnection;
 import org.hibernate.reactive.pool.ReactiveConnectionPool;
 import org.hibernate.resource.transaction.spi.DdlTransactionIsolator;
@@ -25,8 +23,6 @@ import static org.hibernate.reactive.util.impl.CompletionStages.logSqlException;
 import static org.hibernate.reactive.util.impl.CompletionStages.returnOrRethrow;
 
 public class ReactiveImprovedExtractionContextImpl extends ImprovedExtractionContextImpl {
-
-	private static CoreMessageLogger LOG = CoreLogging.messageLogger( ReactiveImprovedExtractionContextImpl.class );
 
 	private final ReactiveConnectionPool service;
 
