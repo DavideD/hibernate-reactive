@@ -66,7 +66,7 @@ public class ReactiveImprovedExtractionContextImpl extends ImprovedExtractionCon
 
 		final CompletionStage<ReactiveConnection> connectionStage = service.getConnection();
 
-		try (final ResultSet resultSet = getQueryResultSet( queryString, connectionStage ) ) {
+		try (final ResultSet resultSet = getQueryResultSet( queryString, connectionStage )) {
 			return resultSetProcessor.process( resultSet );
 		}
 		finally {
@@ -77,10 +77,7 @@ public class ReactiveImprovedExtractionContextImpl extends ImprovedExtractionCon
 	private ResultSet getQueryResultSet(String queryString, CompletionStage<ReactiveConnection> connectionStage) {
 		return connectionStage.thenCompose( c -> c.selectJdbcOutsideTransaction( queryString ) )
 				.handle( (resultSet, err) -> {
-					logSqlException(
-							err,
-							() -> "could not execute query ", queryString
-					);
+					logSqlException( err, () -> "could not execute query ", queryString );
 					return returnOrRethrow( err, resultSet );
 				} )
 				.toCompletableFuture()
