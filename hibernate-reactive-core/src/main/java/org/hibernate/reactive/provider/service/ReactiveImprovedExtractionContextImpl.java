@@ -70,6 +70,7 @@ public class ReactiveImprovedExtractionContextImpl extends ImprovedExtractionCon
 			return resultSetProcessor.process( resultSet );
 		}
 		finally {
+			// We start closing the connection but we don't care about the result
 			connectionStage.whenComplete( (c, e) -> c.close() );
 		}
 	}
