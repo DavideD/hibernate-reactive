@@ -63,7 +63,6 @@ public abstract class SchemaUpdateSqlServerTestBase extends BaseReactiveTest {
 		Configuration configuration = constructConfiguration();
 		configuration.setProperty( Settings.HBM2DDL_AUTO, hbm2DdlOption );
 		configuration.setProperty( Settings.DEFAULT_SCHEMA, "dbo" );
-		configuration.setProperty( Settings.SHOW_SQL, "true" );
 		return configuration;
 	}
 
