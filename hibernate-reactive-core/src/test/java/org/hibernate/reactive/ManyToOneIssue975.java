@@ -56,7 +56,10 @@ public class ManyToOneIssue975 extends BaseReactiveTest {
 								.getSingleResultOrNull()
 								.call( tdResult -> {
 									context.assertEquals( td, tdResult );
-									return Mutiny.fetch( td.getFeature() );
+									return Mutiny
+											.fetch( td.getFeature() )
+											.invoke( fetched -> tdResult.setFeature( fetched ) )
+											;
 								} ) )
 				)
 				.invoke( queryResult -> {
