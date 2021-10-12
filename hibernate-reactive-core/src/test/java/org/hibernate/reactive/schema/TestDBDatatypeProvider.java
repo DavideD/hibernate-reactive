@@ -5,13 +5,15 @@
  */
 package org.hibernate.reactive.schema;
 
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.hibernate.reactive.containers.DatabaseConfiguration.DBType;
 
+//TODO: Remove this interface and  move things in TestableDatabase
 public interface TestDBDatatypeProvider {
-	enum DATATYPE {
+	enum DataType {
 		BIGDECIMAL,
 		LONG,
 		INTEGER,
@@ -24,82 +26,73 @@ public interface TestDBDatatypeProvider {
 		BLOB
 	}
 
-	String tableVar = "$table";
-	String columnVar = "$column";
+	String TABLE_PARAM = "$table";
+	String COLUMN_PARAM = "$column";
 
-	Map<DATATYPE, String> pgExpectedResultsMap = new HashMap<>();
-	Map<DATATYPE, String> mySqlExpectedResultsMap = new HashMap<>();
-	Map<DATATYPE, String> sqlServerExpectedResultsMap = new HashMap<>();
-	Map<DATATYPE, String> db2ExpectedResultsMap = new HashMap<>();
+	Map<DataType, String> pgExpectedResultsMap = new EnumMap<DataType, String>( DataType.class) {{
+		pgExpectedResultsMap.put( DataType.TEXT, "text");
+		pgExpectedResultsMap.put( DataType.CHARACTER, "character");
+		pgExpectedResultsMap.put( DataType.SERIALIZABLE, "bytea");
+		pgExpectedResultsMap.put( DataType.BOOLEAN, "boolean");
+		pgExpectedResultsMap.put( DataType.BLOB, "oid");
+		pgExpectedResultsMap.put( DataType.BIGDECIMAL, "numeric");
+		pgExpectedResultsMap.put( DataType.LONG, "bigint");
+		pgExpectedResultsMap.put( DataType.INTEGER, "integer");
+		pgExpectedResultsMap.put( DataType.FLOAT, "real");
+		pgExpectedResultsMap.put( DataType.DOUBLE, "double precision");
+	}};
 
-	String pgColumnTypeBaseQuery = "select data_type from information_schema.columns where table_name = 'testentity' and column_name = '" + columnVar + "'";
-	String mySqlColumnTypeBaseQuery = "select data_type from information_schema.columns where table_name = 'TestEntity' and column_name = '" + columnVar + "'";
+	Map<DataType, String> mySqlExpectedResultsMap = new HashMap<>();
+	Map<DataType, String> sqlServerExpectedResultsMap = new HashMap<>();
+	Map<DataType, String> db2ExpectedResultsMap = new HashMap<>();
+
+	String pgColumnTypeBaseQuery = "select data_type from information_schema.columns where table_name = '" + TABLE_PARAM + "' and column_name = '" + COLUMN_PARAM + "'";
+	// FIXME: Use TABLE_PARAM for the name of the table
+	String mySqlColumnTypeBaseQuery = "select data_type from information_schema.columns where table_name = 'TestEntity' and column_name = '" + COLUMN_PARAM + "'";
 	String sqlServerColumnTypeBaseQuery = pgColumnTypeBaseQuery;
-	String db2ColumnTypeBaseQuery = "SELECT TYPENAME FROM SYSCAT.COLUMNS where TABNAME = 'TESTENTITY' and COLNAME = '" + columnVar + "'";
+	String db2ColumnTypeBaseQuery = "SELECT TYPENAME FROM SYSCAT.COLUMNS where TABNAME = 'TESTENTITY' and COLNAME = '" + COLUMN_PARAM + "'";
 
+	//TODO: Remove loadmaps and initialize maps during construction
 	static void loadMaps() {
-		pgExpectedResultsMap.put(DATATYPE.TEXT, "text");
-		pgExpectedResultsMap.put(DATATYPE.CHARACTER, "character");
-		pgExpectedResultsMap.put(DATATYPE.SERIALIZABLE, "bytea");
-		pgExpectedResultsMap.put(DATATYPE.BOOLEAN, "boolean");
-		pgExpectedResultsMap.put(DATATYPE.BLOB, "oid");
-		pgExpectedResultsMap.put(DATATYPE.BIGDECIMAL, "numeric");
-		pgExpectedResultsMap.put(DATATYPE.LONG, "bigint");
-		pgExpectedResultsMap.put(DATATYPE.INTEGER, "integer");
-		pgExpectedResultsMap.put(DATATYPE.FLOAT, "real");
-		pgExpectedResultsMap.put(DATATYPE.DOUBLE, "double precision");
+		sqlServerExpectedResultsMap.put( DataType.TEXT, "text");
+		sqlServerExpectedResultsMap.put( DataType.CHARACTER, "text");
+		sqlServerExpectedResultsMap.put( DataType.SERIALIZABLE, "text");
+		sqlServerExpectedResultsMap.put( DataType.BOOLEAN, "text");
+		sqlServerExpectedResultsMap.put( DataType.BLOB, "text");
+		sqlServerExpectedResultsMap.put( DataType.BIGDECIMAL, "numeric");
+		sqlServerExpectedResultsMap.put( DataType.LONG, "bigint");
+		sqlServerExpectedResultsMap.put( DataType.INTEGER, "int");
+		sqlServerExpectedResultsMap.put( DataType.FLOAT, "float");
+		sqlServerExpectedResultsMap.put( DataType.DOUBLE, "float");
 
-		sqlServerExpectedResultsMap.put(DATATYPE.TEXT, "text");
-		sqlServerExpectedResultsMap.put(DATATYPE.CHARACTER, "text");
-		sqlServerExpectedResultsMap.put(DATATYPE.SERIALIZABLE, "text");
-		sqlServerExpectedResultsMap.put(DATATYPE.BOOLEAN, "text");
-		sqlServerExpectedResultsMap.put(DATATYPE.BLOB, "text");
-		sqlServerExpectedResultsMap.put(DATATYPE.BIGDECIMAL, "numeric");
-		sqlServerExpectedResultsMap.put(DATATYPE.LONG, "bigint");
-		sqlServerExpectedResultsMap.put(DATATYPE.INTEGER, "int");
-		sqlServerExpectedResultsMap.put(DATATYPE.FLOAT, "float");
-		sqlServerExpectedResultsMap.put(DATATYPE.DOUBLE, "float");
-
-		db2ExpectedResultsMap.put(DATATYPE.TEXT, "text");
-		db2ExpectedResultsMap.put(DATATYPE.BIGDECIMAL, "DECIMAL");
-		db2ExpectedResultsMap.put(DATATYPE.LONG, "BIGINT");
-		db2ExpectedResultsMap.put(DATATYPE.INTEGER, "INTEGER");
-		db2ExpectedResultsMap.put(DATATYPE.FLOAT, "DOUBLE");
-		db2ExpectedResultsMap.put(DATATYPE.DOUBLE, "DOUBLE");
+		db2ExpectedResultsMap.put( DataType.TEXT, "text");
+		db2ExpectedResultsMap.put( DataType.BIGDECIMAL, "DECIMAL");
+		db2ExpectedResultsMap.put( DataType.LONG, "BIGINT");
+		db2ExpectedResultsMap.put( DataType.INTEGER, "INTEGER");
+		db2ExpectedResultsMap.put( DataType.FLOAT, "DOUBLE");
+		db2ExpectedResultsMap.put( DataType.DOUBLE, "DOUBLE");
 
 	}
 
 	static String getDatatypeQuery(DBType dbType, String actualTableName, String actualColumnName) {
-		if( pgExpectedResultsMap.isEmpty()) {
-			loadMaps();
-		}
-
-		String tableName = getDBTableName(dbType, actualTableName );
-		String columnName = getDBTableName(dbType, actualColumnName );
-
-		String result = null;
+		String tableName = parseValue(dbType, actualTableName );
+		String columnName = parseValue(dbType, actualColumnName );
 
 		switch( dbType ) {
-			case MYSQL: {
-				result = mySqlColumnTypeBaseQuery.replace( tableVar, tableName ).replace( columnVar, columnName );
-			} break;
-			case SQLSERVER: {
-				result =  sqlServerColumnTypeBaseQuery.replace( tableVar, tableName ).replace( columnVar, columnName );
-			} break;
-			case DB2: {
-				result =  db2ColumnTypeBaseQuery.replace( tableVar, tableName ).replace( columnVar, columnName );
-			} break;
+			case MYSQL:
+				return mySqlColumnTypeBaseQuery.replace( TABLE_PARAM, tableName ).replace( COLUMN_PARAM, columnName );
+			case SQLSERVER:
+				return sqlServerColumnTypeBaseQuery.replace( TABLE_PARAM, tableName ).replace( COLUMN_PARAM, columnName );
+			case DB2:
+				return db2ColumnTypeBaseQuery.replace( TABLE_PARAM, tableName ).replace( COLUMN_PARAM, columnName );
 			case POSTGRESQL:
-			default: {
-				result =  pgColumnTypeBaseQuery.replace( tableVar, tableName ).replace( columnVar, columnName );
-			} break;
+				return pgColumnTypeBaseQuery.replace( TABLE_PARAM, tableName ).replace( COLUMN_PARAM, columnName );
+			default:
+				throw new IllegalArgumentException("Db not recognize");
 		}
-
-		System.out.println("   >>>  query = " + result);
-		return result;
 	}
 
-	static String getDBColumnName( DBType dbType, String actualColumnName ) {
+	static String parseValue( DBType dbType, String actualColumnName ) {
 		switch( dbType ) {
 			case MYSQL: return actualColumnName;
 			case DB2: return actualColumnName.toUpperCase();
@@ -109,28 +102,13 @@ public interface TestDBDatatypeProvider {
 		}
 	}
 
-	static String getDBTableName( DBType dbType, String actualTableName ) {
+	static String getExpectedResult(DataType datatype, DBType dbType) {
 		switch( dbType ) {
-			case MYSQL: return actualTableName;
-			case DB2: return actualTableName.toUpperCase();
+			case MYSQL: return mySqlExpectedResultsMap.get(datatype);
+			case SQLSERVER: return sqlServerExpectedResultsMap.get(datatype);
+			case DB2: return db2ExpectedResultsMap.get(datatype);
 			case POSTGRESQL:
-			case SQLSERVER:
-			default: return actualTableName.toLowerCase();
-		}
-	}
-
-
-	static String getExpectedResult(DATATYPE datatype, DBType dbType) {
-		if( pgExpectedResultsMap.isEmpty()) {
-			loadMaps();
-		}
-
-		switch( dbType ) {
-			case MYSQL: return (String) mySqlExpectedResultsMap.get(datatype);
-			case SQLSERVER: return (String) sqlServerExpectedResultsMap.get(datatype);
-			case DB2: return (String) db2ExpectedResultsMap.get(datatype);
-			case POSTGRESQL:
-			default: return (String) pgExpectedResultsMap.get(datatype);
+			default: return pgExpectedResultsMap.get(datatype);
 		}
 	}
 
