@@ -131,31 +131,31 @@ public abstract class NumericDatatypesValidationTest  extends BaseReactiveTest i
 														getDatatypeQuery( "TestEntity", "aBigDecimalColumn" ), String.class )
 												.getResultList()
 												.thenAccept( resultList -> assertDatatype( context, resultList,
-														DATATYPE.BIGDECIMAL
+																						   DataType.BIGDECIMAL
 												) )
 										).thenCompose( v -> s.createNativeQuery(
 														getDatatypeQuery( "TestEntity", "aLongColumn" ), String.class )
 												.getResultList()
 												.thenAccept( resultList -> assertDatatype( context, resultList,
-														DATATYPE.LONG
+																						   DataType.LONG
 												) )
 										).thenCompose( v -> s.createNativeQuery(
 														getDatatypeQuery( "TestEntity", "aIntegerColumn" ), String.class )
 												.getResultList()
 												.thenAccept( resultList -> assertDatatype( context, resultList,
-														DATATYPE.INTEGER
+																						   DataType.INTEGER
 												) )
 										).thenCompose( v -> s.createNativeQuery(
 														getDatatypeQuery( "TestEntity", "aDoubleColumn" ), String.class )
 												.getResultList()
 												.thenAccept( resultList -> assertDatatype( context, resultList,
-														DATATYPE.DOUBLE
+																						   DataType.DOUBLE
 												) )
 										).thenCompose( v -> s.createNativeQuery(
 														getDatatypeQuery( "TestEntity", "aFloatColumn" ), String.class )
 												.getResultList()
 												.thenAccept( resultList -> assertDatatype( context, resultList,
-														DATATYPE.FLOAT
+																						   DataType.FLOAT
 												) )
 										)
 								)
@@ -171,11 +171,11 @@ public abstract class NumericDatatypesValidationTest  extends BaseReactiveTest i
 		);
 	}
 
-	private String getExpectedResult( DATATYPE datatype ) {
+	private String getExpectedResult( DataType datatype ) {
 		return TestDBDatatypeProvider.getExpectedResult( datatype, DatabaseConfiguration.dbType() );
 	}
 
-	private  void assertDatatype(TestContext context, List<String> results, DATATYPE datatype) {
+	private  void assertDatatype(TestContext context, List<String> results, DataType datatype) {
 		context.assertEquals( 1, results.size() );
 		context.assertTrue( results.get( 0 ).equals( TestDBDatatypeProvider.getExpectedResult( datatype, DatabaseConfiguration.dbType() ) ) );
 	}

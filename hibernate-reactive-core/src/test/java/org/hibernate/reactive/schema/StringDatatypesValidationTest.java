@@ -127,36 +127,33 @@ public abstract class StringDatatypesValidationTest extends BaseReactiveTest imp
 													context.assertNotNull( result );
 													context.assertEquals( testEntity.sampleText, testEntity.sampleText );
 												}
-										).thenCompose( v -> s.createNativeQuery(
-														getDatatypeQuery( "TestEntity", "aTextColumn" ), String.class )
-												.getResultList()
-												.thenAccept( resultList -> assertDatatype( context, resultList,
-														DATATYPE.TEXT
-												) )
+										).thenCompose( v -> s
+												.createNativeQuery( getDatatypeQuery( "TestEntity", "aTextColumn" ), String.class ).getResultList()
+												.thenAccept( resultList -> assertDatatype( context, resultList, DataType.TEXT ) )
 										).thenCompose( v -> s.createNativeQuery(
 														getDatatypeQuery( "TestEntity", "aBlobColumn" ), String.class )
 												.getResultList()
 												.thenAccept( resultList -> assertDatatype( context, resultList,
-														DATATYPE.BLOB
+																						   DataType.BLOB
 												) )
 										).thenCompose( v -> s.createNativeQuery(
 														getDatatypeQuery( "TestEntity", "aBooleanColumn" ), String.class )
 												.getResultList()
 												.thenAccept( resultList -> assertDatatype( context, resultList,
-														DATATYPE.BOOLEAN
+																						   DataType.BOOLEAN
 												) )
 										).thenCompose( v -> s.createNativeQuery(
 														getDatatypeQuery( "TestEntity", "aSerializableColumn" ), String.class )
 												.getResultList()
 												.thenAccept( resultList -> assertDatatype( context, resultList,
-														DATATYPE.SERIALIZABLE
+																						   DataType.SERIALIZABLE
 												) )
 										)
 										.thenCompose( v -> s.createNativeQuery(
 														getDatatypeQuery( "TestEntity", "aCharacterColumn" ), String.class )
 												.getResultList()
 												.thenAccept( resultList -> assertDatatype( context, resultList,
-														DATATYPE.CHARACTER
+																						   DataType.CHARACTER
 												) )
 										)
 								)
@@ -172,11 +169,11 @@ public abstract class StringDatatypesValidationTest extends BaseReactiveTest imp
 		);
 	}
 
-	private String getExpectedResult( DATATYPE datatype ) {
+	private String getExpectedResult( DataType datatype ) {
 		return TestDBDatatypeProvider.getExpectedResult( datatype, DatabaseConfiguration.dbType() );
 	}
 
-	private  void assertDatatype(TestContext context, List<String> results, DATATYPE datatype) {
+	private  void assertDatatype(TestContext context, List<String> results, DataType datatype) {
 		context.assertEquals( 1, results.size() );
 		context.assertTrue( results.get( 0 ).equals( TestDBDatatypeProvider.getExpectedResult( datatype, DatabaseConfiguration.dbType() ) ) );
 	}

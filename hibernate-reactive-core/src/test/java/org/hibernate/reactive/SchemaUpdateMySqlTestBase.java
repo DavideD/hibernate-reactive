@@ -271,6 +271,21 @@ public abstract class SchemaUpdateMySqlTestBase extends BaseReactiveTest {
 
 	}
 
+	@Entity(name="Sample")
+	@Table(name="SampleTable")
+	public static class ASimpleFirstForCreation {
+		// fields
+
+	}
+
+	@Entity(name="Sample")
+	@Table(name="SampleTable")
+	public static class ASimpleFirstForValidation {
+		// fields
+
+		private Integer extra;
+	}
+
 	@Entity(name = "ASimple")
 	@Table(name = "ASimple", indexes = @Index(
 			name = "i_asimple_avalue_astringValue",
