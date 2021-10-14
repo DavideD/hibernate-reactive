@@ -14,6 +14,9 @@ import javax.persistence.Id;
 import javax.persistence.NamedQuery;
 import javax.persistence.QueryHint;
 import javax.persistence.Table;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Root;
 
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.Configuration;
@@ -84,6 +87,26 @@ public class CachedQueryResultsTest extends BaseReactiveTest {
 					}
 				} )
 		);
+	}
+
+	@Test
+	public void testCacheWithCriteria(TestContext context) {
+		final Mutiny.SessionFactory sf = getMutinySessionFactory();
+		test( context, findAll( sf )
+				.call( () -> findAll( sf ) )
+				.call( () -> findAll( sf ) )
+		);
+	}
+
+	private Uni<List<Fruit>> findAll(Mutiny.SessionFactory sf) {
+		return sf.withStatelessSession( s -> {
+			CriteriaBuilder criteriaBuilder = sf.getCriteriaBuilder();
+			CriteriaQuery<Fruit> criteriaQuery = criteriaBuilder.createQuery( Fruit.class );
+			Root<Fruit> from = criteriaQuery.from( Fruit.class );
+			criteriaQuery.select( from );
+			return s.createQuery( criteriaQuery ).getResultList();
+//			return s.createQuery( "FROM Fruit f ORDER BY f.name ASC", Fruit.class ).getResultList();
+		} );
 	}
 
 	@Test
