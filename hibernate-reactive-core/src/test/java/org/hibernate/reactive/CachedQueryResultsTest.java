@@ -14,12 +14,17 @@ import javax.persistence.Id;
 import javax.persistence.NamedQuery;
 import javax.persistence.QueryHint;
 import javax.persistence.Table;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Root;
 
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.cfg.Environment;
+import org.hibernate.reactive.common.spi.Implementor;
 import org.hibernate.reactive.mutiny.Mutiny;
 import org.hibernate.reactive.provider.Settings;
+import org.hibernate.stat.spi.StatisticsImplementor;
 
 import org.junit.Test;
 
@@ -49,6 +54,7 @@ public class CachedQueryResultsTest extends BaseReactiveTest {
 	@Override
 	protected Configuration constructConfiguration() {
 		Configuration configuration = super.constructConfiguration();
+		configuration.getProperties().put( Settings.GENERATE_STATISTICS, Boolean.TRUE );
 		configuration.getProperties().put( Settings.USE_SECOND_LEVEL_CACHE, Boolean.TRUE );
 		configuration.getProperties().put( Settings.USE_QUERY_CACHE, Boolean.TRUE );
 		configuration.setProperty( Environment.CACHE_REGION_FACTORY, "org.hibernate.cache.jcache.internal.JCacheRegionFactory" );
@@ -59,22 +65,12 @@ public class CachedQueryResultsTest extends BaseReactiveTest {
 		return configuration;
 	}
 
-	private Uni<?> populateDB() {
-		return getMutinySessionFactory()
-				.withTransaction( (session, tx) -> session.persist( FRUITS ) );
-	}
-
-	private static Uni<List<Fruit>> findall(Mutiny.Session session) {
-		return session.createNamedQuery( Fruit.FIND_ALL, Fruit.class )
-				.getResultList();
-	}
-
 	@Test
 	public void testLoadFromCachedQueryResult(TestContext context) {
-		test( context, getMutinySessionFactory().withSession( CachedQueryResultsTest::findall )
+		test( context, getMutinySessionFactory().withSession( CachedQueryResultsTest::findAll )
 				// We need to close the session between the two findAll or the results will come from the
 				// first-level cache
-				.call( () -> getMutinySessionFactory().withSession( CachedQueryResultsTest::findall ) )
+				.call( () -> getMutinySessionFactory().withSession( CachedQueryResultsTest::findAll ) )
 				.invoke( list -> {
 					context.assertNotNull( list );
 					context.assertEquals( 3, list.size() );
@@ -84,13 +80,40 @@ public class CachedQueryResultsTest extends BaseReactiveTest {
 					}
 				} )
 		);
+	}
+
+	@Test
+	public void testQueryPlanCacheHits(TestContext context) {
+		test( context, criteriaFindAll()
+				.call( CachedQueryResultsTest::criteriaFindAll )
+				.call( CachedQueryResultsTest::criteriaFindAll )
+				.invoke( () -> context.assertEquals( 2L, statistics().getQueryPlanCacheHitCount() ) )
+		);
+	}
+
+	private static StatisticsImplementor statistics() {
+		return ( (Implementor) getSessionFactory() ).getServiceRegistry().getService(
+				StatisticsImplementor.class );
+	}
+
+	private static Uni<List<Fruit>> criteriaFindAll() {
+		final Mutiny.SessionFactory sf = getMutinySessionFactory();
+		return sf.withStatelessSession( s -> s.createQuery( criteriaQuery( sf.getCriteriaBuilder() ) ).getResultList()
+		);
+	}
+
+	private static CriteriaQuery<Fruit> criteriaQuery(CriteriaBuilder criteriaBuilder) {
+		CriteriaQuery<Fruit> criteriaQuery = criteriaBuilder.createQuery( Fruit.class );
+		Root<Fruit> from = criteriaQuery.from( Fruit.class );
+		criteriaQuery.select( from );
+		return criteriaQuery;
 	}
 
 	@Test
 	public void testLoadFromCachedQueryResultFromCache(TestContext context) {
 		test( context, getMutinySessionFactory()
-				.withSession( s -> CachedQueryResultsTest.findall(s)
-						.call( () -> CachedQueryResultsTest.findall(s) ) )
+				.withSession( s -> CachedQueryResultsTest.findAll( s )
+						.call( () -> CachedQueryResultsTest.findAll( s ) ) )
 				.invoke( list -> {
 					context.assertNotNull( list );
 					context.assertEquals( 3, list.size() );
@@ -102,10 +125,8 @@ public class CachedQueryResultsTest extends BaseReactiveTest {
 		);
 	}
 
-	private static Uni<List<Fruit>> findall2(Mutiny.Session session) {
-		return session.createQuery( "FROM Fruit f ORDER BY f.name ASC", Fruit.class )
-				.setCacheable(true)
-				.getResultList();
+	private static Uni<List<Fruit>> findAll(Mutiny.Session session) {
+		return session.createNamedQuery( Fruit.FIND_ALL, Fruit.class ).getResultList();
 	}
 
 	@Test
@@ -125,11 +146,17 @@ public class CachedQueryResultsTest extends BaseReactiveTest {
 		);
 	}
 
+	private static Uni<List<Fruit>> findall2(Mutiny.Session session) {
+		return session.createQuery( "FROM Fruit f ORDER BY f.name ASC", Fruit.class )
+				.setCacheable( true )
+				.getResultList();
+	}
+
 	@Test
 	public void testLoadFromCachedQueryResultFromCache2(TestContext context) {
 		test( context, getMutinySessionFactory()
-				.withSession( s -> CachedQueryResultsTest.findall2(s)
-						.call( () -> CachedQueryResultsTest.findall2(s) ) )
+				.withSession( s -> CachedQueryResultsTest.findall2( s )
+						.call( () -> CachedQueryResultsTest.findall2( s ) ) )
 				.invoke( list -> {
 					context.assertNotNull( list );
 					context.assertEquals( 3, list.size() );
