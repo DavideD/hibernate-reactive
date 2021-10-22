@@ -838,6 +838,16 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 	}
 
 	@Override
+	public void setBatchSize(Integer batchSize) {
+		setJdbcBatchSize( batchSize );
+	}
+
+	@Override
+	public Integer getBatchSize() {
+		return getJdbcBatchSize();
+	}
+
+	@Override
 	public void close() {
 		throw new UnsupportedOperationException(
 				"Non reactive close method called. Use close(CompletableFuture<Void> closing) instead." );

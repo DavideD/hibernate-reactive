@@ -49,6 +49,10 @@ public interface ReactiveStatelessSession extends ReactiveQueryExecutor {
 
     <T> CompletionStage<T> reactiveFetch(T association, boolean unproxy);
 
+	Integer getBatchSize();
+
+	void setBatchSize(Integer batchSize);
+
     boolean isOpen();
 
     void close(CompletableFuture<Void> closing);
