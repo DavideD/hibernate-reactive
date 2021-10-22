@@ -88,7 +88,7 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 
 	public ReactiveStatelessSessionImpl(SessionFactoryImpl factory, SessionCreationOptions options, ReactiveConnection connection) {
 		super( factory, options );
-		reactiveConnection = connection;
+		reactiveConnection = reactiveConnection( factory, connection );
 		allowBytecodeProxy = getFactory().getSessionFactoryOptions().isEnhancementAsProxyEnabled();
 		persistenceContext = new ReactivePersistenceContextAdapter( this );
 		batchingHelperSession = new ReactiveStatelessSessionImpl( factory, options, connection, persistenceContext );
@@ -97,19 +97,19 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 	/**
 	 * Create a helper instance with an underling {@link BatchingConnection}
 	 */
-	private ReactiveStatelessSessionImpl(
-			SessionFactoryImpl factory,
-			SessionCreationOptions options,
-			ReactiveConnection connection,
-			PersistenceContext persistenceContext) {
-		super( factory, options );
+	private ReactiveStatelessSessionImpl(SessionFactoryImpl factory, SessionCreationOptions options, ReactiveConnection connection, PersistenceContext persistenceContext) {
+		super( factory, options);
+		this.reactiveConnection = reactiveConnection( factory, connection );
+		this.allowBytecodeProxy = getFactory().getSessionFactoryOptions().isEnhancementAsProxyEnabled();
+		this.persistenceContext = persistenceContext;
+		this.batchingHelperSession = this;
+	}
+
+	private ReactiveConnection reactiveConnection(SessionFactoryImpl factory, ReactiveConnection connection) {
 		int batchSize = factory.getSessionFactoryOptions().getJdbcBatchSize();
-		reactiveConnection = batchSize < 2
+		return  batchSize < 2
 				? connection
 				: new BatchingConnection( connection, batchSize );
-		allowBytecodeProxy = getFactory().getSessionFactoryOptions().isEnhancementAsProxyEnabled();
-		this.persistenceContext = persistenceContext;
-		batchingHelperSession = this;
 	}
 
 	private LockOptions getNullSafeLockOptions(LockMode lockMode) {
