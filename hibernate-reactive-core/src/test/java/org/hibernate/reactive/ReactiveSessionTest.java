@@ -6,6 +6,7 @@
 package org.hibernate.reactive;
 
 import io.vertx.ext.unit.TestContext;
+import io.vertx.sqlclient.SqlClient;
 
 import org.hibernate.LockMode;
 import org.hibernate.cfg.AvailableSettings;
@@ -14,6 +15,7 @@ import org.hibernate.reactive.common.AffectedEntities;
 import org.hibernate.reactive.mutiny.impl.MutinySessionImpl;
 import org.hibernate.reactive.mutiny.impl.MutinyStatelessSessionImpl;
 import org.hibernate.reactive.pool.BatchingConnection;
+import org.hibernate.reactive.pool.impl.SqlClientConnection;
 import org.hibernate.reactive.stage.Stage;
 import org.hibernate.reactive.stage.impl.StageSessionImpl;
 import org.hibernate.reactive.stage.impl.StageStatelessSessionImpl;

@@ -166,6 +166,17 @@ public class StageStatelessSessionImpl implements Stage.StatelessSession {
 	}
 
 	@Override
+	public Stage.StatelessSession setBatchSize(Integer batchSize) {
+		delegate.setBatchSize(batchSize);
+		return this;
+	}
+
+	@Override
+	public Integer getBatchSize() {
+		return delegate.getBatchSize();
+	}
+
+	@Override
 	public <T> ResultSetMapping<T> getResultSetMapping(Class<T> resultType, String mappingName) {
 		return delegate.getResultSetMapping( resultType, mappingName );
 	}
