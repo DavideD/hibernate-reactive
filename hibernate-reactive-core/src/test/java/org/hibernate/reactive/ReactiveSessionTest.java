@@ -12,9 +12,11 @@ import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.reactive.common.AffectedEntities;
 import org.hibernate.reactive.mutiny.impl.MutinySessionImpl;
+import org.hibernate.reactive.mutiny.impl.MutinyStatelessSessionImpl;
 import org.hibernate.reactive.pool.BatchingConnection;
 import org.hibernate.reactive.stage.Stage;
 import org.hibernate.reactive.stage.impl.StageSessionImpl;
+import org.hibernate.reactive.stage.impl.StageStatelessSessionImpl;
 
 import org.junit.After;
 import org.junit.Test;
@@ -714,9 +716,25 @@ public class ReactiveSessionTest extends BaseReactiveTest {
 	}
 
 	@Test
+	public void testBatchingConnectionWithStateless(TestContext context) {
+		test( context, openStatelessSession()
+				.thenAccept( session -> assertThat( ( (StageStatelessSessionImpl) session ).getReactiveConnection() )
+						.isInstanceOf( BatchingConnection.class ) )
+		);
+	}
+
+	@Test
 	public void testBatchingConnectionMutiny(TestContext context) {
 		test( context, openMutinySession()
 				.invoke( session -> assertThat( ( (MutinySessionImpl) session ).getReactiveConnection() )
+						.isInstanceOf( BatchingConnection.class ) )
+		);
+	}
+
+	@Test
+	public void testBatchingConnectionWithMutinyStateless(TestContext context) {
+		test( context, openMutinyStatelessSession()
+				.invoke( session -> assertThat( ( (MutinyStatelessSessionImpl) session ).getReactiveConnection() )
 						.isInstanceOf( BatchingConnection.class ) )
 		);
 	}
