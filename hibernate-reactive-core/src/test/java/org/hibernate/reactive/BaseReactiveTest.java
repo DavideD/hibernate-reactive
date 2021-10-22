@@ -79,6 +79,7 @@ public abstract class BaseReactiveTest {
 	} );
 
 	private Object session;
+	private Object statelessSession;
 
 	private ReactiveConnection connection;
 
@@ -259,6 +260,18 @@ public abstract class BaseReactiveTest {
 				return stage.close();
 			}
 		}
+		if ( closable instanceof Mutiny.StatelessSession) {
+			Mutiny.StatelessSession mutiny = (Mutiny.StatelessSession) closable;
+			if ( mutiny.isOpen() ) {
+				return mutiny.close().subscribeAsCompletionStage();
+			}
+		}
+		if ( closable instanceof Stage.StatelessSession) {
+			Stage.StatelessSession stage = (Stage.StatelessSession) closable;
+			if ( stage.isOpen() ) {
+				return stage.close();
+			}
+		}
 		return voidFuture();
 	}
 
@@ -286,6 +299,21 @@ public abstract class BaseReactiveTest {
 				);
 	}
 
+	/**
+	 * Close the existing open session and create a new {@link Stage.StatelessSession}
+	 *
+	 * @return a new Stage.StatelessSession
+	 */
+	protected CompletionStage<Stage.StatelessSession> openStatelessSession() {
+		return closeSession( statelessSession )
+				.thenCompose( v -> getSessionFactory().openStatelessSession()
+						.thenApply( newSession -> {
+							this.statelessSession = newSession;
+							return newSession;
+						} )
+				);
+	}
+
 	protected CompletionStage<ReactiveConnection> connection() {
 		return factoryManager.getReactiveConnectionPool().getConnection().thenApply( c -> connection = c );
 	}
@@ -301,6 +329,20 @@ public abstract class BaseReactiveTest {
 					getMutinySessionFactory().openSession().invoke( newSession -> {
 						this.session = newSession;
 					} )
+				);
+	}
+
+	/**
+	 * Close the existing open session and create a new {@link Mutiny.StatelessSession}
+	 *
+	 * @return a new Mutiny.StatelessSession
+	 */
+	protected Uni<Mutiny.StatelessSession> openMutinyStatelessSession() {
+		return Uni.createFrom().completionStage( closeSession( statelessSession ) )
+				.replaceWith(
+						getMutinySessionFactory().openStatelessSession().invoke( newSession -> {
+							this.session = newSession;
+						} )
 				);
 	}
 
