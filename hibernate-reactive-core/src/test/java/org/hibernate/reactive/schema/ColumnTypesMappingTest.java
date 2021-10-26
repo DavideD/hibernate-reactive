@@ -5,94 +5,50 @@
  */
 package org.hibernate.reactive.schema;
 
-import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2;
-import static org.hibernate.tool.schema.JdbcMetadaAccessStrategy.INDIVIDUALLY;
-
 import org.hibernate.cfg.Configuration;
 import org.hibernate.reactive.BaseReactiveTest;
-import org.hibernate.reactive.containers.DatabaseConfiguration;
 import org.hibernate.reactive.containers.TestableDatabase;
-import org.hibernate.reactive.provider.Settings;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
 
-public class BasicTypesTest extends BaseReactiveTest {
+import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2;
+import static org.hibernate.reactive.containers.DatabaseConfiguration.getDatatypeQuery;
+import static org.hibernate.reactive.containers.DatabaseConfiguration.getExpectedDatatype;
 
-	protected Configuration constructConfiguration(String hbm2DdlOption) {
-		Configuration configuration = super.constructConfiguration();
-		configuration.setProperty( Settings.HBM2DDL_JDBC_METADATA_EXTRACTOR_STRATEGY, INDIVIDUALLY.toString() );
-		configuration.setProperty( Settings.HBM2DDL_AUTO, hbm2DdlOption );
-		return configuration;
-	}
+/**
+ * Check that each property is mapped as the expected type in the database.
+ */
+public class ColumnTypesMappingTest extends BaseReactiveTest {
 
 	@Rule
 	public DatabaseSelectionRule dbRule = DatabaseSelectionRule.skipTestsFor( DB2 );
 
-	@Before
 	@Override
-	public void before(TestContext context) {
-
-		Configuration configuration = constructConfiguration( "create" );
+	protected Configuration constructConfiguration() {
+		Configuration configuration = super.constructConfiguration();
 		configuration.addAnnotatedClass( BasicTypesTestEntity.class );
-		configuration.setProperty( Settings.SHOW_SQL, System.getProperty(Settings.SHOW_SQL, "true") );
-
-		test( context, setupSessionFactory( configuration )
-				.thenCompose( v -> factoryManager.stop() ) );
-	}
-
-	@After
-	@Override
-	public void after(TestContext context) {
-
-		final Configuration configuration = constructConfiguration( "drop" );
-		configuration.addAnnotatedClass( BasicTypesTestEntity.class );
-
-		test( context, factoryManager.stop()
-				.thenCompose( v -> setupSessionFactory( configuration ) )
-				.thenCompose( v -> factoryManager.stop() ) );
-	}
-
-	private String getDatatypeQuery( String actualTableName, String actualColumnName ) {
-		return DatabaseConfiguration.getDatatypeQuery( actualTableName, actualColumnName );
-	}
-
-	private String getExpectedResult( TestableDatabase.DataType dataType ) {
-		return DatabaseConfiguration.getExpectedDatatype( dataType );
-	}
-
-	private  void assertDatatype(TestContext context, String result, TestableDatabase.DataType datatype) {
-		context.assertTrue( result.equals( DatabaseConfiguration.getExpectedDatatype( datatype ) ) );
+		return configuration;
 	}
 
 	private void testDatatype(TestContext context, String columnName, TestableDatabase.DataType datatype) {
-
 		BasicTypesTestEntity testEntity = new BasicTypesTestEntity();
-
-		final Configuration configuration = constructConfiguration( "create" );
-		configuration.addAnnotatedClass( BasicTypesTestEntity.class );
-
-		test(
-				context,
-				setupSessionFactory( configuration )
-						.thenCompose( v -> getSessionFactory().withTransaction( (session, t) -> session.persist( testEntity ) ) )
-						.thenCompose( v1 -> openSession()
+		test( context, getSessionFactory()
+				.withTransaction( (session, t) -> session.persist( testEntity ) )
+				.thenCompose( v1 -> openSession()
 								.thenCompose( s -> s
 										.find( BasicTypesTestEntity.class, testEntity.id )
-										.thenAccept( result -> context.assertNotNull( result ) )
+										.thenAccept( result -> context.assertEquals( testEntity.getEntityName(), result.getEntityName() ) )
 										.thenCompose( v -> s
-												.createNativeQuery(
-														getDatatypeQuery( testEntity.getEntityName(), columnName ), String.class )
+												.createNativeQuery( getDatatypeQuery( testEntity.getEntityName(), columnName ), String.class )
 												.getSingleResult()
-												.thenAccept( result -> assertDatatype( context, result, datatype ) )
+												.thenAccept( result -> context.assertEquals( getExpectedDatatype( datatype ), result ) )
 										)
 								)
-						)
+				)
 		);
 	}
 

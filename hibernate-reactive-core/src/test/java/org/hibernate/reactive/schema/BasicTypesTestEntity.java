@@ -102,7 +102,6 @@ public class BasicTypesTestEntity {
 	}
 
 	public String getEntityName() {
-		return "BasicTypesTestEntity";
+		return BasicTypesTestEntity.class.getSimpleName();
 	}
-
 }
