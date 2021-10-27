@@ -15,6 +15,7 @@ import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2
 import static org.hibernate.tool.schema.JdbcMetadaAccessStrategy.GROUPED;
 import static org.hibernate.tool.schema.JdbcMetadaAccessStrategy.INDIVIDUALLY;
 
+import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.reactive.BaseReactiveTest;
 import org.hibernate.reactive.provider.Settings;
@@ -66,6 +67,8 @@ public abstract class SchemaValidationTestBase extends BaseReactiveTest {
 		configuration.setProperty( Settings.HBM2DDL_AUTO, action );
 		return configuration;
 	}
+
+	private SessionFactory ormFactory;
 
 	@Before
 	@Override

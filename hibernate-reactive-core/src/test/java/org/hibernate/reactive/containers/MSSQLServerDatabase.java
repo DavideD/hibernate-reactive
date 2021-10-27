@@ -25,11 +25,9 @@ class MSSQLServerDatabase implements TestableDatabase {
 
 	public static final String PASSWORD = "~!HReact!~";
 
-	String findTypeForColumnBaseQuery =
-			"select data_type from information_schema.columns where table_name = '" + TABLE_PARAM + "' and column_name = '" + COLUMN_PARAM + "'";
+	String findTypeForColumnBaseQuery = "select data_type from information_schema.columns where table_name = '" + TABLE_PARAM + "' and column_name = '" + COLUMN_PARAM + "'";
 
-	String selectColumnsOnlyQuery
-			= "select column_name from information_schema.columns where table_name = '" + TABLE_PARAM + "'";
+	String selectColumnsOnlyQuery = "select column_name from information_schema.columns where table_name = '" + TABLE_PARAM + "'";
 
 	public static Map<DataType, String> expectedDBTypeForEntityType = new EnumMap<DataType, String>( DataType.class);
 	static {{
@@ -44,8 +42,8 @@ class MSSQLServerDatabase implements TestableDatabase {
 		expectedDBTypeForEntityType.put( DataType.LONG_FIELD, "bigint" );
 		expectedDBTypeForEntityType.put( DataType.FLOAT_PRIMITIVE, "float" );
 		expectedDBTypeForEntityType.put( DataType.FLOAT_FIELD, "float" );
-		expectedDBTypeForEntityType.put( DataType.DOUBLE_PRIMITIVE, "float" );
-		expectedDBTypeForEntityType.put( DataType.DOUBLE_FIELD, "float" );
+		expectedDBTypeForEntityType.put( DataType.DOUBLE_PRIMITIVE, "double precision" );
+		expectedDBTypeForEntityType.put( DataType.DOUBLE_FIELD, "double precision" );
 		expectedDBTypeForEntityType.put( DataType.BYTE_PRIMITIVE, "smallint" );
 		expectedDBTypeForEntityType.put( DataType.BYTE_FIELD, "smallint" );
 		expectedDBTypeForEntityType.put( DataType.BYTES_PRIMITIVE, "varbinary" );
@@ -98,8 +96,8 @@ class MSSQLServerDatabase implements TestableDatabase {
 
 	@Override
 	public String getNativeDatatypeQuery(String tableName, String columnName) {
-		if( columnName == null ) {
-			return selectColumnsOnlyQuery.replace(TABLE_PARAM, tableName.toLowerCase() );
+		if ( columnName == null ) {
+			return selectColumnsOnlyQuery.replace( TABLE_PARAM, tableName.toLowerCase() );
 		}
 		return findTypeForColumnBaseQuery.replace(
 				TABLE_PARAM, tableName.toLowerCase() ).replace(
@@ -108,7 +106,7 @@ class MSSQLServerDatabase implements TestableDatabase {
 
 	@Override
 	public String getExpectedNativeDatatype(DataType dataType) {
-		return expectedDBTypeForEntityType.get(dataType);
+		return expectedDBTypeForEntityType.get( dataType );
 	}
 
 	private String address() {

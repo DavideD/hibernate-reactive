@@ -8,7 +8,6 @@ package org.hibernate.reactive.schema;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.reactive.BaseReactiveTest;
 import org.hibernate.reactive.containers.TestableDatabase;
-import org.hibernate.reactive.provider.Settings;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
 import org.junit.Rule;
@@ -31,7 +30,7 @@ public class ColumnTypesMappingTest extends BaseReactiveTest {
 	@Override
 	protected Configuration constructConfiguration() {
 		Configuration configuration = super.constructConfiguration();
-		configuration.setProperty( Settings.HBM2DDL_AUTO, "update" );
+//		configuration.setProperty( Settings.HBM2DDL_AUTO, "update" );
 		configuration.addAnnotatedClass( BasicTypesTestEntity.class );
 		return configuration;
 	}
