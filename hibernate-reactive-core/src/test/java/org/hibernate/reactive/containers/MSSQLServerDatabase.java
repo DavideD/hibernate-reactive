@@ -42,8 +42,8 @@ class MSSQLServerDatabase implements TestableDatabase {
 		expectedDBTypeForEntityType.put( DataType.LONG_FIELD, "bigint" );
 		expectedDBTypeForEntityType.put( DataType.FLOAT_PRIMITIVE, "float" );
 		expectedDBTypeForEntityType.put( DataType.FLOAT_FIELD, "float" );
-		expectedDBTypeForEntityType.put( DataType.DOUBLE_PRIMITIVE, "double precision" );
-		expectedDBTypeForEntityType.put( DataType.DOUBLE_FIELD, "double precision" );
+		expectedDBTypeForEntityType.put( DataType.DOUBLE_PRIMITIVE, "float" );
+		expectedDBTypeForEntityType.put( DataType.DOUBLE_FIELD, "float" );
 		expectedDBTypeForEntityType.put( DataType.BYTE_PRIMITIVE, "smallint" );
 		expectedDBTypeForEntityType.put( DataType.BYTE_FIELD, "smallint" );
 		expectedDBTypeForEntityType.put( DataType.BYTES_PRIMITIVE, "varbinary" );
