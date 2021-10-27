@@ -70,8 +70,8 @@ public class ColumnTypesMappingTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testIntegerPrimativeType(TestContext context) {
-		testDatatype( context, "primativeInt", TestableDatabase.DataType.INT_PRIMATIVE );
+	public void testIntegerPrimitiveType(TestContext context) {
+		testDatatype( context, "primitiveInt", TestableDatabase.DataType.INT_PRIMITIVE );
 	}
 
 	@Test
@@ -85,8 +85,8 @@ public class ColumnTypesMappingTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testLongPrimativeType(TestContext context) {
-		testDatatype( context, "primativeLong", TestableDatabase.DataType.LONG_PRIMATIVE );
+	public void testLongPrimitiveType(TestContext context) {
+		testDatatype( context, "primitiveLong", TestableDatabase.DataType.LONG_PRIMITIVE );
 	}
 
 	@Test
@@ -95,8 +95,8 @@ public class ColumnTypesMappingTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testFloatPrimativeType(TestContext context) {
-		testDatatype( context, "primativeFloat", TestableDatabase.DataType.FLOAT_PRIMATIVE );
+	public void testFloatPrimitiveType(TestContext context) {
+		testDatatype( context, "primitiveFloat", TestableDatabase.DataType.FLOAT_PRIMITIVE );
 	}
 
 
@@ -106,13 +106,13 @@ public class ColumnTypesMappingTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testDoublePrimativeType(TestContext context) {
-		testDatatype( context, "primativeDouble", TestableDatabase.DataType.DOUBLE_PRIMATIVE );
+	public void testDoublePrimitiveType(TestContext context) {
+		testDatatype( context, "primitiveDouble", TestableDatabase.DataType.DOUBLE_PRIMITIVE );
 	}
 
 	@Test
-	public void testBooleanPrimativeType(TestContext context) {
-		testDatatype( context, "primativeBoolean", TestableDatabase.DataType.BOOLEAN_PRIMATIVE );
+	public void testBooleanPrimitiveType(TestContext context) {
+		testDatatype( context, "primitiveBoolean", TestableDatabase.DataType.BOOLEAN_PRIMITIVE );
 	}
 
 	@Test
@@ -136,13 +136,13 @@ public class ColumnTypesMappingTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testBytePrimativeType(TestContext context) {
-		testDatatype( context, "primativeByte", TestableDatabase.DataType.BYTE_PRIMATIVE );
+	public void testBytePrimitiveType(TestContext context) {
+		testDatatype( context, "primitiveByte", TestableDatabase.DataType.BYTE_PRIMITIVE );
 	}
 
 	@Test
-	public void testBytesPrimativeType(TestContext context) {
-		testDatatype( context, "primativeBytes", TestableDatabase.DataType.BYTES_PRIMATIVE );
+	public void testBytesPrimitiveType(TestContext context) {
+		testDatatype( context, "primitiveBytes", TestableDatabase.DataType.BYTES_PRIMITIVE );
 	}
 
 	@Test

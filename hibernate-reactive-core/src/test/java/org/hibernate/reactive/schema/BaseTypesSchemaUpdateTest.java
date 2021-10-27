@@ -42,7 +42,6 @@ public class BaseTypesSchemaUpdateTest extends BaseReactiveTest {
 	public void before(TestContext context) {
 		Configuration configuration = constructConfiguration( "create" );
 		configuration.addAnnotatedClass( BaseFourColumnEntity.class );
-		configuration.setProperty( Settings.SHOW_SQL, System.getProperty(Settings.SHOW_SQL, "true") );
 
 		test( context, setupSessionFactory( configuration )
 				.thenCompose( v -> factoryManager.stop() ) );

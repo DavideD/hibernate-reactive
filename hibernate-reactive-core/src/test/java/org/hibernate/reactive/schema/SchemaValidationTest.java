@@ -9,6 +9,7 @@ package org.hibernate.reactive.schema;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.Table;
 
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2;
 import static org.hibernate.tool.schema.JdbcMetadaAccessStrategy.INDIVIDUALLY;
@@ -38,7 +39,6 @@ public class SchemaValidationTest extends BaseReactiveTest {
 		Configuration configuration = super.constructConfiguration();
 		configuration.setProperty( Settings.HBM2DDL_JDBC_METADATA_EXTRACTOR_STRATEGY, INDIVIDUALLY.toString() );
 		configuration.setProperty( Settings.HBM2DDL_AUTO, action );
-		configuration.addAnnotatedClass( BasicTypesTestEntity.class );
 		return configuration;
 	}
 
@@ -46,9 +46,17 @@ public class SchemaValidationTest extends BaseReactiveTest {
 	@Override
 	public void before(TestContext context) {
 		Configuration createConf = constructConfiguration( "create" );
+		createConf.addAnnotatedClass( BasicTypesTestEntity.class );
 
-		test( context, setupSessionFactory( createConf )
-				.thenCompose( v -> factoryManager.stop() ) );
+		// Make sure that the extra table is not in the db
+		Configuration dropConf = constructConfiguration( "drop" );
+		dropConf.addAnnotatedClass( Extra.class );
+
+		test( context, setupSessionFactory( dropConf )
+				.thenCompose( v -> factoryManager.stop() )
+				.thenCompose( v -> setupSessionFactory( createConf ) )
+				.thenCompose( v -> factoryManager.stop() )
+		);
 	}
 
 	@After
@@ -61,24 +69,26 @@ public class SchemaValidationTest extends BaseReactiveTest {
 	@Test
 	public void testValidationSucceeds(TestContext context) {
 		Configuration validateConf = constructConfiguration( "validate" );
+		validateConf.addAnnotatedClass( BasicTypesTestEntity.class );
 		test( context, setupSessionFactory( validateConf ) );
 	}
 
 	@Test
 	public void testValidationFails(TestContext context) {
-		Configuration configuration = constructConfiguration( "validate" );
-		// The schema was created without this entity.
-		// So we expect the validation to fail
-		configuration.addAnnotatedClass( Extra.class );
+		Configuration validateConf = constructConfiguration( "validate" );
+		validateConf.addAnnotatedClass( BasicTypesTestEntity.class );
+		// The table mapping this entity shouldn't be in the db
+		validateConf.addAnnotatedClass( Extra.class );
 
-		final String errorMessage = "Schema-validation: missing column [description] in table [Extra]";
-		test( context, setupSessionFactory( configuration )
+		final String errorMessage = "Schema-validation: missing table [" + Extra.TABLE_NAME + "]";
+		test( context, setupSessionFactory( validateConf )
 				.handle( (unused, throwable) -> {
 					context.assertNotNull( throwable );
 					context.assertEquals( throwable.getClass(), SchemaManagementException.class );
 					context.assertEquals( throwable.getMessage(), errorMessage );
 					return null;
-				} ) );
+				} )
+		);
 	}
 
 	/**
@@ -86,7 +96,9 @@ public class SchemaValidationTest extends BaseReactiveTest {
 	 * it should not be created at start up
 	 */
 	@Entity(name = "Extra")
+	@Table(name = Extra.TABLE_NAME)
 	public static class Extra {
+		public static final String TABLE_NAME = "EXTRA_TABLE";
 		@Id
 		@GeneratedValue
 		private Integer id;

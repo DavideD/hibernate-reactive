@@ -93,7 +93,6 @@ public abstract class SchemaUpdateCockroachDBTestBase extends BaseReactiveTest {
 				.thenCompose( v -> factoryManager.stop() ) );
 	}
 
-
 	@Test
 	public void testValidationSucceed(TestContext context) {
 		Configuration createHbm2ddlConf = constructConfiguration( "validate" );

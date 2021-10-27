@@ -44,13 +44,13 @@ public class BasicTypesTestEntity {
 	Integer version;
 	String aString;
 
-	boolean primativeBoolean;
-	int primativeInt;
-	long primativeLong;
-	float primativeFloat;
-	double primativeDouble;
-	byte primativeByte;
-	byte[] primativeBytes;
+	boolean primitiveBoolean;
+	int primitiveInt;
+	long primitiveLong;
+	float primitiveFloat;
+	double primitiveDouble;
+	byte primitiveByte;
+	byte[] primitiveBytes;
 
 	Boolean fieldBoolean;
 	Integer fieldInteger;
