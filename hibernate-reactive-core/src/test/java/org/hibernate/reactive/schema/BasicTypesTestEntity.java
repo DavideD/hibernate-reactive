@@ -22,6 +22,7 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 import javax.persistence.Version;
@@ -29,7 +30,12 @@ import javax.persistence.Version;
 import org.hibernate.annotations.Type;
 
 @Entity(name = "BasicTypesTestEntity")
+@Table(name = BasicTypesTestEntity.TABLE_NAME)
 public class BasicTypesTestEntity {
+
+	public static final String TABLE_NAME = "BASIC_TYPES_TABLE";
+
+	String name;
 
 	@Id
 	@GeneratedValue
@@ -100,8 +106,7 @@ public class BasicTypesTestEntity {
 
 	public BasicTypesTestEntity() {
 	}
-
-	public String getEntityName() {
-		return BasicTypesTestEntity.class.getSimpleName();
+	public BasicTypesTestEntity(String name) {
+		this.name = name;
 	}
 }

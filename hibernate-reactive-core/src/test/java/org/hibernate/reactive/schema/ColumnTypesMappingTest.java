@@ -8,6 +8,7 @@ package org.hibernate.reactive.schema;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.reactive.BaseReactiveTest;
 import org.hibernate.reactive.containers.TestableDatabase;
+import org.hibernate.reactive.provider.Settings;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
 import org.junit.Rule;
@@ -30,20 +31,21 @@ public class ColumnTypesMappingTest extends BaseReactiveTest {
 	@Override
 	protected Configuration constructConfiguration() {
 		Configuration configuration = super.constructConfiguration();
+		configuration.setProperty( Settings.HBM2DDL_AUTO, "update" );
 		configuration.addAnnotatedClass( BasicTypesTestEntity.class );
 		return configuration;
 	}
 
 	private void testDatatype(TestContext context, String columnName, TestableDatabase.DataType datatype) {
-		BasicTypesTestEntity testEntity = new BasicTypesTestEntity();
+		BasicTypesTestEntity testEntity = new BasicTypesTestEntity("Testing: " + columnName);
 		test( context, getSessionFactory()
 				.withTransaction( (session, t) -> session.persist( testEntity ) )
 				.thenCompose( v1 -> openSession()
 								.thenCompose( s -> s
 										.find( BasicTypesTestEntity.class, testEntity.id )
-										.thenAccept( result -> context.assertEquals( testEntity.getEntityName(), result.getEntityName() ) )
+										.thenAccept( result -> context.assertEquals( testEntity.name, result.name ) )
 										.thenCompose( v -> s
-												.createNativeQuery( getDatatypeQuery( testEntity.getEntityName(), columnName ), String.class )
+												.createNativeQuery( getDatatypeQuery( BasicTypesTestEntity.TABLE_NAME, columnName ), String.class )
 												.getSingleResult()
 												.thenAccept( result -> context.assertEquals( getExpectedDatatype( datatype ), result ) )
 										)
