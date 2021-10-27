@@ -12,6 +12,7 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2;
+import static org.hibernate.tool.schema.JdbcMetadaAccessStrategy.GROUPED;
 import static org.hibernate.tool.schema.JdbcMetadaAccessStrategy.INDIVIDUALLY;
 
 import org.hibernate.cfg.Configuration;
@@ -28,9 +29,33 @@ import org.junit.Test;
 import io.vertx.ext.unit.TestContext;
 
 /**
- * Test schema validation at startup
+ * Test schema validation at startup for all the supported types:
+ * - Missing table validation error
+ * - No validation error when everything is fine
+ * - TODO: Missing column
+ * - TODO: Wrong column type
  */
-public class SchemaValidationTest extends BaseReactiveTest {
+public abstract class SchemaValidationTestBase extends BaseReactiveTest {
+
+	public static class IndividuallyStrategyTest extends SchemaValidationTestBase {
+
+		@Override
+		protected Configuration constructConfiguration(String hbm2DdlOption) {
+			final Configuration configuration = super.constructConfiguration( hbm2DdlOption );
+			configuration.setProperty( Settings.HBM2DDL_JDBC_METADATA_EXTRACTOR_STRATEGY, INDIVIDUALLY.toString() );
+			return configuration;
+		}
+	}
+
+	public static class GroupedStrategyTest extends SchemaValidationTestBase {
+
+		@Override
+		protected Configuration constructConfiguration(String hbm2DdlOption) {
+			final Configuration configuration = super.constructConfiguration( hbm2DdlOption );
+			configuration.setProperty( Settings.HBM2DDL_JDBC_METADATA_EXTRACTOR_STRATEGY, GROUPED.toString() );
+			return configuration;
+		}
+	}
 
 	@Rule
 	public DatabaseSelectionRule dbRule = DatabaseSelectionRule.skipTestsFor( DB2 );

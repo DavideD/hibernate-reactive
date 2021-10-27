@@ -23,11 +23,34 @@ import io.vertx.ext.unit.TestContext;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.SQLSERVER;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
+import static org.hibernate.tool.schema.JdbcMetadaAccessStrategy.GROUPED;
+import static org.hibernate.tool.schema.JdbcMetadaAccessStrategy.INDIVIDUALLY;
 
 /**
- * Schema update will run different queries when the table already exist
+ * Schema update will run different queries when the table already exists or
+ * whn columns are missing.
  */
-public class SchemaUpdateTest extends BaseReactiveTest {
+public abstract class SchemaUpdateTestBase extends BaseReactiveTest {
+
+	public static class IndividuallyStrategyTest extends SchemaUpdateTestBase {
+
+		@Override
+		protected Configuration constructConfiguration(String hbm2DdlOption) {
+			final Configuration configuration = super.constructConfiguration( hbm2DdlOption );
+			configuration.setProperty( Settings.HBM2DDL_JDBC_METADATA_EXTRACTOR_STRATEGY, INDIVIDUALLY.toString() );
+			return configuration;
+		}
+	}
+
+	public static class GroupedStrategyTest extends SchemaUpdateTestBase {
+
+		@Override
+		protected Configuration constructConfiguration(String hbm2DdlOption) {
+			final Configuration configuration = super.constructConfiguration( hbm2DdlOption );
+			configuration.setProperty( Settings.HBM2DDL_JDBC_METADATA_EXTRACTOR_STRATEGY, GROUPED.toString() );
+			return configuration;
+		}
+	}
 
 	@Rule
 	public DatabaseSelectionRule dbRule = DatabaseSelectionRule.skipTestsFor( DB2 );
@@ -59,10 +82,10 @@ public class SchemaUpdateTest extends BaseReactiveTest {
 	public void testMissingColumnsCreation(TestContext context) {
 		test( context,
 			  setupSessionFactory( constructConfiguration( "drop" ) )
-					  .thenCompose( v -> getSessionFactory().withTransaction( SchemaUpdateTest::createTable ) )
+					  .thenCompose( v -> getSessionFactory().withTransaction( SchemaUpdateTestBase::createTable ) )
 					  .whenComplete( (u, throwable) -> factoryManager.stop() )
 					  .thenCompose( vv -> setupSessionFactory( constructConfiguration( "update" ) )
-							  .thenCompose( u -> getSessionFactory().withSession( SchemaUpdateTest::checkAllColumnsExist ) ) )
+							  .thenCompose( u -> getSessionFactory().withSession( SchemaUpdateTestBase::checkAllColumnsExist ) ) )
 		);
 	}
 
@@ -75,13 +98,13 @@ public class SchemaUpdateTest extends BaseReactiveTest {
 			setupSessionFactory( constructConfiguration( "drop" ) )
 				.whenComplete( (u, throwable) -> factoryManager.stop() )
 				.thenCompose( v -> setupSessionFactory( constructConfiguration( "update" ) )
-					.thenCompose( vv -> getSessionFactory().withSession( SchemaUpdateTest::checkAllColumnsExist ) ) )
+					.thenCompose( vv -> getSessionFactory().withSession( SchemaUpdateTestBase::checkAllColumnsExist ) ) )
 		);
 	}
 
 	// I don't think it's possible to create a table without columns, so we add
-	// a column that's not mapped by the entity
-	// We expect the other columns to be created during the update schema phase
+	// a column that's not mapped by the entity.
+	// We expect the other columns to be created during the update schema phase.
 	private static CompletionStage<Integer> createTable(Stage.Session session, Stage.Transaction transaction) {
 		return session
 				.createNativeQuery( "create table " + BasicTypesTestEntity.TABLE_NAME + " (unmapped_column " + columnType() + ")" )
@@ -93,8 +116,8 @@ public class SchemaUpdateTest extends BaseReactiveTest {
 	}
 
 	/**
-	 * 	The table is empty, we just want to check that a query runs without errors
-	 * 	The query throws an exception if one of the columns has not been created
+	 * 	The table is empty, we just want to check that a query runs without errors.
+	 * 	The query throws an exception if one of the columns is missing
  	 */
 	private static CompletionStage<BasicTypesTestEntity> checkAllColumnsExist(Stage.Session session) {
 		return session.find( BasicTypesTestEntity.class, 10 );
