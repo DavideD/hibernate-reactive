@@ -186,4 +186,10 @@ public class MySqlReactiveInformationExtractorImpl extends AbstractReactiveInfor
 
 		return getExtractionContext().getQueryResults( sb.toString(), parameters.toArray(), processor );
 	}
+
+	@Override
+	protected int dataType(String typeName) {
+		// TODO: Return a valid data type for float, real and so on ..
+		return super.dataType( typeName );
+	}
 }
