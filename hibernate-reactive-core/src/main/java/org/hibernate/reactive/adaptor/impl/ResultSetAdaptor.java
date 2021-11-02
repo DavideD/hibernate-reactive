@@ -721,7 +721,10 @@ public class ResultSetAdaptor implements ResultSet {
 
 	@Override
 	public Blob getBlob(String columnLabel) {
-		Buffer buffer = (Buffer) row.getValue( columnLabel );
+		final Object value = row.getValue( columnLabel );
+		Buffer buffer = value instanceof String
+				? Buffer.buffer( (String) value )
+				: (Buffer) value;
 		wasNull = buffer == null;
 		return wasNull ? null : BlobProxy.generateProxy( buffer.getBytes() );
 	}
