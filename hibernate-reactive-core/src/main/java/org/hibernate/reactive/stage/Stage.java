@@ -1648,7 +1648,7 @@ public interface Stage {
 		 * @see Session#withTransaction(Function)
 		 */
 		default <T> CompletionStage<T> withTransaction(Function<Session, CompletionStage<T>> work) {
-			return withTransaction( (session, transaction) -> work.apply(session) );
+			return withTransaction( (session, transaction) -> work.apply( session ) );
 		}
 
 		/**

@@ -1651,7 +1651,7 @@ public interface Mutiny {
 		 * @see Session#withTransaction(Function)
 		 */
 		default <T> Uni<T> withTransaction(Function<Session, Uni<T>> work) {
-			return withTransaction( (session, transaction) -> work.apply(session) );
+			return withTransaction( (session, transaction) -> work.apply( session ) );
 		}
 
 		/**
