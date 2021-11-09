@@ -5,6 +5,7 @@
  */
 package org.hibernate.reactive.provider.service;
 
+import java.lang.invoke.MethodHandles;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.CallableStatement;
@@ -23,25 +24,31 @@ import java.sql.Statement;
 import java.sql.Struct;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 
+import org.hibernate.HibernateException;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
-import org.hibernate.reactive.pool.ReactiveConnection;
+import org.hibernate.reactive.logging.impl.Log;
+import org.hibernate.reactive.logging.impl.LoggerFactory;
 import org.hibernate.reactive.pool.ReactiveConnectionPool;
 import org.hibernate.reactive.pool.impl.Parameters;
+import org.hibernate.reactive.vertx.VertxInstance;
 import org.hibernate.resource.transaction.spi.DdlTransactionIsolator;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.tool.schema.internal.exec.ImprovedExtractionContextImpl;
 import org.hibernate.tool.schema.internal.exec.JdbcContext;
 
 import static org.hibernate.reactive.util.impl.CompletionStages.logSqlException;
-import static org.hibernate.reactive.util.impl.CompletionStages.returnOrRethrow;
 
 public class ReactiveImprovedExtractionContextImpl extends ImprovedExtractionContextImpl {
 
-	private final ReactiveConnectionPool service;
+	private static final Log log = LoggerFactory.make( Log.class, MethodHandles.lookup() );
+
+	private final ReactiveConnectionPool poolService;
+	private final VertxInstance vertxService;
 
 	public ReactiveImprovedExtractionContextImpl(
 			ServiceRegistry registry,
@@ -56,7 +63,8 @@ public class ReactiveImprovedExtractionContextImpl extends ImprovedExtractionCon
 				defaultSchema,
 				databaseObjectAccess
 		);
-		service = registry.getService( ReactiveConnectionPool.class );
+		poolService = registry.getService( ReactiveConnectionPool.class );
+		vertxService = registry.getService( VertxInstance.class );
 	}
 
 	@Override
@@ -65,33 +73,68 @@ public class ReactiveImprovedExtractionContextImpl extends ImprovedExtractionCon
 			Object[] positionalParameters,
 			ResultSetProcessor<T> resultSetProcessor) throws SQLException {
 
-		final CompletionStage<ReactiveConnection> connectionStage = service.getConnection();
+		final Object[] parametersToUse = positionalParameters != null ? positionalParameters : new Object[0];
+		final Parameters parametersDialectSpecific = Parameters.instance( getJdbcEnvironment().getDialect() );
+		final String queryToUse = parametersDialectSpecific.process( queryString, parametersToUse.length );
 
-		try (final ResultSet resultSet = getQueryResultSet( queryString, positionalParameters, connectionStage )) {
-			return resultSetProcessor.process( resultSet );
+		try {
+			System.out.println( "----------------------------------------------------------------------------" );
+			System.out.println( "getQueryResults thread: " + Thread.currentThread().getName() );
+			return queryResults( resultSetProcessor, parametersToUse, queryToUse ).get();
 		}
-		finally {
-			// We start closing the connection but we don't care about the result
-			connectionStage.whenComplete( (c, e) -> c.close() );
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new HibernateException("Interrupted before receiving a result");
+		}
+		catch (ExecutionException e) {
+			throw new HibernateException( e.getCause() );
 		}
 	}
 
-	private ResultSet getQueryResultSet(
-			String queryString,
-			Object[] positionalParameters,
-			CompletionStage<ReactiveConnection> connectionStage) {
-		final Object[] parametersToUse = positionalParameters != null ? positionalParameters : new Object[0];
-		final Parameters parametersDialectSpecific = Parameters.instance(
-				getJdbcEnvironment().getDialect()
-		);
-		final String queryToUse = parametersDialectSpecific.process( queryString, parametersToUse.length );
-		return connectionStage.thenCompose( c -> c.selectJdbcOutsideTransaction( queryToUse, parametersToUse ) )
-				.handle( (resultSet, err) -> {
-					logSqlException( err, () -> "could not execute query ", queryToUse );
-					return returnOrRethrow( err, resultSet );
-				} )
-				.toCompletableFuture()
-				.join();
+	private <T> CompletableFuture<T> queryResults(
+			ResultSetProcessor<T> resultSetProcessor,
+			Object[] parametersToUse,
+			String queryToUse) {
+		final CompletableFuture<T> resultFuture = new CompletableFuture<>();
+		final String launchingThread = Thread.currentThread().getName();
+		Runnable runnable = () -> {
+			System.out.println( "Started: " + launchingThread );
+			poolService.getConnection()
+					.thenCompose( connection -> connection
+							.selectJdbcOutsideTransaction( queryToUse, parametersToUse )
+							.whenComplete( (resultSet, throwable) -> logSqlException( throwable, () -> "could not execute query ", queryToUse ) )
+							.thenApply( resultSet -> process( resultSetProcessor, resultSet ) )
+							.handle( (result, throwable) -> connection.close()
+									.handle( (v, tClosing) -> {
+										System.out.println( "## Completed: " + launchingThread );
+										if ( throwable != null ) {
+											resultFuture.completeExceptionally( throwable );
+										}
+										else {
+											resultFuture.complete( result );
+										}
+										return null;
+									} )
+							)
+					)
+					.exceptionally( throwable -> {
+						System.out.println( "## Exceptionally: " + launchingThread );
+						resultFuture.completeExceptionally( throwable );
+						return null;
+					} );
+		};
+
+		new Thread( runnable ).start();
+		return resultFuture;
+	}
+
+	private <T> T process(ResultSetProcessor<T> resultSetProcessor, ResultSet resultSet) {
+		try {
+			return resultSetProcessor.process( resultSet );
+		}
+		catch (SQLException e) {
+			throw new HibernateException( e );
+		}
 	}
 
 	private static class NoopDdlTransactionIsolator implements DdlTransactionIsolator {

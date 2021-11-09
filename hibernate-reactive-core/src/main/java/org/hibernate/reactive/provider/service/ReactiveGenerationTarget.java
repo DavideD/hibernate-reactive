@@ -36,8 +36,7 @@ public class ReactiveGenerationTarget implements GenerationTarget {
 	private ReactiveConnectionPool service;
 	private Set<String> statements;
 	private List<String> commands = new ArrayList<>();
-
-	private volatile CountDownLatch done;
+	private CountDownLatch latch;
 
 	public ReactiveGenerationTarget(ServiceRegistry registry) {
 		this.registry = registry;
@@ -48,7 +47,7 @@ public class ReactiveGenerationTarget implements GenerationTarget {
 		service = registry.getService( ReactiveConnectionPool.class );
 		vertxSupplier = registry.getService( VertxInstance.class );
 		statements = new HashSet<>();
-		done = new CountDownLatch( 1 );
+		latch = new CountDownLatch( 1 );
 	}
 
 	@Override
@@ -65,42 +64,41 @@ public class ReactiveGenerationTarget implements GenerationTarget {
 	public void release() {
 		statements = null;
 		if ( commands != null ) {
-			vertxSupplier.getVertx().getOrCreateContext().runOnContext( v1 ->
-					service.getConnection()
-						.thenCompose( this::executeCommands )
-						.whenComplete( (v, e) -> {
-							if ( e != null ) {
-								log.ddlCommandFailed( e.getMessage() );
-							}
-							done.countDown();
-						} )
-			);
+			Runnable runnable = () -> service
+					.getConnection()
+					.thenCompose( this::executeCommands )
+					.thenCompose( ReactiveConnection::close )
+					.whenComplete( ReactiveGenerationTarget::logFailure )
+					.handle( CompletionStages::ignoreErrors )
+					.whenComplete( (v, t) -> latch.countDown() );
 
-			if ( done != null ) {
-				try {
-					done.await();
-				}
-				catch (InterruptedException e) {
-					log.warnf( "Interrupted while performing schema export operations", e.getMessage() );
-					Thread.currentThread().interrupt();
-				}
+			new Thread( runnable ).start();
+
+			try {
+				latch.await();
+			}
+			catch (InterruptedException e) {
+				log.warnf( "Interrupted while performing schema export operations", e.getMessage() );
+				Thread.currentThread().interrupt();
 			}
 		}
 	}
 
-	private CompletionStage<Void> executeCommands(ReactiveConnection reactiveConnection) {
+	private static void logFailure(Void unused, Throwable t) {
+		if ( t != null ) {
+			log.ddlCommandFailed( t.getMessage() );
+		}
+	}
+
+	private CompletionStage<ReactiveConnection> executeCommands(ReactiveConnection reactiveConnection) {
 		CompletionStage<Void> result = CompletionStages.voidFuture();
 		for ( String command : commands ) {
-			result = result.thenCompose(  v -> reactiveConnection.execute( command )
-					.handle( (r, e) -> {
-						if ( e != null ) {
-							log.ddlCommandFailed( e.getMessage() );
-						}
-						return null;
-					} )
+			result = result.thenCompose( v -> reactiveConnection.execute( command )
+					.whenComplete( ReactiveGenerationTarget::logFailure )
+					.handle( CompletionStages::ignoreErrors )
 			);
 		}
 		return result
-				.whenComplete( (v, e) -> reactiveConnection.close() );
+				.thenApply( v -> reactiveConnection );
 	}
 }
