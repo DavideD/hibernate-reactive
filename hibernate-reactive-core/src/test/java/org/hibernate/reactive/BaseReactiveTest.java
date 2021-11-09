@@ -6,7 +6,6 @@
 package org.hibernate.reactive;
 
 import java.util.Arrays;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -82,14 +81,14 @@ public abstract class BaseReactiveTest {
 
 	private ReactiveConnection connection;
 
-	protected static void test(TestContext context, CompletionStage<?> work) {
+	public static void test(TestContext context, CompletionStage<?> work) {
 		test( context.async(), context, work );
 	}
 
 	/**
 	 * For when we need to create the {@link Async} in advance
 	 */
-	protected static void test(Async async, TestContext context, CompletionStage<?> work) {
+	public static void test(Async async, TestContext context, CompletionStage<?> work) {
 		work.whenComplete( (res, err) -> {
 			if ( err != null ) {
 				context.fail( err );
@@ -100,7 +99,7 @@ public abstract class BaseReactiveTest {
 		} );
 	}
 
-	protected static void test(TestContext context, Uni<?> uni) {
+	public static void test(TestContext context, Uni<?> uni) {
 		test( context.async(), context, uni );
 	}
 
@@ -157,23 +156,25 @@ public abstract class BaseReactiveTest {
 	}
 
 	protected CompletionStage<Void> setupSessionFactory(Configuration configuration) {
-		CompletableFuture<Void> future = new CompletableFuture<>();
-		vertxContextRule.vertx()
-				.executeBlocking(
-						// schema generation is a blocking operation and so it causes an
-						// exception when run on the Vert.x event loop. So call it using
-						// Vertx.executeBlocking()
-						promise -> startFactoryManager( promise, configuration ),
-						event -> {
-							if ( event.succeeded() ) {
-								future.complete( null );
-							}
-							else {
-								future.completeExceptionally( event.cause() );
-							}
-						}
-				);
-		return future;
+		Promise promise = Promise.promise();
+		startFactoryManager( promise, configuration );
+//		CompletableFuture<Void> future = new CompletableFuture<>();
+//		vertxContextRule.vertx()
+//				.executeBlocking(
+//						// schema generation is a blocking operation and so it causes an
+//						// exception when run on the Vert.x event loop. So call it using
+//						// Vertx.executeBlocking()
+//						promise -> startFactoryManager( promise, configuration ),
+//						event -> {
+//							if ( event.succeeded() ) {
+//								future.complete( null );
+//							}
+//							else {
+//								future.completeExceptionally( event.cause() );
+//							}
+//						}
+//				);
+		return promise.future().toCompletionStage();
 	}
 
 	private void startFactoryManager(Promise<Object> p, Configuration configuration ) {
