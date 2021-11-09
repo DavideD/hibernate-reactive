@@ -138,6 +138,7 @@ public class SqlClientConnection implements ReactiveConnection {
 
 	@Override
 	public CompletionStage<ResultSet> selectJdbcOutsideTransaction(String sql, Object[] paramValues) {
+		LOG.info( "Running query" );
 		return preparedQueryOutsideTransaction( sql, Tuple.wrap( paramValues ) ).thenApply(ResultSetAdaptor::new);
 	}
 

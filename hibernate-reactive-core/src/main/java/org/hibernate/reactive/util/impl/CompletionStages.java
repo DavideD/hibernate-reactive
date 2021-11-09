@@ -117,6 +117,7 @@ public class CompletionStages {
 	}
 
 	public static void logSqlException(Throwable t, Supplier<String> message, String sql) {
+		LOG.info( "Logging exceptions if any" );
 		if ( t != null ) {
 			LOG.failedToExecuteStatement( sql, message.get(), t );
 		}

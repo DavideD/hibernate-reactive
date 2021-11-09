@@ -25,7 +25,8 @@ import java.sql.Struct;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 
 import org.hibernate.HibernateException;
@@ -73,22 +74,34 @@ public class ReactiveImprovedExtractionContextImpl extends ImprovedExtractionCon
 			Object[] positionalParameters,
 			ResultSetProcessor<T> resultSetProcessor) throws SQLException {
 
-		final Object[] parametersToUse = positionalParameters != null ? positionalParameters : new Object[0];
-		final Parameters parametersDialectSpecific = Parameters.instance( getJdbcEnvironment().getDialect() );
-		final String queryToUse = parametersDialectSpecific.process( queryString, parametersToUse.length );
-
+		final CountDownLatch done = new CountDownLatch( 1 );
 		try {
-			System.out.println( "----------------------------------------------------------------------------" );
-			System.out.println( Thread.currentThread().getName() + ": getQueryResults thread: " );
-			return queryResults( resultSetProcessor, parametersToUse, queryToUse ).get();
+
+			log.info( "getQueryResults" );
+			final CompletableFuture<T> future = getReactiveQueryResults( queryString, positionalParameters, resultSetProcessor )
+					.whenComplete( (t, throwable) -> done.countDown() )
+					.toCompletableFuture();
+			log.info( "waiting" );
+			done.await();
+			log.info( "Finished" );
+			return future.join();
+
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 			throw new HibernateException("Interrupted before receiving a result");
 		}
-		catch (ExecutionException e) {
-			throw new HibernateException( e.getCause() );
-		}
+	}
+
+	public <T> CompletionStage<T> getReactiveQueryResults(
+			String queryString,
+			Object[] positionalParameters,
+			ResultSetProcessor<T> resultSetProcessor)  {
+
+		final Object[] parametersToUse = positionalParameters != null ? positionalParameters : new Object[0];
+		final Parameters parametersDialectSpecific = Parameters.instance( getJdbcEnvironment().getDialect() );
+		final String queryToUse = parametersDialectSpecific.process( queryString, parametersToUse.length );
+		return queryResults( resultSetProcessor, parametersToUse, queryToUse );
 	}
 
 	private <T> CompletableFuture<T> queryResults(
@@ -96,45 +109,56 @@ public class ReactiveImprovedExtractionContextImpl extends ImprovedExtractionCon
 			Object[] parametersToUse,
 			String queryToUse) {
 		final CompletableFuture<T> resultFuture = new CompletableFuture<>();
-		final String launchingThread = Thread.currentThread().getName();
-		System.out.println( launchingThread + ": Started" );
-		poolService.getConnection()
-				.thenApply( reactiveConnection -> {
-					System.out.println( launchingThread + ": Connection acquired");
-					return reactiveConnection;
-				} )
-				.thenCompose( connection -> connection
-						.selectJdbcOutsideTransaction( queryToUse, parametersToUse )
-						.whenComplete( (resultSet, throwable) -> logSqlException( throwable, () -> "could not execute query ", queryToUse ) )
-						.thenApply( resultSet -> process( resultSetProcessor, resultSet ) )
-						.handle( (result, throwable) -> connection.close()
-								.handle( (v, tClosing) -> {
-									System.out.println( launchingThread + ": Completed: " );
-									if ( throwable != null ) {
-										resultFuture.completeExceptionally( throwable );
-									}
-									else {
-										resultFuture.complete( result );
-									}
-									return null;
-								} )
-						)
-				)
-				.exceptionally( throwable -> {
-					// Just in case but should never happen
-					resultFuture.completeExceptionally( throwable );
-					return null;
-				} );
+		Runnable runnable = () -> {
+			log.info( "Starting new thread" );
+			poolService.getConnection()
+					.thenCompose( connection -> {
+						log.info( "Connection acquired" );
+						return connection
+			              .selectJdbcOutsideTransaction( queryToUse, parametersToUse )
+			              .whenComplete( (resultSet, throwable) -> {
+							  log.info( "Running query" );
+							  logSqlException( throwable, () -> "could not execute query ", queryToUse );
+			              } )
+			              .thenCompose( resultSet -> process( resultSetProcessor, resultSet ) )
+			              .handle( (result, throwable) -> connection.close()
+					              .handle( (v, tClosing) -> {
+						              log.info( "Completed" );
+						              if ( throwable != null ) {
+							              resultFuture.completeExceptionally( throwable );
+						              }
+						              else {
+							              resultFuture.complete( result );
+						              }
+						              return null;
+					              } )
+			              );
+	                } )
+					.exceptionally( throwable -> {
+						// Just in case but should never happen
+						resultFuture.completeExceptionally( throwable );
+						return null;
+					} );
+		};
+
+//		new Thread( () -> vertxService.getVertx().runOnContext( event -> runnable.run() )).start();
+		new Thread( runnable ).start();
 		return resultFuture;
 	}
 
-	private <T> T process(ResultSetProcessor<T> resultSetProcessor, ResultSet resultSet) {
-		try {
-			return resultSetProcessor.process( resultSet );
-		}
-		catch (SQLException e) {
-			throw new HibernateException( e );
-		}
+	private <T> CompletionStage<T> process(ResultSetProcessor<T> resultSetProcessor, ResultSet resultSet) {
+		CompletableFuture<T> future = new CompletableFuture<>();
+		Runnable runnable = () -> {
+			try {
+				log.info( "Processing" );
+				future.complete( resultSetProcessor.process( resultSet ) );
+			}
+			catch (Exception e) {
+				future.completeExceptionally( e );
+			}
+		};
+		new Thread( runnable ).start();
+		return future;
 	}
 
 	private static class NoopDdlTransactionIsolator implements DdlTransactionIsolator {

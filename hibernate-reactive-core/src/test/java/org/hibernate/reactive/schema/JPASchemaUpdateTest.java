@@ -68,27 +68,27 @@ public class JPASchemaUpdateTest {
 	@Test
 	public void testFactoryCreation(TestContext context) {
 		test( context, voidFuture()
-				.thenApply( this::createEMFactory )
-//				.thenCompose( v -> vertxContextRule.vertx()
-//						.executeBlocking( this::createEMFactory )
-//						.toCompletionStage() )
+//				.thenApply( this::createEMFactory )
+				.thenCompose( v -> vertxContextRule.vertx()
+						.executeBlocking( this::createEMFactory )
+						.toCompletionStage() )
 				.whenComplete( JPASchemaUpdateTest::closeFactory ) );
 	}
 
 	private void createEMFactory(Promise<EntityManagerFactory> promise) {
 		try {
-			promise.complete( createEMFactory() );
+			promise.complete( createEMF() );
 		}
 		catch (Throwable t) {
 			promise.fail( t );
 		}
 	}
 
-	private EntityManagerFactory createEMFactory(Void ignore) {
-		return createEMFactory();
-	}
+//	private EntityManagerFactory createEMFactory(Void ignore) {
+//		return createEMFactory();
+//	}
 
-	private EntityManagerFactory createEMFactory() {
+	private EntityManagerFactory createEMF() {
 		return Persistence.createEntityManagerFactory( "pg-schema-update-test", properties );
 	}
 }

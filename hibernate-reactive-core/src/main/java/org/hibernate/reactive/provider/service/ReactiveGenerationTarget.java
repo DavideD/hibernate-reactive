@@ -36,7 +36,7 @@ public class ReactiveGenerationTarget implements GenerationTarget {
 	private ReactiveConnectionPool service;
 	private Set<String> statements;
 	private List<String> commands = new ArrayList<>();
-	private CountDownLatch latch;
+	private CountDownLatch done;
 
 	public ReactiveGenerationTarget(ServiceRegistry registry) {
 		this.registry = registry;
@@ -47,7 +47,7 @@ public class ReactiveGenerationTarget implements GenerationTarget {
 		service = registry.getService( ReactiveConnectionPool.class );
 		vertxSupplier = registry.getService( VertxInstance.class );
 		statements = new HashSet<>();
-		latch = new CountDownLatch( 1 );
+		done = new CountDownLatch( 1 );
 	}
 
 	@Override
@@ -64,16 +64,20 @@ public class ReactiveGenerationTarget implements GenerationTarget {
 	public void release() {
 		statements = null;
 		if ( commands != null ) {
+			log.info( "Releasing" );
+
 			new Thread( () -> vertxSupplier.getVertx().runOnContext( this::executeRelease ) ).start();
 
 			try {
-				latch.await();
+				log.info( "Waiting" );
+				done.await();
+				log.info( "Finished" );
+				done = null;
 			}
 			catch (InterruptedException e) {
 				log.warnf( "Interrupted while performing schema export operations", e.getMessage() );
 				Thread.currentThread().interrupt();
 			}
-
 		}
 	}
 
@@ -84,7 +88,10 @@ public class ReactiveGenerationTarget implements GenerationTarget {
 				.thenCompose( ReactiveConnection::close )
 				.whenComplete( ReactiveGenerationTarget::logFailure )
 				.handle( CompletionStages::ignoreErrors )
-				.whenComplete( (v, t) -> latch.countDown() );
+				.whenComplete( (v, t) -> {
+					log.info( "Done!" );
+					done.countDown();
+				} );
 	}
 
 	private static void logFailure(Void unused, Throwable t) {
@@ -94,6 +101,7 @@ public class ReactiveGenerationTarget implements GenerationTarget {
 	}
 
 	private CompletionStage<ReactiveConnection> executeCommands(ReactiveConnection reactiveConnection) {
+		log.info( "Executing commands" );
 		CompletionStage<Void> result = CompletionStages.voidFuture();
 		for ( String command : commands ) {
 			result = result.thenCompose( v -> reactiveConnection.execute( command )
