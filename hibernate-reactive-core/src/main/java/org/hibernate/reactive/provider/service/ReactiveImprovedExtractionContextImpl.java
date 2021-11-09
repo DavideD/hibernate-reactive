@@ -79,7 +79,7 @@ public class ReactiveImprovedExtractionContextImpl extends ImprovedExtractionCon
 
 		try {
 			System.out.println( "----------------------------------------------------------------------------" );
-			System.out.println( "getQueryResults thread: " + Thread.currentThread().getName() );
+			System.out.println( Thread.currentThread().getName() + ": getQueryResults thread: " );
 			return queryResults( resultSetProcessor, parametersToUse, queryToUse ).get();
 		}
 		catch (InterruptedException e) {
@@ -97,34 +97,34 @@ public class ReactiveImprovedExtractionContextImpl extends ImprovedExtractionCon
 			String queryToUse) {
 		final CompletableFuture<T> resultFuture = new CompletableFuture<>();
 		final String launchingThread = Thread.currentThread().getName();
-		Runnable runnable = () -> {
-			System.out.println( "Started: " + launchingThread );
-			poolService.getConnection()
-					.thenCompose( connection -> connection
-							.selectJdbcOutsideTransaction( queryToUse, parametersToUse )
-							.whenComplete( (resultSet, throwable) -> logSqlException( throwable, () -> "could not execute query ", queryToUse ) )
-							.thenApply( resultSet -> process( resultSetProcessor, resultSet ) )
-							.handle( (result, throwable) -> connection.close()
-									.handle( (v, tClosing) -> {
-										System.out.println( "## Completed: " + launchingThread );
-										if ( throwable != null ) {
-											resultFuture.completeExceptionally( throwable );
-										}
-										else {
-											resultFuture.complete( result );
-										}
-										return null;
-									} )
-							)
-					)
-					.exceptionally( throwable -> {
-						System.out.println( "## Exceptionally: " + launchingThread );
-						resultFuture.completeExceptionally( throwable );
-						return null;
-					} );
-		};
-
-		new Thread( runnable ).start();
+		System.out.println( launchingThread + ": Started" );
+		poolService.getConnection()
+				.thenApply( reactiveConnection -> {
+					System.out.println( launchingThread + ": Connection acquired");
+					return reactiveConnection;
+				} )
+				.thenCompose( connection -> connection
+						.selectJdbcOutsideTransaction( queryToUse, parametersToUse )
+						.whenComplete( (resultSet, throwable) -> logSqlException( throwable, () -> "could not execute query ", queryToUse ) )
+						.thenApply( resultSet -> process( resultSetProcessor, resultSet ) )
+						.handle( (result, throwable) -> connection.close()
+								.handle( (v, tClosing) -> {
+									System.out.println( launchingThread + ": Completed: " );
+									if ( throwable != null ) {
+										resultFuture.completeExceptionally( throwable );
+									}
+									else {
+										resultFuture.complete( result );
+									}
+									return null;
+								} )
+						)
+				)
+				.exceptionally( throwable -> {
+					// Just in case but should never happen
+					resultFuture.completeExceptionally( throwable );
+					return null;
+				} );
 		return resultFuture;
 	}
 

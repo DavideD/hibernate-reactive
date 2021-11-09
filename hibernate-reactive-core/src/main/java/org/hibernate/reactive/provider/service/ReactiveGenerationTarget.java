@@ -64,16 +64,8 @@ public class ReactiveGenerationTarget implements GenerationTarget {
 	public void release() {
 		statements = null;
 		if ( commands != null ) {
-			Runnable runnable = () -> service
-					.getConnection()
-					.thenCompose( this::executeCommands )
-					.thenCompose( ReactiveConnection::close )
-					.whenComplete( ReactiveGenerationTarget::logFailure )
-					.handle( CompletionStages::ignoreErrors )
-					.whenComplete( (v, t) -> latch.countDown() );
-
-			new Thread( runnable ).start();
-
+			new Thread( () -> vertxSupplier.getVertx()
+					.runOnContext( this::executeRelease ) ).start();
 			try {
 				latch.await();
 			}
@@ -82,6 +74,16 @@ public class ReactiveGenerationTarget implements GenerationTarget {
 				Thread.currentThread().interrupt();
 			}
 		}
+	}
+
+	private void executeRelease(Void unused) {
+		service
+				.getConnection()
+				.thenCompose( this::executeCommands )
+				.thenCompose( ReactiveConnection::close )
+				.whenComplete( ReactiveGenerationTarget::logFailure )
+				.handle( CompletionStages::ignoreErrors )
+				.whenComplete( (v, t) -> latch.countDown() );
 	}
 
 	private static void logFailure(Void unused, Throwable t) {
