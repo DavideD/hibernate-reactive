@@ -64,8 +64,8 @@ public class ReactiveGenerationTarget implements GenerationTarget {
 	public void release() {
 		statements = null;
 		if ( commands != null ) {
-			new Thread( () -> vertxSupplier.getVertx()
-					.runOnContext( this::executeRelease ) ).start();
+			new Thread( () -> vertxSupplier.getVertx().runOnContext( this::executeRelease ) ).start();
+
 			try {
 				latch.await();
 			}
@@ -73,6 +73,7 @@ public class ReactiveGenerationTarget implements GenerationTarget {
 				log.warnf( "Interrupted while performing schema export operations", e.getMessage() );
 				Thread.currentThread().interrupt();
 			}
+
 		}
 	}
 
