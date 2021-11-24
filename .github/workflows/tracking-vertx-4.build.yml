@@ -5,14 +5,10 @@ on:
   # but only for the main branch
   push:
     branches:
-      - main
+      - wip/oracle
   pull_request:
     branches:
-      - main
-  schedule:
-    # * is a special character in YAML so you have to quote this string
-    # Run every hour at minute 25
-    - cron: '25 * * * *'
+      - wip/oracle
 
 # See https://github.com/hibernate/hibernate-orm/pull/4615 for a description of the behavior we're getting.
 concurrency:
