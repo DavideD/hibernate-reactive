@@ -51,7 +51,7 @@ public class LongLobTest extends BaseReactiveTest {
 	private void testField(TestContext context, Basic original, Consumer<Basic> consumer) {
 		test(
 				context,
-				getSessionFactory().withTransaction( (s, t) -> s.persist( original ) )
+				getSessionFactory().withTransaction(s -> s.persist( original ) )
 						.thenCompose( v -> openSession() )
 						.thenCompose( s2 -> s2.find( Basic.class, original.id )
 								.thenAccept( found -> {
