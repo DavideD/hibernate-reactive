@@ -50,12 +50,12 @@ public class PreparedStatementAdaptor implements PreparedStatement {
 	public static Object[] bind(Binder binder) {
 		PreparedStatementAdaptor statement = new PreparedStatementAdaptor();
 		try {
-			binder.bind(statement);
+			binder.bind( statement );
+			return statement.getParametersAsArray();
 		}
 		catch (SQLException e) {
-			throw new AssertionFailure("SQLException should never occur", e);
+			throw new AssertionFailure( "SQLException should never occur", e );
 		}
-		return statement.getParametersAsArray();
 	}
 
 	static final Object[] NO_PARAMS = new Object[0];
