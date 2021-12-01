@@ -10,7 +10,6 @@ import java.util.function.Consumer;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Lob;
 import javax.persistence.Table;
@@ -52,6 +51,7 @@ public class ORMTest extends BaseReactiveTest {
 		Configuration configuration = super.constructConfiguration();
 		configuration.addAnnotatedClass( Flour.class );
 		configuration.addAnnotatedClass( Basic.class );
+		configuration.addAnnotatedClass( Hero.class );
 		return configuration;
 	}
 
@@ -61,6 +61,9 @@ public class ORMTest extends BaseReactiveTest {
 		configuration.setProperty( Settings.DRIVER, "oracle.jdbc.OracleDriver" );
 		configuration.setProperty( Settings.DIALECT, Oracle12cDialect.class.getName() );
 		configuration.setProperty( AvailableSettings.USE_GET_GENERATED_KEYS, "true" );
+		configuration.setProperty( AvailableSettings.HBM2DDL_IMPORT_FILES, "/complexMultilineImports.sql" );
+		configuration.setProperty( Settings.HBM2DDL_AUTO, "create" );
+		configuration.setProperty( Settings.HBM2DDL_IMPORT_FILES_SQL_EXTRACTOR, "org.hibernate.tool.hbm2ddl.MultipleLinesSqlCommandExtractor" );
 
 		StandardServiceRegistryBuilder builder = new StandardServiceRegistryBuilder()
 				.applySettings( configuration.getProperties() );
@@ -78,14 +81,13 @@ public class ORMTest extends BaseReactiveTest {
 
 	@Test
 	public void testORMWithStageSession() {
-		final Flour almond = new Flour( null, "Almond", "made from ground almonds.", "Gluten free" );
+		final Flour almond1 = new Flour( 1, "Almond", "made from ground almonds.", "Gluten free" );
 
-		Session session = ormFactory.openSession();
-		session.beginTransaction();
-		session.persist( almond );
-		assert almond.getId() != null;
-		session.getTransaction().commit();
-		session.close();
+		try (Session session = ormFactory.openSession()) {
+			session.beginTransaction();
+			session.persist( almond1 );
+			session.getTransaction().commit();
+		}
 	}
 
 	@Test
@@ -129,6 +131,27 @@ public class ORMTest extends BaseReactiveTest {
 		session.close();
 
 		Assertions.assertThat( found ).isEqualTo( original );
+	}
+
+	@Entity(name = "Hero")
+	@Table(name = "hero")
+	public static class Hero {
+
+		@javax.persistence.Id
+		@javax.persistence.GeneratedValue
+		public java.lang.Long id;
+
+		@Column(unique = true)
+		public String name;
+
+		public String otherName;
+
+		public int level;
+
+		public String picture;
+
+		public String powers;
+
 	}
 
 	@Entity(name="LobEntity")
@@ -197,7 +220,6 @@ public class ORMTest extends BaseReactiveTest {
 	@Table(name = "Flour")
 	public static class Flour {
 		@Id
-		@GeneratedValue(strategy = GenerationType.IDENTITY)
 		private Integer id;
 		private String name;
 		private String description;

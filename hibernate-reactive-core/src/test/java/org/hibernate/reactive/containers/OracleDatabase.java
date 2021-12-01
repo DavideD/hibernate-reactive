@@ -84,7 +84,7 @@ class OracleDatabase implements TestableDatabase {
 			.withUsername( DatabaseConfiguration.USERNAME )
 			.withPassword( DatabaseConfiguration.PASSWORD )
 			.withDatabaseName( DatabaseConfiguration.DB_NAME )
-			.withLogConsumer( of -> System.out.println( of.getUtf8String() ) )
+//			.withLogConsumer( of -> System.out.println( of.getUtf8String() ) )
 			.withReuse( true );
 
 	@Override
