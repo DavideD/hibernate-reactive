@@ -37,6 +37,7 @@ import io.vertx.sqlclient.SqlResult;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
 
+import static org.hibernate.reactive.util.impl.CompletionStages.rethrow;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
 /**
@@ -163,14 +164,20 @@ public class SqlClientConnection implements ReactiveConnection {
 				.thenCompose( CompletionStages::voidFuture );
 	}
 
-	private static RowSet<Row> convertException(RowSet<Row> rows, String sql, Throwable sqlException) {
+	/**
+	 * Similar to {@link org.hibernate.exception.internal.SQLExceptionTypeDelegate#convert(SQLException, String, String)}
+	 */
+	private <T> T convertException(T rows, String sql, Throwable sqlException) {
+		if ( sqlException == null) {
+			return rows;
+		}
 		if ( SQLIntegrityConstraintViolationException.class.isInstance( sqlException ) ) {
 			throw new ConstraintViolationException( "could not execute statement", (SQLException) sqlException, sql );
 		}
 		if ( SQLException.class.isInstance( sqlException ) ) {
 			throw new VertxSqlClientException( "could not execute statement", (SQLException) sqlException, sql );
 		}
-		return rows;
+		return rethrow( sqlException );
 	}
 
 	@Override
