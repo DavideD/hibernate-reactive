@@ -6,33 +6,25 @@
 package org.hibernate.reactive;
 
 import java.util.Objects;
-import java.util.function.Consumer;
-import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
-import javax.persistence.Lob;
 import javax.persistence.Table;
-import javax.persistence.Version;
 
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.dialect.Oracle12cDialect;
 import org.hibernate.reactive.provider.Settings;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
-import org.assertj.core.api.Assertions;
 
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.ORACLE;
 
@@ -50,8 +42,6 @@ public class ORMTest extends BaseReactiveTest {
 	protected Configuration constructConfiguration() {
 		Configuration configuration = super.constructConfiguration();
 		configuration.addAnnotatedClass( Flour.class );
-		configuration.addAnnotatedClass( Basic.class );
-		configuration.addAnnotatedClass( Hero.class );
 		return configuration;
 	}
 
@@ -60,10 +50,6 @@ public class ORMTest extends BaseReactiveTest {
 		Configuration configuration = constructConfiguration();
 		configuration.setProperty( Settings.DRIVER, "oracle.jdbc.OracleDriver" );
 		configuration.setProperty( Settings.DIALECT, Oracle12cDialect.class.getName() );
-		configuration.setProperty( AvailableSettings.USE_GET_GENERATED_KEYS, "true" );
-		configuration.setProperty( AvailableSettings.HBM2DDL_IMPORT_FILES, "/complexMultilineImports.sql" );
-		configuration.setProperty( Settings.HBM2DDL_AUTO, "create" );
-		configuration.setProperty( Settings.HBM2DDL_IMPORT_FILES_SQL_EXTRACTOR, "org.hibernate.tool.hbm2ddl.MultipleLinesSqlCommandExtractor" );
 
 		StandardServiceRegistryBuilder builder = new StandardServiceRegistryBuilder()
 				.applySettings( configuration.getProperties() );
@@ -87,132 +73,6 @@ public class ORMTest extends BaseReactiveTest {
 			session.beginTransaction();
 			session.persist( almond1 );
 			session.getTransaction().commit();
-		}
-	}
-
-	@Test
-	public void testStringLobType(TestContext context) {
-		String text = "hello world once upon a time it was the best of times it was the worst of times goodbye";
-		StringBuilder longText = new StringBuilder();
-		for ( int i = 0; i < 1000; i++ ) {
-			longText.append( text );
-		}
-		String book = longText.toString();
-
-		Basic basic = new Basic();
-		basic.book = book;
-
-		testField( basic, found -> Assert.assertTrue( Objects.deepEquals( book, found.book ) ) );
-	}
-
-	@Test
-	public void testBytesLobType() {
-		String text = "hello world once upon a time it was the best of times it was the worst of times goodbye";
-		StringBuilder longText = new StringBuilder();
-		for ( int i = 0; i < 1000; i++ ) {
-			longText.append( text );
-		}
-		byte[] pic = longText.toString().getBytes();
-
-		Basic basic = new Basic();
-		basic.pic = pic;
-		testField( basic, found -> Assert.assertTrue( Objects.deepEquals( pic, found.pic ) ) );
-	}
-
-	/**
-	 * Persist the entity, find it and execute the assertions
-	 */
-	private void testField(Basic original, Consumer<Basic> consumer) {
-		final Session session = ormFactory.openSession();
-		session.beginTransaction();
-		session.persist( original );
-		session.getTransaction().commit();
-		final Basic found = session.find( Basic.class, original.id );
-		session.close();
-
-		Assertions.assertThat( found ).isEqualTo( original );
-	}
-
-	@Entity(name = "Hero")
-	@Table(name = "hero")
-	public static class Hero {
-
-		@javax.persistence.Id
-		@javax.persistence.GeneratedValue
-		public java.lang.Long id;
-
-		@Column(unique = true)
-		public String name;
-
-		public String otherName;
-
-		public int level;
-
-		public String picture;
-
-		public String powers;
-
-	}
-
-	@Entity(name="LobEntity")
-	@Table(name="LobEntity")
-	private static class Basic {
-
-		@Id @GeneratedValue Integer id;
-		@Version
-		Integer version;
-		String string;
-
-		@Lob
-		@Column(length = 100_000) protected byte[] pic;
-		@Lob @Column(length = 100_000) protected String book;
-
-		public Basic() {
-		}
-
-		public Basic(String string) {
-			this.string = string;
-		}
-
-		public Basic(String string, byte[] pic, String book) {
-			this.string = string;
-			this.pic = pic;
-			this.book = book;
-		}
-
-		public Basic(Integer id, String string) {
-			this.id = id;
-			this.string = string;
-		}
-
-		public Integer getId() {
-			return id;
-		}
-
-		public void setId(Integer id) {
-			this.id = id;
-		}
-
-		@Override
-		public String toString() {
-			return id + ": " + string;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if ( this == o ) {
-				return true;
-			}
-			if ( o == null || getClass() != o.getClass() ) {
-				return false;
-			}
-			Basic basic = (Basic) o;
-			return Objects.equals(string, basic.string);
-		}
-
-		@Override
-		public int hashCode() {
-			return Objects.hash(string);
 		}
 	}
 
