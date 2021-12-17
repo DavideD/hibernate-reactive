@@ -160,6 +160,16 @@ public class ReactiveQueryImpl<R> extends QueryImpl<R> implements ReactiveQuery<
 			);
 			queryParameters.setQueryPlan( plan );
 		}
+		else if ( !( queryParameters.getQueryPlan() instanceof ReactiveHQLQueryPlan ) ) {
+			HQLQueryPlan reactivePlan = new ReactiveHQLQueryPlan<>(
+					queryParameters.getQueryPlan().getSourceQuery(),
+					queryParameters.getQueryPlan().isShallow(),
+					getProducer().getLoadQueryInfluencers().getEnabledFilters(),
+					getProducer().getFactory(),
+					entityGraphQueryHint
+			);
+			queryParameters.setQueryPlan( reactivePlan );
+		}
 		return queryParameters;
 	}
 
@@ -297,7 +307,6 @@ public class ReactiveQueryImpl<R> extends QueryImpl<R> implements ReactiveQuery<
 	@Override
 	public void setPlan(EntityGraph<R> entityGraph) {
 		applyGraph( (RootGraph<?>) entityGraph, GraphSemantic.FETCH );
-		applyEntityGraphQueryHint( new EntityGraphQueryHint( GraphSemantic.FETCH.getJpaHintName(), entityGraph ) );
 	}
 
 	@Override
