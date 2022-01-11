@@ -26,6 +26,7 @@ import org.hibernate.reactive.provider.service.ReactiveGenerationTarget;
 import org.hibernate.reactive.provider.service.ReactiveSchemaManagementTool;
 import org.hibernate.reactive.stage.Stage;
 import org.hibernate.reactive.testing.SessionFactoryManager;
+import org.hibernate.reactive.vertx.VertxInstance;
 import org.hibernate.tool.schema.spi.SchemaManagementTool;
 
 import org.junit.After;
@@ -189,6 +190,7 @@ public abstract class BaseReactiveTest {
 
 	private SessionFactory createHibernateSessionFactory(Configuration configuration) {
 		StandardServiceRegistryBuilder builder = new ReactiveServiceRegistryBuilder()
+				.addService( VertxInstance.class, (VertxInstance) () -> vertxContextRule.vertx() )
 				.applySettings( configuration.getProperties() );
 		addServices( builder );
 		StandardServiceRegistry registry = builder.build();
