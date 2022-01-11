@@ -7,7 +7,6 @@ package org.hibernate.reactive.vertx.impl;
 
 import java.lang.invoke.MethodHandles;
 
-import io.vertx.core.Context;
 import io.vertx.core.Vertx;
 
 import org.hibernate.reactive.logging.impl.Log;
@@ -30,7 +29,6 @@ public final class DefaultVertxInstance implements VertxInstance, Stoppable, Sta
     private static final Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
     private Vertx vertx;
-    private boolean vertxCreator;
 
     @Override
     public Vertx getVertx() {
@@ -42,18 +40,14 @@ public final class DefaultVertxInstance implements VertxInstance, Stoppable, Sta
 
     @Override
     public void stop() {
-        if ( vertxCreator && vertx != null ) {
+        if ( vertx != null ) {
             vertx.close().toCompletionStage().toCompletableFuture().join();
         }
     }
 
     @Override
     public void start() {
-        final Context context = Vertx.currentContext();
-        vertxCreator = context == null || context.owner() == null;
-        vertx = vertxCreator
-                ? Vertx.vertx() // Create a new one
-                : context.owner(); // Get the existing one
+        vertx = Vertx.vertx();
     }
 
 }
