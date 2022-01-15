@@ -8,18 +8,11 @@ package org.hibernate.reactive.it;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 
-import org.hibernate.SessionFactory;
-import org.hibernate.boot.registry.StandardServiceRegistry;
-import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.cfg.Configuration;
 import org.hibernate.reactive.it.verticle.Product;
 import org.hibernate.reactive.it.verticle.ProductVerticle;
+import org.hibernate.reactive.it.verticle.StartVerticle;
 import org.hibernate.reactive.mutiny.Mutiny;
-import org.hibernate.reactive.provider.ReactiveServiceRegistryBuilder;
-import org.hibernate.reactive.provider.Settings;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -30,7 +23,6 @@ import io.smallrye.mutiny.Uni;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
-import io.vertx.core.VertxOptions;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -40,7 +32,6 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.mutiny.core.Vertx;
-import org.testcontainers.containers.PostgreSQLContainer;
 
 import static java.util.concurrent.CompletableFuture.allOf;
 
@@ -64,79 +55,27 @@ import static java.util.concurrent.CompletableFuture.allOf;
 @RunWith(VertxUnitRunner.class)
 public class LocalContextTest {
 
-	// These properties are in DatabaseConfiguration in core
-	public static final boolean USE_DOCKER = Boolean.getBoolean( "docker" );
-	public static final String IMAGE_NAME = "postgres:14.1";
-	public static final String USERNAME = "hreact";
-	public static final String PASSWORD = "hreact";
-	public static final String DB_NAME = "hreact";
-
 	// Number of requests: each request is a product created and then searched
 	private static final int REQUEST_NUMBER = 20;
 
 	@Rule
 	public Timeout rule = Timeout.seconds( 5 * 60 );
 
-	public static final PostgreSQLContainer<?> postgresql = new PostgreSQLContainer<>( IMAGE_NAME )
-			.withUsername( USERNAME )
-			.withPassword( PASSWORD )
-			.withDatabaseName( DB_NAME )
-			.withReuse( true );
-
-
-	private VertxOptions vertxOptions() {
-		VertxOptions vertxOptions = new VertxOptions();
-		vertxOptions.setBlockedThreadCheckInterval( 5 );
-		vertxOptions.setBlockedThreadCheckIntervalUnit( TimeUnit.MINUTES );
-		return vertxOptions;
-	}
-
-	protected Configuration constructConfiguration() {
-		Configuration configuration = new Configuration();
-		configuration.addAnnotatedClass( Product.class );
-
-		configuration.setProperty( Settings.HBM2DDL_AUTO, "create" );
-		configuration.setProperty( Settings.URL, dbConnectionUrl() );
-		configuration.setProperty( Settings.USER, USERNAME );
-		configuration.setProperty( Settings.PASS, PASSWORD );
-
-		//Use JAVA_TOOL_OPTIONS='-Dhibernate.show_sql=true'
-		configuration.setProperty( Settings.SHOW_SQL, System.getProperty( Settings.SHOW_SQL, "false" ) );
-		configuration.setProperty( Settings.FORMAT_SQL, System.getProperty( Settings.FORMAT_SQL, "false" ) );
-		configuration.setProperty( Settings.HIGHLIGHT_SQL, System.getProperty( Settings.HIGHLIGHT_SQL, "true" ) );
-		return configuration;
-	}
-
-	private String dbConnectionUrl() {
-		if ( USE_DOCKER ) {
-			// Calling start() will start the container (if not already started)
-			// It is required to call start() before obtaining the JDBC URL because it will contain a randomized port
-			postgresql.start();
-			return postgresql.getJdbcUrl();
-		}
-
-		return "postgres://localhost:5432/" + DB_NAME;
-	}
-
-	private SessionFactory createHibernateSessionFactory(Configuration configuration) {
-		StandardServiceRegistryBuilder builder = new ReactiveServiceRegistryBuilder()
-				.applySettings( configuration.getProperties() );
-		StandardServiceRegistry registry = builder.build();
-		return configuration.buildSessionFactory( registry );
-	}
-
 	@Test
 	public void testProductsGeneration(TestContext context) {
 		final Async async = context.async();
-		final Vertx vertx = Vertx.vertx( vertxOptions() );
+		final Vertx vertx = Vertx.vertx( StartVerticle.vertxOptions() );
 
-		Supplier<Uni<Mutiny.SessionFactory>> emfSupplier = () -> Uni.createFrom().deferred( () -> Uni.createFrom()
-				.item( createHibernateSessionFactory( constructConfiguration() ).unwrap( Mutiny.SessionFactory.class ) ) );
+		Mutiny.SessionFactory sf = StartVerticle.createHibernateSessionFactory( StartVerticle.USE_DOCKER )
+				.unwrap( Mutiny.SessionFactory.class );
 
 		final WebClient webClient = WebClient.create( vertx.getDelegate() );
 
+		final DeploymentOptions deploymentOptions = new DeploymentOptions();
+		deploymentOptions.setInstances( 8 );
+
 		vertx
-				.deployVerticle( () -> new ProductVerticle( emfSupplier ), new DeploymentOptions() )
+				.deployVerticle( () -> new ProductVerticle( () -> sf ), deploymentOptions )
 				.map( s -> webClient )
 				.call( this::createProducts )
 				.call( this::findProducts )

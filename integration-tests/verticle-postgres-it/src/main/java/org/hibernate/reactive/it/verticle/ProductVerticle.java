@@ -23,22 +23,27 @@ public class ProductVerticle extends AbstractVerticle {
 
 	private static final Logger LOG = Logger.getLogger( ProductVerticle.class );
 
-	private final Supplier<Uni<Mutiny.SessionFactory>> emfSupplier;
+	private final Supplier<Mutiny.SessionFactory> emfSupplier;
 	private Mutiny.SessionFactory emf;
+	private HttpServer httpServer;
 
 	/**
 	 * The port to use to listen to requests
 	 */
 	public static final int HTTP_PORT = 8088;
 
-	public ProductVerticle(Supplier<Uni<Mutiny.SessionFactory>> emfSupplier) {
+	public ProductVerticle(Supplier<Mutiny.SessionFactory> emfSupplier) {
 		this.emfSupplier = emfSupplier;
+	}
+
+	private Uni<Mutiny.SessionFactory> startHibernate() {
+		return Uni.createFrom().item( emfSupplier );
 	}
 
 	@Override
 	public Uni<Void> asyncStart() {
 		final Uni<Mutiny.SessionFactory> startHibernate = vertx
-				.executeBlocking( emfSupplier.get() )
+				.executeBlocking( this.startHibernate() )
 				.invoke( factory -> {
 					this.emf = factory;
 					LOG.debug( "✅ Hibernate Reactive is ready" );
@@ -53,12 +58,18 @@ public class ProductVerticle extends AbstractVerticle {
 		router.get( "/products/:id" ).respond( this::getProduct );
 		router.post( "/products" ).respond( this::createProduct );
 
-		Uni<HttpServer> startHttpServer = vertx.createHttpServer()
+		this.httpServer = vertx.createHttpServer();
+		Uni<HttpServer> startHttpServer = httpServer
 				.requestHandler( router::handle )
 				.listen( HTTP_PORT )
-				.onItem().invoke( () -> LOG.debugf( "✅ HTTP server listening on port $s", HTTP_PORT ) );
+				.onItem().invoke( () -> LOG.debugf( "✅ HTTP server listening on port %s", HTTP_PORT ) );
 
 		return Uni.combine().all().unis( startHibernate, startHttpServer ).discardItems();
+	}
+
+	@Override
+	public Uni<Void> asyncStop() {
+		return httpServer.close().invoke( emf::close );
 	}
 
 	private Uni<List<Product>> listProducts(RoutingContext ctx) {

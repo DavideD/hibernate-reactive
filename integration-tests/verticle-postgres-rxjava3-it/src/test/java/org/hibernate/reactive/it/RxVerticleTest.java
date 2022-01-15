@@ -9,17 +9,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 
-import org.hibernate.SessionFactory;
-import org.hibernate.boot.registry.StandardServiceRegistry;
-import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.cfg.Configuration;
 import org.hibernate.reactive.it.verticle.Product;
 import org.hibernate.reactive.it.verticle.ProductVerticle;
-import org.hibernate.reactive.provider.ReactiveServiceRegistryBuilder;
-import org.hibernate.reactive.provider.Settings;
+import org.hibernate.reactive.it.verticle.StartVerticle;
 import org.hibernate.reactive.stage.Stage;
 
 import org.junit.Rule;
@@ -31,7 +24,6 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -40,7 +32,8 @@ import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
-import org.testcontainers.containers.PostgreSQLContainer;
+
+import static org.hibernate.reactive.it.verticle.StartVerticle.USE_DOCKER;
 
 /**
  * Create a certain number of entities and check that they can be found using
@@ -60,81 +53,27 @@ import org.testcontainers.containers.PostgreSQLContainer;
  * <p>
  */
 @RunWith(VertxUnitRunner.class)
-public class RxLocalContextTest {
-
-	// These properties are in DatabaseConfiguration in core
-	public static final boolean USE_DOCKER = Boolean.getBoolean( "docker" );
-	public static final String IMAGE_NAME = "postgres:14.1";
-	public static final String USERNAME = "hreact";
-	public static final String PASSWORD = "hreact";
-	public static final String DB_NAME = "hreact";
+public class RxVerticleTest {
 
 	// Number of requests: each request is a product created and then searched
-	private static final int REQUEST_NUMBER = 20;
+	private static final int REQUEST_NUMBER = 1000;
 
 	@Rule
 	public Timeout rule = Timeout.seconds( 5 * 60 );
 
-	public static final PostgreSQLContainer<?> postgresql = new PostgreSQLContainer<>( IMAGE_NAME )
-			.withUsername( USERNAME )
-			.withPassword( PASSWORD )
-			.withDatabaseName( DB_NAME )
-			.withReuse( true );
-
-
-	private VertxOptions vertxOptions() {
-		VertxOptions vertxOptions = new VertxOptions();
-		vertxOptions.setBlockedThreadCheckInterval( 5 );
-		vertxOptions.setBlockedThreadCheckIntervalUnit( TimeUnit.MINUTES );
-		return vertxOptions;
-	}
-
-	protected Configuration constructConfiguration() {
-		Configuration configuration = new Configuration();
-		configuration.addAnnotatedClass( Product.class );
-
-		configuration.setProperty( Settings.HBM2DDL_AUTO, "create" );
-		configuration.setProperty( Settings.URL, dbConnectionUrl() );
-		configuration.setProperty( Settings.USER, USERNAME );
-		configuration.setProperty( Settings.PASS, PASSWORD );
-
-		//Use JAVA_TOOL_OPTIONS='-Dhibernate.show_sql=true'
-		configuration.setProperty( Settings.SHOW_SQL, System.getProperty( Settings.SHOW_SQL, "false" ) );
-		configuration.setProperty( Settings.FORMAT_SQL, System.getProperty( Settings.FORMAT_SQL, "false" ) );
-		configuration.setProperty( Settings.HIGHLIGHT_SQL, System.getProperty( Settings.HIGHLIGHT_SQL, "true" ) );
-		return configuration;
-	}
-
-	private String dbConnectionUrl() {
-		if ( USE_DOCKER ) {
-			// Calling start() will start the container (if not already started)
-			// It is required to call start() before obtaining the JDBC URL because it will contain a randomized port
-			postgresql.start();
-			return postgresql.getJdbcUrl();
-		}
-
-		return "postgres://localhost:5432/" + DB_NAME;
-	}
-
-	private SessionFactory createHibernateSessionFactory(Configuration configuration) {
-		StandardServiceRegistryBuilder builder = new ReactiveServiceRegistryBuilder()
-				.applySettings( configuration.getProperties() );
-		StandardServiceRegistry registry = builder.build();
-		return configuration.buildSessionFactory( registry );
-	}
-
 	@Test
 	public void testProductsGeneration(TestContext context) {
 		final Async async = context.async();
-		final Vertx vertx = Vertx.vertx( vertxOptions() );
-
-		Supplier<Stage.SessionFactory> emfSupplier = () -> createHibernateSessionFactory( constructConfiguration() )
+		final Vertx vertx = Vertx.vertx( StartVerticle.vertxOptions() );
+		final Stage.SessionFactory emf = StartVerticle.createHibernateSessionFactory( USE_DOCKER )
 				.unwrap( Stage.SessionFactory.class );
-
 		final WebClient webClient = WebClient.create( vertx );
 
+		DeploymentOptions options = new DeploymentOptions();
+		options.setInstances( 8 );
+
 		vertx
-				.deployVerticle( () -> new ProductVerticle( emfSupplier ), new DeploymentOptions() )
+				.deployVerticle( () -> new ProductVerticle( () -> emf ), options )
 				.map( s -> webClient )
 				.compose( this::createProducts )
 				.map( v -> webClient )
@@ -178,11 +117,8 @@ public class RxLocalContextTest {
 			final Product expected = new Product( i + 1 );
 
 			// Send the request
-			final Future<?> getRequest = webClient.get(
-							ProductVerticle.HTTP_PORT,
-							"localhost",
-							"/products/" + expected.getId()
-					)
+			final Future<?> getRequest = webClient
+					.get( ProductVerticle.HTTP_PORT, "localhost", "/products/" + expected.getId() )
 					.send()
 					.compose( event -> handle( expected, event ) );
 
