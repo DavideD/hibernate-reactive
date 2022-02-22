@@ -5,10 +5,10 @@
  */
 package org.hibernate.reactive;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.POSTGRESQL;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import javax.persistence.CascadeType;
 import javax.persistence.DiscriminatorColumn;
@@ -35,63 +35,81 @@ import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
 
+/**
+ *
+ */
 public abstract class InsertOrderingReferenceSeveralDifferentSubclassBase extends BaseReactiveTest {
-	private static SqlStatementTracker sqlTracker = new SqlStatementTracker( SqlStatementTracker.INSERT_FILTER, true, false, false, 0L);
-
-	private boolean isOrdered = false;
 
 	@Rule
 	public DatabaseSelectionRule rule = DatabaseSelectionRule.runOnlyFor( POSTGRESQL );
 
-	// List of insert statements string values
 	// Actual # of inserts = 7, but these should be sorted & collapsed to 4 inserts with the duplicate
 	// inserts being batched
-	private static final List<String> orderedInsertSql = Arrays.asList(
-			"insert into UnrelatedEntity (unrelatedValue, id) values ($1, $2)",
-			"insert into BaseEntity (name, TYPE, id) values ($1, 'ZERO', $2)",
-			"insert into BaseEntity (name, PARENT_ID, TYPE, id) values ($1, $2, 'TWO', $3)",
-			"insert into BaseEntity (name, PARENT_ID, TYPE, id) values ($1, $2, 'ONE', $3)"
-	);
-
-	private static final List<String> unorderedInsertSql = Arrays.asList(
-			"insert into UnrelatedEntity (unrelatedValue, id) values ($1, $2)",
-			"insert into BaseEntity (name, TYPE, id) values ($1, 'ZERO', $2)",
-			"insert into BaseEntity (name, PARENT_ID, TYPE, id) values ($1, $2, 'TWO', $3)",
-			"insert into BaseEntity (name, PARENT_ID, TYPE, id) values ($1, $2, 'ONE', $3)",
-			"insert into UnrelatedEntity (unrelatedValue, id) values ($1, $2)",
-			"insert into BaseEntity (name, PARENT_ID, TYPE, id) values ($1, $2, 'ONE', $3)",
-			"insert into BaseEntity (name, PARENT_ID, TYPE, id) values ($1, $2, 'TWO', $3)"
-	);
-
-	public static class OrderInsertTrueReferenceSeveralDifferentSubclassTestBase extends InsertOrderingReferenceSeveralDifferentSubclassBase {
+	public static class OrderedTest extends InsertOrderingReferenceSeveralDifferentSubclassBase {
 
 		@Override
 		protected Configuration constructConfiguration() {
-			final Configuration configuration = super.constructConfiguration( "true" );
+			final Configuration configuration = super.constructConfiguration();
+			configuration.setProperty( Settings.ORDER_INSERTS, "true" );
 			return configuration;
+		}
+
+		@Override
+		public String[] getExpectedSqlList() {
+			return new String[] {
+					"insert into UnrelatedEntity (unrelatedValue, id) values ($1, $2)",
+					"insert into BaseEntity (name, TYPE, id) values ($1, 'ZERO', $2)",
+					"insert into BaseEntity (name, PARENT_ID, TYPE, id) values ($1, $2, 'TWO', $3)",
+					"insert into BaseEntity (name, PARENT_ID, TYPE, id) values ($1, $2, 'ONE', $3)"
+			};
 		}
 	}
 
-	public static class OrderInsertFalseReferenceSeveralDifferentSubclassTestBase extends InsertOrderingReferenceSeveralDifferentSubclassBase {
+	public static class UnorderedTest extends InsertOrderingReferenceSeveralDifferentSubclassBase {
 
 		@Override
 		protected Configuration constructConfiguration() {
-			final Configuration configuration = super.constructConfiguration( "false" );
+			final Configuration configuration = super.constructConfiguration();
+			configuration.setProperty( Settings.ORDER_INSERTS, "false" );
 			return configuration;
+		}
+
+		@Override
+		public String[] getExpectedSqlList() {
+			return new String[] {
+					"insert into UnrelatedEntity (unrelatedValue, id) values ($1, $2)",
+					"insert into BaseEntity (name, TYPE, id) values ($1, 'ZERO', $2)",
+					"insert into BaseEntity (name, PARENT_ID, TYPE, id) values ($1, $2, 'TWO', $3)",
+					"insert into BaseEntity (name, PARENT_ID, TYPE, id) values ($1, $2, 'ONE', $3)",
+					"insert into UnrelatedEntity (unrelatedValue, id) values ($1, $2)",
+					"insert into BaseEntity (name, PARENT_ID, TYPE, id) values ($1, $2, 'ONE', $3)",
+					"insert into BaseEntity (name, PARENT_ID, TYPE, id) values ($1, $2, 'TWO', $3)"
+			};
 		}
 	}
 
-	protected Configuration constructConfiguration(String orderInserts) {
-		isOrdered = Boolean.valueOf( orderInserts );
+	public abstract String[] getExpectedSqlList();
+
+	private SqlStatementTracker sqlTracker;
+
+	@Override
+	protected Configuration constructConfiguration() {
 		Configuration configuration = super.constructConfiguration();
-		configuration.setProperty( Settings.ORDER_INSERTS, orderInserts );
 		configuration.setProperty( Settings.STATEMENT_BATCH_SIZE, "10" );
 		configuration.addAnnotatedClass( BaseEntity.class );
 		configuration.addAnnotatedClass( SubclassZero.class );
 		configuration.addAnnotatedClass( SubclassOne.class );
 		configuration.addAnnotatedClass( SubclassTwo.class );
 		configuration.addAnnotatedClass( UnrelatedEntity.class );
+
+		sqlTracker = new SqlStatementTracker(
+				InsertOrderingReferenceSeveralDifferentSubclassBase::onlyInserts,
+				configuration.getProperties() );
 		return configuration;
+	}
+
+	private static boolean onlyInserts(String s) {
+		return s.toLowerCase().startsWith( "insert" );
 	}
 
 	@Override
@@ -128,24 +146,10 @@ public abstract class InsertOrderingReferenceSeveralDifferentSubclassBase extend
 						.withSession( s -> s.find( SubclassOne.class, subclassOne.id ) ) )
 				.invoke( result -> {
 					context.assertEquals( subclassOne.name, result.name );
-					assertInsertSql( context );
+					assertThat( sqlTracker.getLoggedQueries() ).containsExactly( getExpectedSqlList() );
 				} )
 
 		);
-	}
-
-	private void assertInsertSql(TestContext context) {
-		List<String> insertSqlList = sqlTracker.getLoggedQueries();
-		int i = 0;
-		if( isOrdered ) {
-			for( String sql : insertSqlList){
-				context.assertEquals( orderedInsertSql.get(i++), sql );
-			}
-		} else {
-			for( String sql : insertSqlList){
-				context.assertEquals( unorderedInsertSql.get(i++), sql );
-			}
-		}
 	}
 
 	@Entity(name = "BaseEntity")
@@ -160,7 +164,6 @@ public abstract class InsertOrderingReferenceSeveralDifferentSubclassBase extend
 		public String name;
 
 		public BaseEntity() {
-
 		}
 
 		public BaseEntity(String name) {
