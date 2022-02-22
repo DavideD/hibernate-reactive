@@ -48,10 +48,8 @@ public abstract class InsertOrderingReferenceSeveralDifferentSubclassBase extend
 	public static class OrderedTest extends InsertOrderingReferenceSeveralDifferentSubclassBase {
 
 		@Override
-		protected Configuration constructConfiguration() {
-			final Configuration configuration = super.constructConfiguration();
-			configuration.setProperty( Settings.ORDER_INSERTS, "true" );
-			return configuration;
+		public boolean isOrderedInsert() {
+			return true;
 		}
 
 		@Override
@@ -68,10 +66,8 @@ public abstract class InsertOrderingReferenceSeveralDifferentSubclassBase extend
 	public static class UnorderedTest extends InsertOrderingReferenceSeveralDifferentSubclassBase {
 
 		@Override
-		protected Configuration constructConfiguration() {
-			final Configuration configuration = super.constructConfiguration();
-			configuration.setProperty( Settings.ORDER_INSERTS, "false" );
-			return configuration;
+		public boolean isOrderedInsert() {
+			return false;
 		}
 
 		@Override
@@ -88,13 +84,22 @@ public abstract class InsertOrderingReferenceSeveralDifferentSubclassBase extend
 		}
 	}
 
+	/**
+	 * @return the expected list of SQL queries
+	 */
 	public abstract String[] getExpectedSqlList();
+
+	/**
+	 * @return value of property {@link Settings#ORDER_INSERTS}
+	 */
+	public abstract boolean isOrderedInsert();
 
 	private SqlStatementTracker sqlTracker;
 
 	@Override
 	protected Configuration constructConfiguration() {
 		Configuration configuration = super.constructConfiguration();
+		configuration.setProperty( Settings.ORDER_INSERTS, String.valueOf( isOrderedInsert() ) );
 		configuration.setProperty( Settings.STATEMENT_BATCH_SIZE, "10" );
 		configuration.addAnnotatedClass( BaseEntity.class );
 		configuration.addAnnotatedClass( SubclassZero.class );
