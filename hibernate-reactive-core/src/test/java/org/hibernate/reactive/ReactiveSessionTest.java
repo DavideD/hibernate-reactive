@@ -22,10 +22,13 @@ import org.hibernate.reactive.common.AffectedEntities;
 import org.hibernate.reactive.stage.Stage;
 
 import org.junit.After;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
+import org.junit.runners.MethodSorters;
 
 import io.vertx.ext.unit.TestContext;
 
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class ReactiveSessionTest extends BaseReactiveTest {
 
 	@Override
