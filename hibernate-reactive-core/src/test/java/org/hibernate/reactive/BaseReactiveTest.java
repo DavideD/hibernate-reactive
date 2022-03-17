@@ -16,10 +16,15 @@ import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
+import org.hibernate.engine.jdbc.internal.JdbcServicesImpl;
+import org.hibernate.engine.jdbc.spi.JdbcServices;
+import org.hibernate.engine.jdbc.spi.SqlStatementLogger;
 import org.hibernate.reactive.containers.DatabaseConfiguration;
 import org.hibernate.reactive.containers.DatabaseConfiguration.DBType;
 import org.hibernate.reactive.mutiny.Mutiny;
 import org.hibernate.reactive.pool.ReactiveConnection;
+import org.hibernate.reactive.pool.ReactiveConnectionPool;
+import org.hibernate.reactive.pool.impl.H2SqlClientPool;
 import org.hibernate.reactive.provider.ReactiveServiceRegistryBuilder;
 import org.hibernate.reactive.provider.Settings;
 import org.hibernate.reactive.provider.service.ReactiveGenerationTarget;
@@ -123,6 +128,10 @@ public abstract class BaseReactiveTest {
 		if ( DatabaseConfiguration.dbType() == DBType.DB2 && !doneTablespace ) {
 			configuration.setProperty(Settings.HBM2DDL_IMPORT_FILES, "/db2.sql");
 			doneTablespace = true;
+		} else if ( DatabaseConfiguration.dbType() == DBType.H2 ) {
+			configuration.setProperty(Settings.URL, "jdbc:h2:~/test");
+		} else {
+			configuration.setProperty( Settings.URL, DatabaseConfiguration.getJdbcUrl() );
 		}
 		//Use JAVA_TOOL_OPTIONS='-Dhibernate.show_sql=true'
 		configuration.setProperty( Settings.SHOW_SQL, System.getProperty(Settings.SHOW_SQL, "false") );
@@ -195,7 +204,17 @@ public abstract class BaseReactiveTest {
 		return configuration.buildSessionFactory( registry );
 	}
 
-	protected void addServices(StandardServiceRegistryBuilder builder) {}
+	protected void addServices(StandardServiceRegistryBuilder builder) {
+		if(dbType()  == DBType.H2 ) {
+			builder.addService( ReactiveConnectionPool.class, new H2SqlClientPool() );
+			builder.addService( JdbcServices.class, new JdbcServicesImpl() {
+				@Override
+				public SqlStatementLogger getSqlStatementLogger() {
+					return new SqlStatementLogger();
+				}
+			} );
+		}
+	}
 
 	/*
 	 * MySQL doesn't implement 'drop table cascade constraints'.

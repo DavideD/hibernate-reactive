@@ -9,6 +9,7 @@ import org.hibernate.boot.registry.StandardServiceInitiator;
 import org.hibernate.dialect.CockroachDB201Dialect;
 import org.hibernate.dialect.DB297Dialect;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.dialect.H2Dialect;
 import org.hibernate.dialect.MariaDB103Dialect;
 import org.hibernate.dialect.MySQL8Dialect;
 import org.hibernate.dialect.Oracle12cDialect;
@@ -146,6 +147,9 @@ public class NoJdbcEnvironmentInitiator extends JdbcEnvironmentInitiator {
 		}
 		else if ( url.startsWith( "oracle:" ) ) {
 			return Oracle12cDialect.class;
+		}
+		else if ( url.startsWith( "h2:" ) ) {
+			return H2Dialect.class;
 		}
 		else {
 			return null;

@@ -26,6 +26,9 @@ dependencies {
 
     //Specific implementation details of Hibernate Reactive:
     implementation "io.vertx:vertx-sql-client:${vertxVersion}"
+    implementation 'io.agroal:agroal-api:1.12'
+    implementation 'io.agroal:agroal-pool:1.12'
+    implementation "io.vertx:vertx-jdbc-client:${vertxVersion}"
 
     // Testing
     testImplementation 'org.assertj:assertj-core:3.20.2'
@@ -65,6 +68,8 @@ dependencies {
     testImplementation "org.testcontainers:cockroachdb:${testcontainersVersion}"
     testImplementation "org.testcontainers:mssqlserver:${testcontainersVersion}"
     testImplementation "org.testcontainers:oracle-xe:${testcontainersVersion}"
+
+    testImplementation "com.h2database:h2:2.1.210"
 }
 
 // Print a summary of the results of the tests (number of failures, successes and skipped)

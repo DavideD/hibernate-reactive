@@ -92,6 +92,13 @@ public class DefaultSqlClientPoolConfiguration implements SqlClientPoolConfigura
 	@Override
 	public SqlConnectOptions connectOptions(URI uri) {
 		String scheme = uri.getScheme();
+		if( scheme.equalsIgnoreCase( "h2" )) {
+			   return new SqlConnectOptions()
+					// username
+					.setUser("sa")
+					// password
+					.setPassword("");
+		}
 		String path = scheme.equals( "oracle" )
 				? oraclePath( uri )
 				: uri.getPath();
