@@ -14,6 +14,7 @@ import javax.persistence.Table;
 import org.hibernate.cfg.Configuration;
 
 import org.junit.After;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
@@ -32,21 +33,20 @@ public class FindAfterFlushTest extends BaseReactiveTest {
 
 	@After
 	public void cleanDB(TestContext context) {
-		test( context, getSessionFactory()
-				.withTransaction( (session, tx) -> session
-						.createQuery( "delete from Webcomic" )
-						.executeUpdate() ) );
+		test( context, deleteEntities( "Webcomic" ) );
 	}
 
+	@Ignore
 	@Test
 	public void findAfterFlushWithStages(TestContext context) {
 		final Webcomic wc = new Webcomic( "Girls With Slingshots ", "Danielle Corsetto" );
-		test( context, getSessionFactory().withSession( s -> s
-				.persist( wc )
-				.thenCompose( $ -> s.flush() )
-				.thenCompose( $ -> s.find( Webcomic.class, wc.getId() ) )
-				.thenAccept( found -> context.assertEquals( wc, found ) )
-		) );
+		test( context, getSessionFactory()
+				.withSession( s -> s
+						.persist( wc )
+						.thenCompose( $ -> s.flush() )
+						.thenCompose( $ -> s.find( Webcomic.class, wc.getId() ) )
+						.thenAccept( found -> context.assertEquals( wc, found ) )
+				) );
 	}
 
 	@Test
@@ -77,13 +77,11 @@ public class FindAfterFlushTest extends BaseReactiveTest {
 	public void withTransactionFindAfterFlushWithMutiny(TestContext context) {
 		final Webcomic wc = new Webcomic( "Questionable Content", "Jeph Jacques" );
 		test( context, getMutinySessionFactory()
-				.withTransaction( (s, tx) -> s
+				.withTransaction( s -> s
 						.persist( wc )
 						.call( s::flush )
 					  	.chain( () -> s.find( Webcomic.class, wc.getId() ) )
-					  	.invoke( found -> {
-							context.assertEquals( wc, found );
-						} )
+						.invoke( found -> context.assertEquals( wc, found ) )
 				)
 		);
 	}
