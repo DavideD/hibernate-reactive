@@ -253,7 +253,7 @@ public class EagerElementCollectionForEmbeddableTypeListTest extends BaseReactiv
 									// it doesn't matter which elements are deleted because they are all equal
 									found.getPhones().remove( 1 );
 									found.getPhones().remove( 2 );
-								} ) )
+								} ) ) )
 				.chain( this::openMutinySession )
 				.chain( session -> session.find( Person.class, thomas.getId() ) )
 				.invoke( found -> assertPhones( context, found, "000", "000" ) )

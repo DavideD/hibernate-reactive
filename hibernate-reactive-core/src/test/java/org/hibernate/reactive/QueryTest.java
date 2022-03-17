@@ -31,7 +31,6 @@ import javax.persistence.criteria.ParameterExpression;
 import javax.persistence.criteria.Root;
 
 import org.hibernate.cfg.Configuration;
-import org.hibernate.reactive.testing.ReactiveAssertions;
 
 import org.junit.After;
 import org.junit.Test;
@@ -452,24 +451,25 @@ public class QueryTest extends BaseReactiveTest {
 
 		test( context, getSessionFactory()
 				.withTransaction( session -> session.persist( author1, author2 ) )
-				.thenCompose( v -> openSession() )
-				.thenCompose( session -> session
-						.createNamedQuery( "title,author (hql)", Object[].class ).getResultList() )
-				.thenAccept( books -> {
-					context.assertEquals( 3, books.size() );
-					books.forEach( tuple -> {
-						context.assertTrue( tuple instanceof Object[] );
-						context.assertEquals( 2, tuple.length );
-						context.assertTrue( tuple[0] instanceof String );
-						context.assertTrue( tuple[1] instanceof String );
-					} );
-				} )
-
-				.thenCompose( v -> openSession() )
-				.thenCompose( session -> session.createQuery( "update Book set title = ?1 where title = ?2" )
-						.setParameter( 1, "XXX" )
-						.setParameter( 2, "Snow Crash" )
-						.executeUpdate() )
+				.thenCompose( v -> getSessionFactory()
+						.withSession( session -> session
+								.createNamedQuery( "title,author (hql)", Object[].class )
+								.getResultList() )
+						.thenAccept( books -> {
+							context.assertEquals( 3, books.size() );
+							books.forEach( tuple -> {
+								context.assertTrue( tuple instanceof Object[] );
+								context.assertEquals( 2, tuple.length );
+								context.assertTrue( tuple[0] instanceof String );
+								context.assertTrue( tuple[1] instanceof String );
+							} );
+						} ) )
+				.thenCompose( v -> getSessionFactory()
+						.withTransaction( session -> session
+								.createQuery( "update Book set title = ?1 where title = ?2" )
+								.setParameter( 1, "XXX" )
+								.setParameter( 2, "Snow Crash" )
+								.executeUpdate() ) )
 				.thenAccept( count -> context.assertEquals( 1, count ) )
 		);
 	}
@@ -548,16 +548,10 @@ public class QueryTest extends BaseReactiveTest {
 						s.createQuery( "from Author" ).getSingleResult()
 				) )
 				.thenCompose( v -> openSession() )
-				.thenCompose( s -> s.createQuery( "from Author" ).getSingleResultOrNull() )
-				.whenComplete( (r, x) -> {
-					context.assertNull( r );
-					context.assertNotNull( x );
-
-				} )
-				.handle( (r, x) -> {
-					context.assertTrue( x.getCause() instanceof NonUniqueResultException );
-					return null;
-				} )
+				.thenCompose( s -> assertThrown(
+						NonUniqueResultException.class,
+						s.createQuery( "from Author" ).getSingleResultOrNull()
+				) )
 		);
 	}
 
