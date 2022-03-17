@@ -39,20 +39,19 @@ public class HQLQueryParameterNamedTest extends BaseReactiveTest {
 	@Before
 	public void populateDb(TestContext context) {
 		test( context, getMutinySessionFactory()
-				.withTransaction( (session, transaction) -> session.persistAll( spelt, rye, almond ) ) );
+				.withTransaction( session -> session.persistAll( spelt, rye, almond ) ) );
 	}
 
 	@After
 	public void cleanDb(TestContext context) {
-		test( context, getSessionFactory()
-				.withTransaction( (s, t) -> s.createQuery( "delete Flour" ).executeUpdate() ) );
+		test( context, deleteEntities( "Flour" ) );
 	}
 
 	@Test
 	public void testAutoFlushOnSingleResult(TestContext context) {
 		Flour semolina = new Flour(678, "Semoline", "the coarse, purified wheat middlings of durum wheat used in making pasta.", "Wheat flour" );
 		test( context, getSessionFactory()
-				.withSession( s -> s
+				.withTransaction( s -> s
 						.persist( semolina )
 						.thenCompose( v -> s.createQuery( "from Flour where id = :id" )
 								.setParameter( "id", semolina.getId() )
