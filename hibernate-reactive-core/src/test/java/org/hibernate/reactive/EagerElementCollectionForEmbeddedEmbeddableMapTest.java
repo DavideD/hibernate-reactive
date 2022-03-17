@@ -56,10 +56,8 @@ public class EagerElementCollectionForEmbeddedEmbeddableMapTest extends BaseReac
 		johnny.addAlternatePhone( "aaaa", HOME, "888" );
 		johnny.addAlternatePhone( "bbbb", WORK, "777" );
 
-		test( context, openMutinySession()
-				.chain( session -> session
-						.persist( johnny )
-						.call( session::flush ) )
+		test( context, getMutinySessionFactory()
+				.withTransaction( session -> session.persist( johnny ) )
 				.chain( this::openMutinySession )
 				.chain( s -> s.find( Person.class, johnny.getId() ) )
 				.invoke( found -> assertPhones( context, found, "999", "888", "777" ) )
@@ -76,12 +74,11 @@ public class EagerElementCollectionForEmbeddedEmbeddableMapTest extends BaseReac
 
 	@Test
 	public void addOneElementWithStageAPI(TestContext context) {
-		test( context, openSession()
-				.thenCompose( session -> session
+		test( context, getSessionFactory()
+				.withTransaction( session -> session
 						.find( Person.class, thePerson.getId() )
 						// add one element to the collection
-						.thenAccept( foundPerson -> foundPerson.addAlternatePhone( "dddd", WORK, "444" ) )
-						.thenCompose( v -> session.flush() ) )
+						.thenAccept( foundPerson -> foundPerson.addAlternatePhone( "dddd", WORK, "444" ) ) )
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, thePerson.getId() ) )
 				.thenAccept( updatedPerson -> assertPhones( context, updatedPerson, "000","111", "222", "333", "444" ) )
@@ -90,11 +87,11 @@ public class EagerElementCollectionForEmbeddedEmbeddableMapTest extends BaseReac
 
 	@Test
 	public void removeOneElementWithStageAPI(TestContext context) {
-		test( context, openSession()
-				.thenCompose( session -> session.find( Person.class, thePerson.getId() )
+		test( context, getSessionFactory()
+				.withTransaction( session -> session
+						.find( Person.class, thePerson.getId() )
 						// Remove one element from the collection
-						.thenAccept( foundPerson -> foundPerson.removeAlternativePhone( "cccc" ) )
-						.thenCompose( v -> session.flush() ) )
+						.thenAccept( foundPerson -> foundPerson.removeAlternativePhone( "cccc" ) ) )
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, thePerson.getId() ) )
 				.thenAccept( updatedPerson -> assertPhones( context, updatedPerson, "000", "111", "222" ) )
@@ -103,13 +100,13 @@ public class EagerElementCollectionForEmbeddedEmbeddableMapTest extends BaseReac
 
 	@Test
 	public void clearCollectionOfElementsWithStageAPI(TestContext context){
-		test( context, openSession()
-				.thenCompose( session -> session.find( Person.class, thePerson.getId() )
+		test( context, getSessionFactory()
+				.withTransaction( session -> session
+						.find( Person.class, thePerson.getId() )
 						.thenAccept( foundPerson -> {
 							context.assertFalse( foundPerson.getAlternativePhones().isEmpty() );
 							foundPerson.getAlternativePhones().clear();
-						} )
-						.thenCompose( v -> session.flush() ) )
+						} ) )
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, thePerson.getId() ) )
 				.thenAccept( changedPerson -> context.assertTrue( changedPerson.getAlternativePhones().isEmpty() ) )
@@ -118,14 +115,14 @@ public class EagerElementCollectionForEmbeddedEmbeddableMapTest extends BaseReac
 
 	@Test
 	public void removeAndAddElementWithStageAPI(TestContext context){
-		test( context, openSession()
-				.thenCompose( session -> session.find( Person.class, thePerson.getId() )
+		test( context, getSessionFactory()
+				.withTransaction( session -> session
+						.find( Person.class, thePerson.getId() )
 						.thenAccept( foundPerson -> {
 							context.assertNotNull( foundPerson );
 							foundPerson.removeAlternativePhone( "cccc" );
 							foundPerson.addAlternatePhone( "dddd", MOBILE, "444" );
-						} )
-						.thenCompose( v -> session.flush() ) )
+						} ) )
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, thePerson.getId() ) )
 				.thenAccept( changedPerson -> assertPhones( context, changedPerson, "000", "111", "222", "444" ) )
@@ -134,15 +131,15 @@ public class EagerElementCollectionForEmbeddedEmbeddableMapTest extends BaseReac
 
 	@Test
 	public void setNewElementCollectionWithStageAPI(TestContext context){
-		test( context, openSession()
-				.thenCompose( session -> session.find( Person.class, thePerson.getId() )
+		test( context, getSessionFactory()
+				.withTransaction( session -> session
+						.find( Person.class, thePerson.getId() )
 						.thenAccept( foundPerson -> {
 							context.assertNotNull( foundPerson );
 							context.assertFalse( foundPerson.getAlternativePhones().isEmpty() );
 							foundPerson.getPhone().setAlternativePhones( new HashMap<>() );
 							foundPerson.addAlternatePhone( "aaaa", WORK, "555" );
-						} )
-						.thenCompose( v -> session.flush() ) )
+						} ) )
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, thePerson.getId() ) )
 				.thenAccept( changedPerson -> assertPhones( context, changedPerson, "000", "555" ) )
@@ -151,11 +148,11 @@ public class EagerElementCollectionForEmbeddedEmbeddableMapTest extends BaseReac
 
 	@Test
 	public void removePersonWithStageAPI(TestContext context) {
-		test( context, openSession()
-				.thenCompose( session -> session.find( Person.class, thePerson.getId() )
+		test( context, getSessionFactory()
+				.withTransaction( session -> session
+						.find( Person.class, thePerson.getId() )
 						// remove thePerson entity and flush
-						.thenCompose( session::remove )
-						.thenCompose( v -> session.flush() ) )
+						.thenCompose( session::remove ) )
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, thePerson.getId() ) )
 				.thenAccept( context::assertNull )
@@ -171,9 +168,8 @@ public class EagerElementCollectionForEmbeddedEmbeddableMapTest extends BaseReac
 		secondPerson.addAlternatePhone( "aaaa", HOME, "666" );
 		secondPerson.addAlternatePhone( "bbbb", WORK, "777" );
 
-		test( context, openSession()
-				.thenCompose( session -> session.persist( secondPerson )
-						.thenCompose( v -> session.flush() ) )
+		test( context, getSessionFactory()
+				.withTransaction( session -> session.persist( secondPerson ) )
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, secondPerson.getId() ) )
 				.thenAccept( foundPerson -> assertPhones( context, foundPerson, "123", "666", "777" ) )
@@ -190,9 +186,8 @@ public class EagerElementCollectionForEmbeddedEmbeddableMapTest extends BaseReac
 		secondPerson.getAlternativePhones().put( "xxx", null );
 		secondPerson.getAlternativePhones().put( "yyy", null );
 
-		test( context, openSession()
-				.thenCompose( session -> session.persist( secondPerson )
-						.thenCompose( v -> session.flush() ) )
+		test( context, getSessionFactory()
+				.withTransaction( session -> session.persist( secondPerson ) )
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, secondPerson.getId() ) )
 				// Null values don't get persisted
@@ -207,9 +202,8 @@ public class EagerElementCollectionForEmbeddedEmbeddableMapTest extends BaseReac
 		secondPerson.getAlternativePhones().put("ggg", new AlternativePhone(MOBILE, "567" ));
 		secondPerson.getAlternativePhones().put( "yyy", null );
 
-		test( context, openSession()
-				.thenCompose( session -> session.persist( secondPerson )
-						.thenCompose( v -> session.flush() ) )
+		test( context, getSessionFactory()
+				.withTransaction( session -> session.persist( secondPerson ) )
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, secondPerson.getId() ) )
 				// Null values don't get persisted
@@ -219,13 +213,13 @@ public class EagerElementCollectionForEmbeddedEmbeddableMapTest extends BaseReac
 
 	@Test
 	public void setCollectionToNullWithStageAPI(TestContext context) {
-		test( context, openSession()
-				.thenCompose( session -> session.find( Person.class, thePerson.getId() )
+		test( context, getSessionFactory()
+				.withTransaction( session -> session
+						.find( Person.class, thePerson.getId() )
 						.thenAccept( found -> {
 							context.assertFalse( found.getAlternativePhones().isEmpty() );
 							found.getPhone().setAlternativePhones( null );
-						} )
-						.thenCompose( v -> session.flush() ) )
+						} ) )
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, thePerson.getId() ) )
 				.thenAccept( foundPerson -> assertPhones( context, foundPerson, "000" ) )

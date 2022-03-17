@@ -20,7 +20,6 @@ import io.vertx.ext.unit.TestContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.reactive.util.impl.CompletionStages.loop;
-import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
 public class BatchingConnectionTest extends ReactiveSessionTest {
 
@@ -33,35 +32,27 @@ public class BatchingConnectionTest extends ReactiveSessionTest {
 
 	@Test
 	public void testBatching(TestContext context) {
-		test(
-				context,
-				openSession()
-						.thenCompose( s -> voidFuture()
-								.thenCompose( v -> s.persist( new GuineaPig(11, "One") ) )
-								.thenCompose( v -> s.persist( new GuineaPig(22, "Two") ) )
-								.thenCompose( v -> s.persist( new GuineaPig(33, "Three") ) )
-								.thenCompose( v -> s.createQuery("select count(*) from GuineaPig")
+		test( context, getSessionFactory()
+				.withTransaction( s -> s
+						.persist( new GuineaPig( 11, "One" ), new GuineaPig( 22, "Two" ), new GuineaPig( 33, "Three" ) )
+						.thenCompose( v -> s.createQuery( "select count(*) from GuineaPig" )
+								.getSingleResult()
+								.thenAccept( count -> context.assertEquals( 3L, count ) ) ) )
+				.thenCompose( v -> getSessionFactory()
+						.withTransaction( s -> s
+								.<GuineaPig>createQuery( "from GuineaPig" ).getResultList()
+								.thenAccept( list -> list.forEach( pig -> pig.setName( "Zero" ) ) )
+								.thenCompose( vv -> s.<Long>createQuery( "select count(*) from GuineaPig where name='Zero'" )
 										.getSingleResult()
-										.thenAccept( count -> context.assertEquals( 3L, count) )
-								)
-						)
-						.thenCompose( v -> openSession() )
-						.thenCompose( s -> s.<GuineaPig>createQuery("from GuineaPig")
-								.getResultList()
-								.thenAccept( list -> list.forEach( pig -> pig.setName("Zero") ) )
-								.thenCompose( v -> s.<Long>createQuery("select count(*) from GuineaPig where name='Zero'")
-										.getSingleResult()
-										.thenAccept( count -> context.assertEquals( 3L, count) )
-								) )
-						.thenCompose( v -> openSession() )
-						.thenCompose( s -> s.<GuineaPig>createQuery("from GuineaPig")
+										.thenAccept( count -> context.assertEquals( 3L, count ) ) ) ) )
+				.thenCompose( v -> getSessionFactory()
+						.withTransaction( s -> s
+								.<GuineaPig>createQuery( "from GuineaPig" )
 								.getResultList()
 								.thenCompose( list -> loop( list, s::remove ) )
-								.thenCompose( v -> s.<Long>createQuery("select count(*) from GuineaPig")
+								.thenCompose( vv -> s.<Long>createQuery( "select count(*) from GuineaPig" )
 										.getSingleResult()
-										.thenAccept( count -> context.assertEquals( 0L, count) )
-								)
-						)
+										.thenAccept( count -> context.assertEquals( 0L, count ) ) ) ) )
 		);
 	}
 

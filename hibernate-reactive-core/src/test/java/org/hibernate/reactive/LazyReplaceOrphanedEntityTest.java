@@ -48,9 +48,9 @@ public class LazyReplaceOrphanedEntityTest extends BaseReactiveTest {
 	@Before
 	public void populateDb(TestContext context) {
 		theCampaign = new Campaign();
-		theCampaign.setSchedule( new ExecutionDate(OffsetDateTime.now(), "ALPHA") );
+		theCampaign.setSchedule( new ExecutionDate( OffsetDateTime.now(), "ALPHA" ) );
 
-		test( context, getMutinySessionFactory().withTransaction( (s, t) -> s.persist( theCampaign ) ) );
+		test( context, getMutinySessionFactory().withTransaction( s -> s.persist( theCampaign ) ) );
 	}
 
 	@After
@@ -61,11 +61,11 @@ public class LazyReplaceOrphanedEntityTest extends BaseReactiveTest {
 	@Test
 	public void testUpdateScheduleChange(TestContext context) {
 		test( context, getMutinySessionFactory()
-				.withSession( session -> session
+				.withTransaction( session -> session
 						.find( Campaign.class, theCampaign.getId() )
 						.invoke( foundCampaign -> foundCampaign
 								.setSchedule( new ExecutionDate( OffsetDateTime.now(), "BETA" ) ) )
-						.call( session::flush ) )
+				)
 				.chain( this::openMutinySession )
 				.chain( session -> session.find( Campaign.class, theCampaign.getId() ) )
 				.invoke( updatedCampaign -> assertThat( updatedCampaign.getSchedule().getCodeName() )
@@ -76,18 +76,15 @@ public class LazyReplaceOrphanedEntityTest extends BaseReactiveTest {
 	@Test
 	public void testUpdateWithMultipleScheduleChanges(TestContext context) {
 		test( context, getMutinySessionFactory()
-				.withSession( session -> session
+				.withTransaction( session -> session
 						.find( Campaign.class, theCampaign.getId() )
 						.invoke( foundCampaign -> foundCampaign
-								.setSchedule( new ExecutionDate( OffsetDateTime.now(), "BETA" ) ) )
-						.call( session::flush ) )
+								.setSchedule( new ExecutionDate( OffsetDateTime.now(), "BETA" ) ) ) )
 				.call( () -> getMutinySessionFactory()
-						.withSession( session -> session
+						.withTransaction( session -> session
 								.find( Campaign.class, theCampaign.getId() )
 								.invoke( foundCampaign -> foundCampaign
-										.setSchedule( new ExecutionDate( OffsetDateTime.now(), "GAMMA" ) ) )
-								.call( session::flush )
-						) )
+										.setSchedule( new ExecutionDate( OffsetDateTime.now(), "GAMMA" ) ) ) ) )
 				.chain( this::openMutinySession )
 				.chain( session -> session.find( Campaign.class, theCampaign.getId() ) )
 				.invoke( updatedCampaign -> assertThat(
@@ -97,13 +94,14 @@ public class LazyReplaceOrphanedEntityTest extends BaseReactiveTest {
 		);
 	}
 
-	@Entity (name="Campaign")
+	@Entity(name = "Campaign")
 	public static class Campaign implements Serializable {
 
-		@Id @GeneratedValue
+		@Id
+		@GeneratedValue
 		private Integer id;
 
-		@OneToOne(mappedBy = "campaign",  cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+		@OneToOne(mappedBy = "campaign", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
 		public Schedule schedule;
 
 		public Campaign() {
@@ -126,7 +124,7 @@ public class LazyReplaceOrphanedEntityTest extends BaseReactiveTest {
 		}
 	}
 
-	@Entity (name="Schedule")
+	@Entity(name = "Schedule")
 	@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 	@DiscriminatorColumn(name = "schedule_type", discriminatorType = DiscriminatorType.STRING)
 	public static abstract class Schedule implements Serializable {
@@ -163,7 +161,7 @@ public class LazyReplaceOrphanedEntityTest extends BaseReactiveTest {
 		}
 	}
 
-	@Entity (name="ExecutionDate")
+	@Entity(name = "ExecutionDate")
 	@DiscriminatorValue("EXECUTION_DATE")
 	public static class ExecutionDate extends Schedule {
 
@@ -173,7 +171,7 @@ public class LazyReplaceOrphanedEntityTest extends BaseReactiveTest {
 		public ExecutionDate() {
 		}
 
-		public ExecutionDate( OffsetDateTime start, String code_name ) {
+		public ExecutionDate(OffsetDateTime start, String code_name) {
 			this.start = start;
 			setCodeName( code_name );
 		}

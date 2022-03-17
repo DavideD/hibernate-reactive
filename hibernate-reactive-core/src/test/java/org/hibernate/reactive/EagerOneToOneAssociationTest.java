@@ -42,16 +42,13 @@ public class EagerOneToOneAssociationTest extends BaseReactiveTest {
 		mostPopularBook.setAuthor( author );
 		author.setMostPopularBook( mostPopularBook );
 
-		test(
-				context,
-				openSession()
-						.thenCompose( s -> s.persist( mostPopularBook )
-								.thenCompose( v -> s.persist( author ) )
-								.thenCompose( v -> s.flush() )
-						)
-						.thenCompose( v -> openSession() )
-						.thenCompose( s -> s.find( Book.class, 5 ) )
-						.thenAccept(context::assertNotNull)
+		test( context, getSessionFactory()
+				.withTransaction( s -> s
+						.persist( mostPopularBook )
+						.thenCompose( v -> s.persist( author ) ) )
+				.thenCompose( v -> openSession() )
+				.thenCompose( s -> s.find( Book.class, 5 ) )
+				.thenAccept( context::assertNotNull )
 		);
 	}
 
