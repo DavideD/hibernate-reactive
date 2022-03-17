@@ -48,7 +48,7 @@ public class BasicTypesAndCallbacksForAllDBsTest extends BaseReactiveTest {
 
 	private void testField(TestContext context, Basic original, Consumer<Basic> consumer) {
 		test( context, getSessionFactory()
-				.withTransaction( (s, t) -> s.persist( original ) )
+				.withTransaction( s -> s.persist( original ) )
 				.thenCompose( v -> getSessionFactory().withSession( s -> s
 						.find( Basic.class, original.id )
 						.thenAccept( found -> {
@@ -400,16 +400,18 @@ public class BasicTypesAndCallbacksForAllDBsTest extends BaseReactiveTest {
 
 		test(
 				context,
-				openSession()
-						.thenCompose( s -> s.persist( basik.parent ).thenCompose( v -> s.persist( basik ) )
+				getSessionFactory()
+						.withTransaction( s -> s
+								.persist( basik.parent, basik )
 								.thenAccept( v -> context.assertTrue( basik.prePersisted && !basik.postPersisted ) )
 								.thenAccept( v -> context.assertTrue( basik.parent.prePersisted && !basik.parent.postPersisted ) )
 								.thenCompose( v -> s.flush() )
 								.thenAccept( v -> context.assertTrue( basik.prePersisted && basik.postPersisted ) )
 								.thenAccept( v -> context.assertTrue( basik.parent.prePersisted && basik.parent.postPersisted ) )
 						)
-						.thenCompose( v -> openSession()
-								.thenCompose( s2 -> s2.find( Basic.class, basik.getId() )
+						.thenCompose( v -> getSessionFactory()
+								.withTransaction( s2 -> s2
+										.find( Basic.class, basik.getId() )
 										.thenCompose( basic -> {
 											context.assertNotNull( basic );
 											context.assertTrue( basic.loaded );
@@ -431,8 +433,9 @@ public class BasicTypesAndCallbacksForAllDBsTest extends BaseReactiveTest {
 													} );
 										} )
 								) )
-						.thenCompose( v -> openSession()
-								.thenCompose( s3 -> s3.find( Basic.class, basik.getId() )
+						.thenCompose( v -> getSessionFactory()
+								.withTransaction( s3 -> s3
+										.find( Basic.class, basik.getId() )
 										.thenCompose( basic -> {
 											context.assertFalse( basic.postUpdated && basic.preUpdated );
 											context.assertFalse( basic.postPersisted && basic.prePersisted );

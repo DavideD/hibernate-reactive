@@ -42,7 +42,7 @@ public class HQLQueryParameterPositionalTest extends BaseReactiveTest {
 	@Before
 	public void populateDb(TestContext context) {
 		test( context, getMutinySessionFactory()
-				.withTransaction( (session, transaction) -> session.persistAll( spelt, rye, almond ) ) );
+				.withTransaction( session -> session.persistAll( spelt, rye, almond ) ) );
 	}
 
 	@After
@@ -53,7 +53,7 @@ public class HQLQueryParameterPositionalTest extends BaseReactiveTest {
 	@Test
 	public void testAutoFlushOnSingleResult(TestContext context) {
 		Flour semolina = new Flour( 678, "Semoline", "the coarse, purified wheat middlings of durum wheat used in making pasta.", "Wheat flour" );
-		test( context, getSessionFactory().withSession( s -> s
+		test( context, getSessionFactory().withTransaction( s -> s
 				.persist( semolina )
 				.thenCompose( v -> s.createQuery( "from Flour where id = ?1" )
 						.setParameter( 1, semolina.getId() )

@@ -43,6 +43,7 @@ import org.hibernate.type.TypeHelper;
 
 import static org.hibernate.pretty.MessageHelper.infoString;
 import static org.hibernate.reactive.engine.impl.Cascade.fetchLazyAssociationsBeforeCascade;
+import static org.hibernate.reactive.util.impl.CompletionStages.failedFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
 /**
@@ -113,7 +114,7 @@ public class DefaultReactiveDeleteEventListener
 				: !source.contains( event.getObject() );
 		if ( detached ) {
 			// Hibernate Reactive doesn't support detached instances in remove()
-			throw new IllegalArgumentException("unmanaged instance passed to remove()");
+			return failedFuture( new IllegalArgumentException( "unmanaged instance passed to remove()" ) );
 		}
 
 		//Object entity = persistenceContext.unproxyAndReassociate( event.getObject() );
@@ -151,9 +152,7 @@ public class DefaultReactiveDeleteEventListener
 						final Serializable id = persister.getIdentifier( entity, source);
 
 						if ( id == null ) {
-							throw new TransientObjectException(
-									"the detached instance passed to delete() had a null identifier"
-							);
+							return failedFuture( new TransientObjectException( "the detached instance passed to delete() had a null identifier" ) );
 						}
 
 						final EntityKey key = source.generateEntityKey( id, persister );

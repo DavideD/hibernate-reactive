@@ -50,27 +50,18 @@ public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
 		goodOmens.getAuthors().add(neilGaiman);
 		goodOmens.getAuthors().add(terryPratchett);
 
-		test(
-				context,
-				openSession()
-						.thenCompose(s -> s.persist(goodOmens)
-								.thenCompose(v -> s.persist(neilGaiman))
-								.thenCompose(v -> s.persist(terryPratchett))
-								.thenCompose(v -> s.flush())
-						)
-						.thenCompose( v -> openSession() )
-						.thenCompose(s -> s.find(Book.class, goodOmens.getId())
-								.thenCompose(
-										book -> s.fetch(book.getAuthors())
-								))
-						.thenAccept(optionalAssociation -> {
-							context.assertTrue( Hibernate.isInitialized(optionalAssociation) );
-							context.assertNotNull(optionalAssociation);
-							context.assertTrue(optionalAssociation.contains(neilGaiman));
-							context.assertTrue(optionalAssociation.contains(terryPratchett));
-						})
+		test( context, getSessionFactory()
+				.withTransaction( session -> session.persist( goodOmens, neilGaiman, terryPratchett ) )
+				.thenCompose( v -> openSession() )
+				.thenCompose( s -> s.find( Book.class, goodOmens.getId() )
+						.thenCompose( book -> s.fetch( book.getAuthors() ) ) )
+				.thenAccept( optionalAssociation -> {
+					context.assertTrue( Hibernate.isInitialized( optionalAssociation ) );
+					context.assertNotNull( optionalAssociation );
+					context.assertTrue( optionalAssociation.contains( neilGaiman ) );
+					context.assertTrue( optionalAssociation.contains( terryPratchett ) );
+				} )
 		);
-
 	}
 
 	@Test
@@ -80,25 +71,20 @@ public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
 		final Author terryPratchett = new Author( 2132511, "Terry Pratchett", goodOmens );
 		goodOmens.getAuthors().add( neilGaiman );
 		goodOmens.getAuthors().add( terryPratchett );
-		test(
-				context,
-				openSession()
-						.thenCompose( s -> s.persist(goodOmens)
-								.thenCompose( v -> s.persist(neilGaiman) )
-								.thenCompose( v -> s.persist(terryPratchett) )
-								.thenCompose( v -> s.flush() )
-						)
-						.thenCompose( v -> openSession() )
-						.thenCompose( s -> s.find( Book.class, goodOmens.getId() )
-								.thenCompose(
-										book -> Stage.fetch( book.getAuthors())
-								) )
-						.thenAccept( optionalAssociation -> {
-							context.assertTrue( Hibernate.isInitialized(optionalAssociation) );
-							context.assertNotNull(optionalAssociation);
-							context.assertTrue(optionalAssociation.contains(neilGaiman));
-							context.assertTrue(optionalAssociation.contains(terryPratchett));
-						} )
+
+		test( context, getSessionFactory()
+				.withTransaction( session -> session.persist( goodOmens, neilGaiman, terryPratchett ) )
+				.thenCompose( v -> openSession() )
+				.thenCompose( s -> s.find( Book.class, goodOmens.getId() )
+						.thenCompose(
+								book -> Stage.fetch( book.getAuthors() )
+						) )
+				.thenAccept( optionalAssociation -> {
+					context.assertTrue( Hibernate.isInitialized( optionalAssociation ) );
+					context.assertNotNull( optionalAssociation );
+					context.assertTrue( optionalAssociation.contains( neilGaiman ) );
+					context.assertTrue( optionalAssociation.contains( terryPratchett ) );
+				} )
 		);
 	}
 
@@ -110,23 +96,17 @@ public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
 		goodOmens.getAuthors().add(neilGaiman);
 		goodOmens.getAuthors().add(terryPratchett);
 
-		test(
-				context,
-				openSession()
-						.thenCompose(s -> s.persist(goodOmens)
-								.thenCompose(v -> s.persist(neilGaiman))
-								.thenCompose(v -> s.persist(terryPratchett))
-								.thenCompose(v -> s.flush())
-						)
-						.thenCompose( v -> openSession() )
-						.thenCompose( s -> s.find( s.getEntityGraph(Book.class, "withAuthors"), goodOmens.getId() ) )
-						.thenAccept(book -> {
-							context.assertTrue( Hibernate.isInitialized(book.authors) );
-							List<Author> optionalAssociation = book.authors;
-							context.assertNotNull(optionalAssociation);
-							context.assertTrue(optionalAssociation.contains(neilGaiman));
-							context.assertTrue(optionalAssociation.contains(terryPratchett));
-						})
+		test( context, getSessionFactory()
+				.withTransaction( session -> session.persist( goodOmens, neilGaiman, terryPratchett ) )
+				.thenCompose( v -> openSession() )
+				.thenCompose( s -> s.find( s.getEntityGraph( Book.class, "withAuthors" ), goodOmens.getId() ) )
+				.thenAccept( book -> {
+					context.assertTrue( Hibernate.isInitialized( book.authors ) );
+					List<Author> optionalAssociation = book.authors;
+					context.assertNotNull( optionalAssociation );
+					context.assertTrue( optionalAssociation.contains( neilGaiman ) );
+					context.assertTrue( optionalAssociation.contains( terryPratchett ) );
+				} )
 		);
 
 	}
@@ -139,27 +119,21 @@ public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
 		goodOmens.getAuthors().add(neilGaiman);
 		goodOmens.getAuthors().add(terryPratchett);
 
-		test(
-				context,
-				openSession()
-						.thenCompose(s -> s.persist(goodOmens)
-								.thenCompose(v -> s.persist(neilGaiman))
-								.thenCompose(v -> s.persist(terryPratchett))
-								.thenCompose(v -> s.flush())
-						)
-						.thenCompose( v -> openSession() )
-						.thenCompose( s -> {
-							EntityGraph<Book> graph = s.createEntityGraph(Book.class);
-							graph.addAttributeNodes("authors");
-							return s.find( graph, goodOmens.getId() );
-						})
-						.thenAccept(book -> {
-							context.assertTrue( Hibernate.isInitialized(book.authors) );
-							List<Author> optionalAssociation = book.authors;
-							context.assertNotNull(optionalAssociation);
-							context.assertTrue(optionalAssociation.contains(neilGaiman));
-							context.assertTrue(optionalAssociation.contains(terryPratchett));
-						})
+		test( context, getSessionFactory()
+				.withTransaction( session -> session.persist( goodOmens, neilGaiman, terryPratchett ) )
+				.thenCompose( v -> openSession() )
+				.thenCompose( s -> {
+					EntityGraph<Book> graph = s.createEntityGraph( Book.class );
+					graph.addAttributeNodes( "authors" );
+					return s.find( graph, goodOmens.getId() );
+				} )
+				.thenAccept( book -> {
+					context.assertTrue( Hibernate.isInitialized( book.authors ) );
+					List<Author> optionalAssociation = book.authors;
+					context.assertNotNull( optionalAssociation );
+					context.assertTrue( optionalAssociation.contains( neilGaiman ) );
+					context.assertTrue( optionalAssociation.contains( terryPratchett ) );
+				} )
 		);
 
 	}
@@ -172,37 +146,31 @@ public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
 		goodOmens.getAuthors().add(neilGaiman);
 		goodOmens.getAuthors().add(terryPratchett);
 
-		test(
-				context,
-				openSession()
-						.thenCompose(s -> s.persist(goodOmens)
-								.thenCompose(v -> s.persist(neilGaiman))
-								.thenCompose(v -> s.persist(terryPratchett))
-								.thenCompose(v -> s.flush()))
-						.thenCompose(v -> openSession())
-						.thenCompose( s -> s.createQuery( "from Tome b where b.id=?1", Book.class)
-								.setPlan( s.getEntityGraph(Book.class, "withAuthors") )
-								.setParameter(1, goodOmens.getId() )
-								.getSingleResult() )
-						.thenAccept(book -> {
-							context.assertTrue( Hibernate.isInitialized(book.authors) );
-							List<Author> optionalAssociation = book.authors;
-							context.assertNotNull(optionalAssociation);
-							context.assertTrue(optionalAssociation.contains(neilGaiman));
-							context.assertTrue(optionalAssociation.contains(terryPratchett));
-						})
-						.thenCompose(v -> openSession())
-						.thenCompose( s -> {
-							EntityGraph<Author> graph = s.createEntityGraph(Author.class);
-							graph.addAttributeNodes("book");
-							return s.createQuery("from Writer w where w.id=?1", Author.class)
-									.setPlan(graph)
-									.setParameter(1, neilGaiman.getId())
-									.getSingleResult();
-						})
-						.thenAccept(author -> context.assertTrue( Hibernate.isInitialized(author.book) ) )
+		test( context, getSessionFactory()
+				.withTransaction( session -> session.persist( goodOmens, neilGaiman, terryPratchett ) )
+				.thenCompose( v -> openSession() )
+				.thenCompose( s -> s.createQuery( "from Tome b where b.id=?1", Book.class )
+						.setPlan( s.getEntityGraph( Book.class, "withAuthors" ) )
+						.setParameter( 1, goodOmens.getId() )
+						.getSingleResult() )
+				.thenAccept( book -> {
+					context.assertTrue( Hibernate.isInitialized( book.authors ) );
+					List<Author> optionalAssociation = book.authors;
+					context.assertNotNull( optionalAssociation );
+					context.assertTrue( optionalAssociation.contains( neilGaiman ) );
+					context.assertTrue( optionalAssociation.contains( terryPratchett ) );
+				} )
+				.thenCompose( v -> openSession() )
+				.thenCompose( s -> {
+					EntityGraph<Author> graph = s.createEntityGraph( Author.class );
+					graph.addAttributeNodes( "book" );
+					return s.createQuery( "from Writer w where w.id=?1", Author.class )
+							.setPlan( graph )
+							.setParameter( 1, neilGaiman.getId() )
+							.getSingleResult();
+				} )
+				.thenAccept( author -> context.assertTrue( Hibernate.isInitialized( author.book ) ) )
 		);
-
 	}
 
 	@Test
@@ -213,25 +181,18 @@ public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
 		goodOmens.getAuthors().add(neilGaiman);
 		goodOmens.getAuthors().add(terryPratchett);
 
-		test(
-				context,
-				openSession()
-						.thenCompose(s -> s.persist(goodOmens)
-								.thenCompose(v -> s.persist(neilGaiman))
-								.thenCompose(v -> s.persist(terryPratchett))
-								.thenCompose(v -> s.flush())
-						)
-						.thenCompose( v -> openSession() )
-						.thenCompose( s -> s.enableFetchProfile("withAuthors").find(Book.class, goodOmens.getId() ) )
-						.thenAccept(book -> {
-							context.assertTrue( Hibernate.isInitialized(book.authors) );
-							List<Author> optionalAssociation = book.authors;
-							context.assertNotNull(optionalAssociation);
-							context.assertTrue(optionalAssociation.contains(neilGaiman));
-							context.assertTrue(optionalAssociation.contains(terryPratchett));
-						})
+		test( context, getSessionFactory()
+				.withTransaction( session -> session.persist( goodOmens, neilGaiman, terryPratchett ) )
+				.thenCompose( v -> openSession() )
+				.thenCompose( s -> s.enableFetchProfile( "withAuthors" ).find( Book.class, goodOmens.getId() ) )
+				.thenAccept( book -> {
+					context.assertTrue( Hibernate.isInitialized( book.authors ) );
+					List<Author> optionalAssociation = book.authors;
+					context.assertNotNull( optionalAssociation );
+					context.assertTrue( optionalAssociation.contains( neilGaiman ) );
+					context.assertTrue( optionalAssociation.contains( terryPratchett ) );
+				} )
 		);
-
 	}
 
 	@Test
@@ -269,7 +230,7 @@ public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
 
 		test( context, getSessionFactory()
 				.withStatelessSession( session -> session
-						.insert( goodOmens, neilGaiman, terryPratchett ) )
+						.withTransaction( tx -> session.insert( goodOmens, neilGaiman, terryPratchett ) ) )
 				.thenCompose( v -> getSessionFactory().withStatelessSession( session -> {
 					EntityGraph<Book> graph = session.createEntityGraph( Book.class );
 					graph.addAttributeNodes( "authors" );

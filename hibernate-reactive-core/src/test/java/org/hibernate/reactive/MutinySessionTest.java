@@ -24,6 +24,8 @@ import org.junit.Test;
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.unit.TestContext;
 
+import static org.hibernate.reactive.testing.ReactiveAssertions.assertThrown;
+
 
 public class MutinySessionTest extends BaseReactiveTest {
 
@@ -41,10 +43,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 
 	private Uni<Void> populateDB() {
 		return getMutinySessionFactory()
-				.withSession(
-						session -> session.persist( new GuineaPig(5, "Aloi") )
-								.chain(session::flush)
-				);
+				.withTransaction( session -> session.persist( new GuineaPig( 5, "Aloi" ) ) );
 	}
 
 	private Uni<String> selectNameFromId(Integer id) {
@@ -134,13 +133,13 @@ public class MutinySessionTest extends BaseReactiveTest {
 		final GuineaPig expectedPig = new GuineaPig( 5, "Aloi" );
 		test(
 				context,
-				populateDB()
-						.call( () -> getMutinySessionFactory().withSession(
-								session -> session.find( GuineaPig.class, expectedPig.getId(), LockMode.PESSIMISTIC_WRITE )
-										.invoke( actualPig -> {
-											assertThatPigsAreEqual( context, expectedPig, actualPig );
-											context.assertEquals( session.getLockMode( actualPig ), LockMode.PESSIMISTIC_WRITE );
-										} )
+				populateDB().call( () -> getMutinySessionFactory()
+						.withTransaction( session -> session
+								.find( GuineaPig.class, expectedPig.getId(), LockMode.PESSIMISTIC_WRITE )
+								.invoke( actualPig -> {
+									assertThatPigsAreEqual( context, expectedPig, actualPig );
+									context.assertEquals( session.getLockMode( actualPig ), LockMode.PESSIMISTIC_WRITE );
+								} )
 						) )
 		);
 	}
@@ -151,7 +150,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 		test(
 				context,
 				populateDB()
-						.call( () -> getMutinySessionFactory().withSession(
+						.call( () -> getMutinySessionFactory().withTransaction(
 								session -> session.find( GuineaPig.class, expectedPig.getId() )
 										.call( pig -> session.refresh(pig, LockMode.PESSIMISTIC_WRITE) )
 										.invoke( actualPig -> {
@@ -168,7 +167,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 		test(
 				context,
 				populateDB()
-						.call( () -> getMutinySessionFactory().withSession(
+						.call( () -> getMutinySessionFactory().withTransaction(
 							session -> session.find( GuineaPig.class, expectedPig.getId() )
 								.call( pig -> {
 									session.setReadOnly(pig, true);
@@ -181,7 +180,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 											} );
 								} )
 						) )
-						.call( () -> getMutinySessionFactory().withSession(
+						.call( () -> getMutinySessionFactory().withTransaction(
 							session -> session.find( GuineaPig.class, expectedPig.getId() )
 								.call( pig -> {
 									session.setReadOnly(pig, false);
@@ -200,56 +199,41 @@ public class MutinySessionTest extends BaseReactiveTest {
 	@Test
 	public void reactiveFindThenUpgradeLock(TestContext context) {
 		final GuineaPig expectedPig = new GuineaPig( 5, "Aloi" );
-		test(
-				context,
-				populateDB()
-						.call( () -> getMutinySessionFactory().withSession(
-								session -> session.find( GuineaPig.class, expectedPig.getId() )
-										.call( pig -> session.lock(pig, LockMode.PESSIMISTIC_READ) )
-										.invoke( actualPig -> {
-											assertThatPigsAreEqual( context, expectedPig, actualPig );
-											context.assertEquals( session.getLockMode( actualPig ), LockMode.PESSIMISTIC_READ );
-										} )
-						) )
+		test( context, populateDB().call( () -> getMutinySessionFactory()
+				.withTransaction( session -> session
+						.find( GuineaPig.class, expectedPig.getId() )
+						.call( pig -> session.lock( pig, LockMode.PESSIMISTIC_READ ) )
+						.invoke( actualPig -> {
+							assertThatPigsAreEqual( context, expectedPig, actualPig );
+							context.assertEquals( session.getLockMode( actualPig ), LockMode.PESSIMISTIC_READ );
+						} )
+				) )
 		);
 	}
 
 	@Test
 	public void reactiveFindThenWriteLock(TestContext context) {
 		final GuineaPig expectedPig = new GuineaPig( 5, "Aloi" );
-		test(
-				context,
-				populateDB()
-						.call( () -> getMutinySessionFactory().withSession(
-								session -> session.find( GuineaPig.class, expectedPig.getId() )
-										.call( pig -> session.lock(pig, LockMode.PESSIMISTIC_WRITE) )
-										.invoke( actualPig -> {
-											assertThatPigsAreEqual( context, expectedPig, actualPig );
-											context.assertEquals( session.getLockMode( actualPig ), LockMode.PESSIMISTIC_WRITE );
-										} )
-						) )
+		test( context, populateDB().call( () -> getMutinySessionFactory()
+				.withTransaction( session -> session
+						.find( GuineaPig.class, expectedPig.getId() )
+						.call( pig -> session.lock( pig, LockMode.PESSIMISTIC_WRITE ) )
+						.invoke( actualPig -> {
+							assertThatPigsAreEqual( context, expectedPig, actualPig );
+							context.assertEquals( session.getLockMode( actualPig ), LockMode.PESSIMISTIC_WRITE );
+						} )
+				) )
 		);
 	}
 
 	@Test
-	public void reactivePersist1(TestContext context) {
+	public void reactivePersistWithFlush(TestContext context) {
 		test(
 				context,
 				getMutinySessionFactory()
-						.withSession( s -> s.persist( new GuineaPig( 10, "Tulip" ) ).onItem().call(s::flush) )
-						.onItem().transformToUni( v -> selectNameFromId(10) )
+						.withTransaction( s -> s.persist( new GuineaPig( 10, "Tulip" ) ).onItem().call( s::flush ) )
+						.chain( v -> selectNameFromId( 10 ) )
 						.onItem().invoke( selectRes -> context.assertEquals( "Tulip", selectRes ) )
-		);
-	}
-
-	@Test
-	public void reactivePersist2(TestContext context) {
-		test(
-				context,
-				getMutinySessionFactory()
-						.withSession( s -> s.persist( new GuineaPig( 10, "Tulip" ) ).chain(s::flush) )
-						.chain( () -> selectNameFromId(10) )
-						.invoke( selectRes -> context.assertEquals( "Tulip", selectRes ) )
 		);
 	}
 
@@ -258,7 +242,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 		test(
 				context,
 				getMutinySessionFactory()
-						.withTransaction( (s,t) -> s.persist( new GuineaPig( 10, "Tulip" ) ) )
+						.withTransaction( s -> s.persist( new GuineaPig( 10, "Tulip" ) ) )
 						.chain( () -> selectNameFromId(10) )
 						.invoke( selectRes -> context.assertEquals( "Tulip", selectRes ) )
 		);
@@ -269,12 +253,13 @@ public class MutinySessionTest extends BaseReactiveTest {
 		test(
 				context,
 				getMutinySessionFactory()
-						.withTransaction(
-								(s,t) -> s.persist( new ReactiveSessionTest.GuineaPig( 10, "Tulip" ) )
-										.call(s::flush)
-										.invoke( () -> { throw new RuntimeException(); } )
+						.withTransaction( s -> s.persist( new ReactiveSessionTest.GuineaPig( 10, "Tulip" ) )
+								.call( s::flush )
+								.invoke( () -> {
+									throw new RuntimeException();
+								} )
 						)
-						.onItem().invoke( (Runnable) context::fail )
+						.invoke( (Runnable) context::fail )
 						.onFailure().recoverWithItem((Void) null)
 						.chain( () -> selectNameFromId(10) )
 						.invoke( context::assertNull )
@@ -297,171 +282,106 @@ public class MutinySessionTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void reactiveRemoveTransientEntity1(TestContext context) {
-		test(
-				context,
-				populateDB()
-						.onItem().call( () -> selectNameFromId(5).onItem().invoke( context::assertNotNull ) )
-						.chain( this::openMutinySession )
-						.onItem().call( session -> session.remove( new GuineaPig( 5, "Aloi" ) ) )
-						.onItem().invoke( (Runnable) context::fail )
-						.onFailure().recoverWithItem( () -> null )
-//						.onItem().invokeUni( session -> session.flush() )
-//						.onTermination().invoke( (session, err, c) -> session.close() )
-//						.onItem().invokeUni( v -> selectNameFromId( 5 ).onItem().invoke( context::assertNull ) )
+	public void reactiveRemoveTransientEntity(TestContext context) {
+		test( context, assertThrown( PersistenceException.class, populateDB()
+				.call( () -> selectNameFromId( 5 ).invoke( context::assertNotNull ) )
+				.chain( this::openMutinySession )
+				.call( s -> s.remove( new GuineaPig( 5, "Aloi" ) ) ) )
+				.invoke( t -> context
+						.assertTrue( t.getMessage().contains( "unmanaged instance passed to remove" ) ) )
 		);
 	}
 
 	@Test
-	public void reactiveRemoveTransientEntity2(TestContext context) {
-		test(
-				context,
-				populateDB()
-						.chain( () -> selectNameFromId(5) )
-						.invoke( context::assertNotNull )
-						.chain( this::openMutinySession )
-						.call( session -> session.remove( new GuineaPig( 5, "Aloi" ) ) )
-						.onItem().invoke( (Runnable) context::fail )
-						.onFailure().recoverWithItem( () -> null )
-//						.chain( session -> session.flush().eventually(session::close) )
-//						.then( () -> selectNameFromId( 5 ) )
-//						.invoke( context::assertNull )
-		);
-	}
-
-	@Test
-	public void reactiveRemoveManagedEntity1(TestContext context) {
-		test(
-				context,
-				populateDB()
-						.onItem().call( () -> getMutinySessionFactory().withSession(
-								session -> session.find( GuineaPig.class, 5 )
-										.onItem().call(session::remove)
-										.onItem().call(session::flush)
-						) )
-						.onItem().call( () -> selectNameFromId(5).onItem().invoke( context::assertNull ) )
-		);
-	}
-
-	@Test
-	public void reactiveRemoveManagedEntity2(TestContext context) {
-		test(
-				context,
-				populateDB()
-						.call( () -> getMutinySessionFactory().withSession(
-								session -> session.find( GuineaPig.class, 5 )
-										.chain(session::remove)
-										.call(session::flush)
-						) )
-						.chain( () -> selectNameFromId(5) )
-						.invoke( context::assertNull )
+	public void reactiveRemoveManagedEntity(TestContext context) {
+		test( context, populateDB()
+				.call( () -> getMutinySessionFactory()
+						.withTransaction( session -> session
+								.find( GuineaPig.class, 5 )
+								.call( session::remove ) ) )
+				.call( () -> selectNameFromId( 5 )
+						.invoke( context::assertNull ) )
 		);
 	}
 
 	@Test
 	public void reactiveRemoveManagedEntityWithTx1(TestContext context) {
-		test(
-				context,
-				populateDB()
-						.onItem().call( () -> getMutinySessionFactory().withTransaction(
-								(session, transaction) -> session.find( GuineaPig.class, 5 )
-										.onItem().call(session::remove)
-						) )
-						.onItem().call( () -> selectNameFromId(5).onItem().invoke( context::assertNull ) )
-		);
-	}
-
-	@Test
-	public void reactiveRemoveManagedEntityWithTx2(TestContext context) {
-		test(
-				context,
-				populateDB()
-						.call( () -> getMutinySessionFactory().withTransaction(
-								(session, transaction) -> session.find( GuineaPig.class, 5 )
-										.call(session::remove)
-						) )
-						.chain( () -> selectNameFromId(5) )
-						.invoke( context::assertNull )
+		test( context, populateDB()
+				.call( () -> getMutinySessionFactory()
+						.withTransaction( session -> session
+								.find( GuineaPig.class, 5 ).call( session::remove ) ) )
+				.call( () -> selectNameFromId( 5 ).onItem().invoke( context::assertNull ) )
 		);
 	}
 
 	@Test
 	public void reactiveUpdate(TestContext context) {
 		final String NEW_NAME = "Tina";
-		test(
-				context,
-				populateDB()
-						.call( () -> getMutinySessionFactory().withSession(
-								session -> session.find( GuineaPig.class, 5 )
-										.map( pig -> {
-											context.assertNotNull( pig );
-											// Checking we are actually changing the name
-											context.assertNotEquals( pig.getName(), NEW_NAME );
-											pig.setName( NEW_NAME );
-											return null;
-										} )
-										.call(session::flush)
+		test( context, populateDB()
+				.call( () -> getMutinySessionFactory()
+						.withTransaction( session -> session
+								.find( GuineaPig.class, 5 )
+								.invoke( pig -> {
+									context.assertNotNull( pig );
+									// Checking we are actually changing the name
+									context.assertNotEquals( pig.getName(), NEW_NAME );
+									pig.setName( NEW_NAME );
+								} )
 						) )
-						.chain( () -> selectNameFromId(5) )
-						.invoke( name -> context.assertEquals( NEW_NAME, name ) )
+				.chain( () -> selectNameFromId( 5 ) )
+				.invoke( name -> context.assertEquals( NEW_NAME, name ) )
 		);
 	}
 
 	@Test
 	public void reactiveUpdateVersion(TestContext context) {
 		final String NEW_NAME = "Tina";
-		test(
-				context,
-				populateDB()
-						.call( () -> getMutinySessionFactory().withSession(
-								session -> session.find( GuineaPig.class, 5 )
-										.map( pig -> {
-											context.assertNotNull( pig );
-											// Checking we are actually changing the name
-											context.assertNotEquals( pig.getName(), NEW_NAME );
-											pig.setName( NEW_NAME );
-											return null;
-										} )
-										.call(session::flush)
-						) )
-						.chain( () -> selectNameFromId(5) )
-						.invoke( name -> context.assertEquals( NEW_NAME, name ) )
+		test( context, populateDB()
+				.call( () -> getMutinySessionFactory()
+						.withTransaction( session -> session
+								.find( GuineaPig.class, 5 )
+								.invoke( pig -> {
+									context.assertNotNull( pig );
+									// Checking we are actually changing the name
+									context.assertNotEquals( pig.getName(), NEW_NAME );
+									pig.setName( NEW_NAME );
+								} )
+				) )
+				.chain( () -> selectNameFromId( 5 ) )
+				.invoke( name -> context.assertEquals( NEW_NAME, name ) )
 		);
 	}
 
 	@Test
 	public void reactiveQueryWithLock(TestContext context) {
 		final GuineaPig expectedPig = new GuineaPig( 5, "Aloi" );
-		test(
-				context,
-				populateDB()
-						.call( () -> getMutinySessionFactory().withTransaction(
-								(session, tx) -> session.createQuery( "from GuineaPig pig", GuineaPig.class)
-										.setLockMode(LockMode.PESSIMISTIC_WRITE)
-										.getSingleResult()
-										.invoke( actualPig -> {
-											assertThatPigsAreEqual( context, expectedPig, actualPig );
-											context.assertEquals( session.getLockMode( actualPig ), LockMode.PESSIMISTIC_WRITE );
-										} )
-						) )
+		test( context, populateDB()
+				.call( () -> getMutinySessionFactory()
+						.withTransaction( session -> session
+								.createQuery( "from GuineaPig pig", GuineaPig.class )
+								.setLockMode( LockMode.PESSIMISTIC_WRITE )
+								.getSingleResult()
+								.invoke( actualPig -> {
+									assertThatPigsAreEqual( context, expectedPig, actualPig );
+									context.assertEquals( session.getLockMode( actualPig ), LockMode.PESSIMISTIC_WRITE );
+								} )
+				) )
 		);
 	}
 
 	@Test
 	public void reactiveQueryWithAliasedLock(TestContext context) {
 		final GuineaPig expectedPig = new GuineaPig( 5, "Aloi" );
-		test(
-				context,
-				populateDB()
-						.call( () -> getMutinySessionFactory().withTransaction(
-								(session, tx) -> session.createQuery( "from GuineaPig pig", GuineaPig.class)
-										.setLockMode("pig", LockMode.PESSIMISTIC_WRITE )
-										.getSingleResult()
-										.invoke( actualPig -> {
-											assertThatPigsAreEqual( context, expectedPig, actualPig );
-											context.assertEquals( session.getLockMode( actualPig ), LockMode.PESSIMISTIC_WRITE );
-										} )
-						) )
+		test( context, populateDB()
+				.call( () -> getMutinySessionFactory().withTransaction( session -> session
+						.createQuery( "from GuineaPig pig", GuineaPig.class )
+						.setLockMode( "pig", LockMode.PESSIMISTIC_WRITE )
+						.getSingleResult()
+						.invoke( actualPig -> {
+							assertThatPigsAreEqual( context, expectedPig, actualPig );
+							context.assertEquals( session.getLockMode( actualPig ), LockMode.PESSIMISTIC_WRITE );
+						} )
+				) )
 		);
 	}
 
@@ -472,21 +392,21 @@ public class MutinySessionTest extends BaseReactiveTest {
 		GuineaPig baz = new GuineaPig( 7, "Baz" );
 		AtomicInteger i = new AtomicInteger();
 
-		test( context,
-				getMutinySessionFactory()
-						.withTransaction( (session, transaction) -> session.persistAll(foo, bar, baz) )
-						.call( () -> getMutinySessionFactory().withSession(
-								session -> session.createQuery("from GuineaPig", GuineaPig.class)
-										.getResultList().onItem().disjoint()
-										.invoke( pig -> {
-											context.assertNotNull(pig);
-											i.getAndIncrement();
-										} )
-										.collect().asList()
-										.invoke( list -> {
-											context.assertEquals(3, i.get());
-											context.assertEquals(3, list.size());
-										} )
+		test( context, getMutinySessionFactory()
+				.withTransaction( session -> session.persistAll( foo, bar, baz ) )
+				.call( () -> getMutinySessionFactory()
+						.withSession( session -> session
+								.createQuery( "from GuineaPig", GuineaPig.class )
+								.getResultList().onItem().disjoint()
+								.invoke( pig -> {
+									context.assertNotNull( pig );
+									i.getAndIncrement();
+								} )
+								.collect().asList()
+								.invoke( list -> {
+									context.assertEquals( 3, i.get() );
+									context.assertEquals( 3, list.size() );
+								} )
 						) )
 		);
 	}
@@ -541,17 +461,11 @@ public class MutinySessionTest extends BaseReactiveTest {
 
 	@Test
 	public void testDupeException(TestContext context) {
-		test(
-				context,
-				getMutinySessionFactory()
-						.withTransaction((s, t) -> s.persist( new GuineaPig( 10, "Tulip" ) ))
-				.chain(() -> getMutinySessionFactory()
-						.withTransaction((s, t) -> s.persist( new GuineaPig( 10, "Tulip" ) ))
-				).onItemOrFailure().invoke((i, t) -> {
-					context.assertNotNull(t);
-					context.assertTrue(t instanceof PersistenceException);
-				})
-				.onFailure().recoverWithNull()
+		test( context, assertThrown( PersistenceException.class, getMutinySessionFactory()
+				.withTransaction( s -> s.persist( new GuineaPig( 10, "Tulip" ) ) )
+				.chain( () -> getMutinySessionFactory()
+						.withTransaction( s -> s.persist( new GuineaPig( 10, "Tulip" ) ) )
+				) )
 		);
 	}
 
@@ -564,7 +478,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 					savedSession[0] = session;
 					throw new RuntimeException( "No Panic: This is just a test" );
 				} )
-				.onItem().invoke( () -> context.fail( "Test should throw an exception" ) )
+				.invoke( () -> context.fail( "Test should throw an exception" ) )
 				.onFailure()
 				.recoverWithNull()
 				.invoke( () -> context.assertFalse( savedSession[0].isOpen(), "Session should be closed" ) )
@@ -580,7 +494,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 					savedSession[0] = session;
 					throw new RuntimeException( "No Panic: This is just a test" );
 				} )
-				.onItem().invoke( () -> context.fail( "Test should throw an exception" ) )
+				.invoke( () -> context.fail( "Test should throw an exception" ) )
 				.onFailure()
 				.recoverWithNull()
 				.invoke( () -> context.assertFalse( savedSession[0].isOpen(), "Session should be closed" ) )
@@ -596,7 +510,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 					savedSession[0] = session;
 					throw new RuntimeException( "No Panic: This is just a test" );
 				} )
-				.onItem().invoke( () -> context.fail( "Test should throw an exception" ) )
+				.invoke( () -> context.fail( "Test should throw an exception" ) )
 				.onFailure()
 				.recoverWithNull()
 				.invoke( () -> context.assertFalse( savedSession[0].isOpen(), "Session should be closed" ) )
@@ -609,8 +523,8 @@ public class MutinySessionTest extends BaseReactiveTest {
 		context.assertEquals( expected.getName(), actual.getName() );
 	}
 
-	@Entity(name="GuineaPig")
-	@Table(name="Pig")
+	@Entity(name = "GuineaPig")
+	@Table(name = "Pig")
 	public static class GuineaPig {
 		@Id
 		private Integer id;

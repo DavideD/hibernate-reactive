@@ -47,24 +47,24 @@ public class LazyManyToOneAssociationTest extends BaseReactiveTest {
 		final Book book = new Book( 6, "The Boy, The Mole, The Fox and The Horse" );
 		final Author author = new Author( 5, "Charlie Mackesy", book );
 
-		test(
-				context,
-				openSession()
-						.thenCompose( s -> s.persist( book ).thenCompose( v -> s.persist( author ) ).thenCompose( v -> s.flush() ) )
-						.thenCompose( v -> openSession()
-								.thenCompose( s -> s.enableFetchProfile("withBook").find( Author.class, author.getId() ) ) )
-						.thenAccept( optionalAuthor -> {
-							context.assertNotNull( optionalAuthor );
-							context.assertEquals( author, optionalAuthor );
-							context.assertTrue( isInitialized( optionalAuthor.getBook() ) );
-							context.assertEquals( book, optionalAuthor.getBook() );
-						} )
-						.thenCompose( v -> openSession()
-								.thenCompose( s -> s.find( Book.class, book.getId() ) ) )
-						.thenAccept( optionalBook -> {
-							context.assertNotNull( optionalBook );
-							context.assertEquals( book, optionalBook );
-						} )
+		test( context, getSessionFactory()
+				.withTransaction( s -> s.persist( book, author ) )
+				.thenCompose( v -> openSession()
+						.thenCompose( s -> s.enableFetchProfile( "withBook" )
+						.find( Author.class, author.getId() ) )
+				)
+				.thenAccept( optionalAuthor -> {
+					context.assertNotNull( optionalAuthor );
+					context.assertEquals( author, optionalAuthor );
+					context.assertTrue( isInitialized( optionalAuthor.getBook() ) );
+					context.assertEquals( book, optionalAuthor.getBook() );
+				} )
+				.thenCompose( v -> openSession()
+						.thenCompose( s -> s.find( Book.class, book.getId() ) ) )
+				.thenAccept( optionalBook -> {
+					context.assertNotNull( optionalBook );
+					context.assertEquals( book, optionalBook );
+				} )
 		);
 	}
 
@@ -75,8 +75,8 @@ public class LazyManyToOneAssociationTest extends BaseReactiveTest {
 
 		test(
 				context,
-				openSession()
-						.thenCompose( s -> s.persist( book ).thenCompose( v -> s.persist( author ) ).thenCompose( v -> s.flush() ) )
+				getSessionFactory()
+						.withTransaction( s -> s.persist( book, author ) )
 						.thenCompose( v -> openSession()
 								.thenCompose( s -> s.find( s.getEntityGraph(Author.class, "withBook"), author.getId() ) ) )
 						.thenAccept( optionalAuthor -> {
@@ -100,8 +100,8 @@ public class LazyManyToOneAssociationTest extends BaseReactiveTest {
 
 		test(
 				context,
-				openSession()
-						.thenCompose( s -> s.persist( book ).thenCompose( v -> s.persist( author ) ).thenCompose( v -> s.flush() ) )
+				getSessionFactory()
+						.withTransaction( s -> s.persist( book, author ) )
 						.thenCompose( v -> openSession().thenCompose( s -> {
 							EntityGraph<Author> graph = s.createEntityGraph(Author.class);
 							graph.addAttributeNodes("book");
@@ -113,8 +113,7 @@ public class LazyManyToOneAssociationTest extends BaseReactiveTest {
 										context.assertEquals( book, optionalAuthor.getBook() );
 									});
 						} ) )
-						.thenCompose( v -> openSession()
-								.thenCompose( s -> s.find( Book.class, book.getId() ) ) )
+						.thenCompose( v -> openSession().thenCompose( s -> s.find( Book.class, book.getId() ) ) )
 						.thenAccept( optionalBook -> {
 							context.assertNotNull( optionalBook );
 							context.assertEquals( book, optionalBook );
@@ -129,8 +128,8 @@ public class LazyManyToOneAssociationTest extends BaseReactiveTest {
 
 		test(
 				context,
-				openSession()
-						.thenCompose( s -> s.persist( book ).thenCompose( v -> s.persist( author ) ).thenCompose( v -> s.flush() ) )
+				getSessionFactory()
+						.withTransaction( s -> s.persist( book, author ) )
 						.thenCompose( v -> openSession()
 								.thenCompose( s -> s.find( Author.class, author.getId() )
 								.thenCompose( optionalAuthor -> {
@@ -162,11 +161,8 @@ public class LazyManyToOneAssociationTest extends BaseReactiveTest {
 
 		test(
 				context,
-				openSession()
-						.thenCompose( s -> s.persist( goodOmens )
-						.thenCompose( v -> s.persist( terryPratchett ) )
-						.thenCompose( v -> s.persist( neilGaiman ) )
-						.thenCompose( v -> s.flush() ) )
+				getSessionFactory()
+						.withTransaction( s -> s.persist( goodOmens, terryPratchett, neilGaiman ) )
 						.thenCompose( v -> openSession()
 								.thenCompose( s -> s.find( Author.class, neilGaiman.getId() )
 										.thenCompose( optionalAuthor -> {
@@ -192,11 +188,9 @@ public class LazyManyToOneAssociationTest extends BaseReactiveTest {
 
 		test(
 				context,
-				getSessionFactory().openStatelessSession()
-						.thenCompose( s -> s.insert( goodOmens )
-								.thenCompose( v -> s.insert( terryPratchett ) )
-								.thenCompose( v -> s.insert( neilGaiman ) )
-								.thenCompose( v -> s.close() ) )
+				getSessionFactory()
+						.withStatelessTransaction( s -> s
+								.insert( goodOmens, terryPratchett, neilGaiman ) )
 						.thenCompose( v -> getSessionFactory().openStatelessSession()
 								.thenCompose( s -> s.get( Author.class, neilGaiman.getId() )
 										.thenCompose( optionalAuthor -> {
@@ -221,8 +215,8 @@ public class LazyManyToOneAssociationTest extends BaseReactiveTest {
 
 		test(
 				context,
-				openSession()
-						.thenCompose( s -> s.persist( author ).thenCompose(v-> s.flush()))
+				getSessionFactory()
+						.withTransaction( s -> s.persist( author ) )
 						.thenCompose( v -> openSession() )
 						.thenCompose( s -> s.find( Author.class, author.getId() ) )
 						.thenAccept( optionalAuthor -> {

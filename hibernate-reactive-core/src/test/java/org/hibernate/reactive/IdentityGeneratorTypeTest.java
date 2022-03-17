@@ -74,13 +74,11 @@ public class IdentityGeneratorTypeTest extends BaseReactiveTest {
 			T entity,
 			U expectedId) {
 		test( context, getMutinySessionFactory()
-				.withSession( s -> s.persist( entity ).call( s::flush )
-						.invoke( () -> {
-							context.assertNotNull( entity.getId() );
-							context.assertEquals( entity.getId(), expectedId );
-						} ) )
+				.withTransaction( s -> s.persist( entity ) )
+				.invoke( () -> context.assertEquals( entity.getId(), expectedId ) )
 				.chain( () -> getMutinySessionFactory()
-						.withSession( s -> s.find( entityClass, entity.getId() )
+						.withSession( s -> s
+								.find( entityClass, entity.getId() )
 								.invoke( result -> {
 									context.assertNotNull( result );
 									context.assertEquals( result.getId(), entity.getId() );

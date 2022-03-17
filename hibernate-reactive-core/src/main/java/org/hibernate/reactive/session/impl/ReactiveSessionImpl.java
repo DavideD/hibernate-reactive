@@ -106,9 +106,9 @@ import static org.hibernate.engine.spi.PersistenceContext.NaturalIdHelper.INVALI
 import static org.hibernate.reactive.common.InternalStateAssertions.assertUseOnEventLoop;
 import static org.hibernate.reactive.session.impl.SessionUtil.checkEntityFound;
 import static org.hibernate.reactive.util.impl.CompletionStages.completedFuture;
+import static org.hibernate.reactive.util.impl.CompletionStages.failedFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.rethrow;
 import static org.hibernate.reactive.util.impl.CompletionStages.returnNullorRethrow;
-import static org.hibernate.reactive.util.impl.CompletionStages.returnOrRethrow;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
 /**
@@ -764,56 +764,72 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 	private CompletionStage<Void> fireRemove(DeleteEvent event) {
 		pulseTransactionCoordinator();
 
-		return fastSessionServices.eventListenerGroup_DELETE.fireEventOnEachListener( event,
-				(ReactiveDeleteEventListener l) -> l::reactiveOnDelete)
-				.handle( (v, e) -> {
-					delayedAfterCompletion();
+		return fastSessionServices.eventListenerGroup_DELETE
+				.fireEventOnEachListener( event, (ReactiveDeleteEventListener l) -> l::reactiveOnDelete )
+				.whenComplete( (v, throwable) -> delayedAfterCompletion() )
+				.handle( StageHandler::new )
+				.thenCompose( StageHandler::getResultAsStage );
+	}
 
-					if ( e instanceof ObjectDeletedException ) {
-						throw getExceptionConverter().convert( new IllegalArgumentException( e ) );
-					}
-					else if ( e instanceof MappingException ) {
-						throw getExceptionConverter().convert( new IllegalArgumentException( e.getMessage(), e ) );
-					}
-					else if ( e instanceof RuntimeException ) {
-						//including HibernateException
-						throw getExceptionConverter().convert( (RuntimeException) e );
-					}
-					return returnNullorRethrow( e );
-				});
+	private class StageHandler<V> {
+		private final V result;
+		private final Throwable throwable;
+
+		public StageHandler(V result, Throwable throwable) {
+			this.result = result;
+			this.throwable = convert( throwable );
+		}
+
+		private Throwable convert(Throwable e) {
+			if ( e instanceof ObjectDeletedException ) {
+				return getExceptionConverter().convert( new IllegalArgumentException( e ) );
+			}
+			if ( e instanceof MappingException ) {
+				return getExceptionConverter().convert( new IllegalArgumentException( e.getMessage(), e ) );
+			}
+			if ( e instanceof RuntimeException ) {
+				//including HibernateException
+				return getExceptionConverter().convert( (RuntimeException) e );
+			}
+			return e;
+		}
+
+		public V getResult() {
+			if ( throwable != null ) {
+				rethrow( throwable );
+			}
+			return result;
+		}
+
+		public CompletionStage<V> getResultAsStage() {
+			return throwable != null
+					? failedFuture( throwable )
+					: completedFuture( result );
+		}
+
+		public Throwable getThrowable() {
+			return throwable;
+		}
 	}
 
 	private CompletionStage<Void> fireRemove(DeleteEvent event, IdentitySet transientEntities) {
 		pulseTransactionCoordinator();
 
-		return fastSessionServices.eventListenerGroup_DELETE.fireEventOnEachListener( event, transientEntities,
-				(ReactiveDeleteEventListener l) -> l::reactiveOnDelete)
-				.handle( (v, e) -> {
-					delayedAfterCompletion();
-
-					if ( e instanceof ObjectDeletedException ) {
-						throw getExceptionConverter().convert( new IllegalArgumentException( e ) );
-					}
-					else if ( e instanceof MappingException ) {
-						throw getExceptionConverter().convert( new IllegalArgumentException( e.getMessage(), e ) );
-					}
-					else if ( e instanceof RuntimeException ) {
-						//including HibernateException
-						throw getExceptionConverter().convert( (RuntimeException) e );
-					}
-					return returnNullorRethrow( e );
-				});
+		return fastSessionServices.eventListenerGroup_DELETE
+				.fireEventOnEachListener( event, transientEntities, (ReactiveDeleteEventListener l) -> l::reactiveOnDelete)
+				.whenComplete( (unused, throwable) -> delayedAfterCompletion() )
+				.handle( StageHandler::new )
+				.thenCompose( StageHandler::getResultAsStage );
 	}
 
 	@Override
 	public <T> CompletionStage<T> reactiveMerge(T object) throws HibernateException {
 		checkOpen();
-		return fireMerge( new MergeEvent( null, object, this ));
+		return fireMerge( new MergeEvent( null, object, this ) );
 	}
 
 	@Override
-	public CompletionStage<Void> reactiveMerge(Object object, MergeContext copiedAlready)
-			throws HibernateException {
+	public CompletionStage<Void> reactiveMerge(Object object, MergeContext copiedAlready) throws HibernateException {
 		checkOpenOrWaitingForAutoClose();
 		return fireMerge( copiedAlready, new MergeEvent( null, object, this ) );
 	}
@@ -823,45 +839,22 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 		checkTransactionSynchStatus();
 		checkNoUnresolvedActionsBeforeOperation();
 
-		return fastSessionServices.eventListenerGroup_MERGE.fireEventOnEachListener( event,
-				(ReactiveMergeEventListener l) -> l::reactiveOnMerge)
-				.handle( (v,e) -> {
-					checkNoUnresolvedActionsAfterOperation();
-
-					if (e instanceof ObjectDeletedException) {
-						throw getExceptionConverter().convert( new IllegalArgumentException( e ) );
-					}
-					else if (e instanceof MappingException) {
-						throw getExceptionConverter().convert( new IllegalArgumentException( e.getMessage(), e ) );
-					}
-					else if (e instanceof RuntimeException) {
-						//including HibernateException
-						throw getExceptionConverter().convert( (RuntimeException) e );
-					}
-					return returnOrRethrow( e, (T) event.getResult() );
-				} );
+		return fastSessionServices.eventListenerGroup_MERGE
+				.fireEventOnEachListener( event, (ReactiveMergeEventListener l) -> l::reactiveOnMerge )
+				.whenComplete( (unused, throwable) -> checkNoUnresolvedActionsAfterOperation() )
+				.handle( StageHandler::new )
+				.thenCompose( StageHandler::getResultAsStage )
+				.thenApply( v -> (T) event.getResult() );
 	}
 
 	private CompletionStage<Void> fireMerge(MergeContext copiedAlready, MergeEvent event) {
 		pulseTransactionCoordinator();
 
-		return fastSessionServices.eventListenerGroup_MERGE.fireEventOnEachListener( event, copiedAlready,
-				(ReactiveMergeEventListener l) -> l::reactiveOnMerge)
-				.handle( (v,e) -> {
-					delayedAfterCompletion();
-
-					if (e instanceof ObjectDeletedException) {
-						throw getExceptionConverter().convert( new IllegalArgumentException( e ) );
-					}
-					else if (e instanceof MappingException) {
-						throw getExceptionConverter().convert( new IllegalArgumentException( e.getMessage(), e ) );
-					}
-					else if (e instanceof RuntimeException) {
-						//including HibernateException
-						throw getExceptionConverter().convert( (RuntimeException) e );
-					}
-					return returnNullorRethrow( e );
-				});
+		return fastSessionServices.eventListenerGroup_MERGE
+				.fireEventOnEachListener( event, copiedAlready, (ReactiveMergeEventListener l) -> l::reactiveOnMerge )
+				.whenComplete( (unused, throwable) -> delayedAfterCompletion() )
+				.handle( StageHandler::new )
+				.thenCompose( StageHandler::getResultAsStage );
 	}
 
 	@Override
@@ -880,13 +873,11 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 		pulseTransactionCoordinator();
 
 		if ( getPersistenceContextInternal().getCascadeLevel() > 0 ) {
-			throw log.flushDuringCascadeIsDangerous();
+			return failedFuture( log.flushDuringCascadeIsDangerous() );
 		}
 
-		return fastSessionServices.eventListenerGroup_FLUSH.fireEventOnEachListener(
-				new FlushEvent( this ),
-				(ReactiveFlushEventListener l) -> l::reactiveOnFlush
-		)
+		return fastSessionServices.eventListenerGroup_FLUSH
+				.fireEventOnEachListener( new FlushEvent( this ), (ReactiveFlushEventListener l) -> l::reactiveOnFlush )
 				.handle( (v, e) -> {
 					delayedAfterCompletion();
 
@@ -923,22 +914,21 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 		if ( !getSessionFactory().getSessionFactoryOptions().isAllowRefreshDetachedEntity() ) {
 			if ( event.getEntityName() != null ) {
 				if ( !contains( event.getEntityName(), event.getObject() ) ) {
-					throw new IllegalArgumentException( "Entity not managed" );
+					return failedFuture( new IllegalArgumentException( "Entity not managed" ) );
 				}
 			}
 			else {
 				if ( !contains( event.getObject() ) ) {
-					throw new IllegalArgumentException( "Entity not managed" );
+					return failedFuture( new IllegalArgumentException( "Entity not managed" ) );
 				}
 			}
 		}
 		pulseTransactionCoordinator();
 
-		return fastSessionServices.eventListenerGroup_REFRESH.fireEventOnEachListener( event,
-				(ReactiveRefreshEventListener l) -> l::reactiveOnRefresh)
+		return fastSessionServices.eventListenerGroup_REFRESH
+				.fireEventOnEachListener( event, (ReactiveRefreshEventListener l) -> l::reactiveOnRefresh )
+				.whenComplete( (unused, throwable) -> delayedAfterCompletion() )
 				.handle( (v, e) -> {
-					delayedAfterCompletion();
-
 					if (e instanceof RuntimeException) {
 						if ( !getSessionFactory().getSessionFactoryOptions().isJpaBootstrap() ) {
 							if ( e instanceof HibernateException ) {
