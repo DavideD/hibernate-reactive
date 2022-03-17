@@ -115,8 +115,10 @@ public class UTCTest extends BaseReactiveTest {
 				"offsetDateTimeType",
 				thing::getOffsetDateTime,
 				entity -> {
-					context.assertEquals( thing.offsetDateTime,
-							entity.offsetDateTime.toInstant().atZone( zoneOffset ).toOffsetDateTime() );
+					context.assertEquals(
+							thing.offsetDateTime,
+							entity.offsetDateTime.toInstant().atZone( zoneOffset ).toOffsetDateTime()
+					);
 				}
 		);
 	}
@@ -146,27 +148,30 @@ public class UTCTest extends BaseReactiveTest {
 				// The equals fails on JDK 15+ without the truncated
 				entity -> context.assertEquals(
 						thing.zonedDateTime.truncatedTo( ChronoUnit.MILLIS ),
-						entity.zonedDateTime.withZoneSameInstant( zoneOffset ).truncatedTo( ChronoUnit.MILLIS ) )
+						entity.zonedDateTime.withZoneSameInstant( zoneOffset ).truncatedTo( ChronoUnit.MILLIS )
+				)
 		);
 	}
 
-    private void testField(TestContext context, String columnName, Supplier<?> fieldValue, Consumer<Thing> assertion) {
-        test( context, getMutinySessionFactory()
-                .withSession( session -> session.persist( thing ).call( session::flush ).invoke( session::clear ) )
-                .chain( () -> getMutinySessionFactory()
-                        .withSession( session -> session.find( Thing.class, thing.id ) )
-                        .invoke( t -> {
-                            context.assertNotNull( t );
-                            assertion.accept( t );
-                        } )
-                )
-                .chain( () -> getMutinySessionFactory()
-                        .withSession( session -> session.createQuery( "from ThingInUTC where " + columnName + "=:dt", Thing.class )
-                                .setParameter( "dt", fieldValue.get() ).getSingleResult() )
-                        .invoke( assertion )
-                )
-        );
-    }
+	private void testField(TestContext context, String columnName, Supplier<?> fieldValue, Consumer<Thing> assertion) {
+		test( context, getMutinySessionFactory()
+				.withTransaction( session -> session.persist( thing ) )
+				.chain( () -> getMutinySessionFactory()
+						.withSession( session -> session.find( Thing.class, thing.id ) )
+						.invoke( t -> {
+							context.assertNotNull( t );
+							assertion.accept( t );
+						} )
+				)
+				.chain( () -> getMutinySessionFactory()
+						.withSession( session -> session
+								.createQuery( "from ThingInUTC where " + columnName + "=:dt", Thing.class )
+								.setParameter( "dt", fieldValue.get() )
+								.getSingleResult() )
+						.invoke( assertion )
+				)
+		);
+	}
 
 	@Entity(name = "ThingInUTC")
 	static class Thing {
@@ -229,5 +234,5 @@ public class UTCTest extends BaseReactiveTest {
 		public LocalDateTime getLocalDateTime() {
 			return localDateTime;
 		}
-    }
+	}
 }

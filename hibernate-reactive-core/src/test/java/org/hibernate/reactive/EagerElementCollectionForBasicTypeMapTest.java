@@ -70,10 +70,8 @@ public class EagerElementCollectionForBasicTypeMapTest extends BaseReactiveTest 
 		phones.put( "bbbb", "555" );
 		Person johnny = new Person( 999, "Johnny English", phones );
 
-		test ( context, openMutinySession()
-				.chain( session -> session
-						.persist( johnny )
-						.call( session::flush ) )
+		test( context, getMutinySessionFactory()
+				.withTransaction( session -> session.persist( johnny ) )
 				.chain( this::openMutinySession )
 				.chain( session -> session.find( Person.class, johnny.getId() ) )
 				.invoke( found -> assertPhones( context, found, "888", "555" ) )
@@ -90,12 +88,11 @@ public class EagerElementCollectionForBasicTypeMapTest extends BaseReactiveTest 
 
 	@Test
 	public void addOneElementWithStageAPI(TestContext context) {
-		test( context, openSession()
-				.thenCompose( session -> session
+		test( context, getSessionFactory()
+				.withTransaction( session -> session
 						.find( Person.class, thePerson.getId() )
 						// add one element to the collection
-						.thenAccept( foundPerson -> foundPerson.getPhones().put( "dddd", "000" ) )
-						.thenCompose( v -> session.flush() ) )
+						.thenAccept( foundPerson -> foundPerson.getPhones().put( "dddd", "000" ) ) )
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, thePerson.getId() ) )
 				.thenAccept( updatedPerson -> assertPhones( context, updatedPerson, "999-999-9999", "111-111-1111", "123-456-7890", "000" ) )
@@ -104,12 +101,11 @@ public class EagerElementCollectionForBasicTypeMapTest extends BaseReactiveTest 
 
 	@Test
 	public void removeOneElementWithStageAPI(TestContext context) {
-		test( context, openSession()
-				.thenCompose( session -> session
+		test( context, getSessionFactory()
+				.withTransaction( session -> session
 						.find( Person.class, thePerson.getId() )
 						// Remove one element from the collection
-						.thenAccept( foundPerson -> foundPerson.getPhones().remove( "bbbb" ) )
-						.thenCompose( v -> session.flush() ) )
+						.thenAccept( foundPerson -> foundPerson.getPhones().remove( "bbbb" ) ) )
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, thePerson.getId() ) )
 				.thenAccept( updatedPerson -> assertPhones( context, updatedPerson, "999-999-9999", "123-456-7890" ) )
@@ -118,14 +114,13 @@ public class EagerElementCollectionForBasicTypeMapTest extends BaseReactiveTest 
 
 	@Test
 	public void clearCollectionOfElementsWithStageAPI(TestContext context){
-		test( context, openSession()
-				.thenCompose( session -> session
+		test( context, getSessionFactory()
+				.withTransaction( session -> session
 						.find( Person.class, thePerson.getId() )
 						.thenAccept( foundPerson -> {
 							context.assertFalse( foundPerson.getPhones().isEmpty() );
 							foundPerson.getPhones().clear();
-						} )
-						.thenCompose( v -> session.flush() ) )
+						} ) )
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, thePerson.getId() ) )
 				.thenAccept( changedPerson -> context.assertTrue( changedPerson.getPhones().isEmpty() ) )
@@ -134,15 +129,14 @@ public class EagerElementCollectionForBasicTypeMapTest extends BaseReactiveTest 
 
 	@Test
 	public void removeAndAddElementWithStageAPI(TestContext context){
-		test( context, openSession()
-				.thenCompose( session -> session
+		test( context, getSessionFactory()
+				.withTransaction( session -> session
 						.find( Person.class, thePerson.getId() )
 						.thenAccept( foundPerson -> {
 							context.assertNotNull( foundPerson );
 							foundPerson.getPhones().remove( "bbbb" );
 							foundPerson.getPhones().put( "dddd", "000" );
-						} )
-						.thenCompose( v -> session.flush() ) )
+						} ) )
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, thePerson.getId() ) )
 				.thenAccept( changedPerson -> assertPhones( context, changedPerson, "999-999-9999", "123-456-7890", "000" ) )
@@ -151,16 +145,15 @@ public class EagerElementCollectionForBasicTypeMapTest extends BaseReactiveTest 
 
 	@Test
 	public void setNewElementCollectionWithStageAPI(TestContext context){
-		test( context, openSession()
-				.thenCompose( session -> session
+		test( context, getSessionFactory()
+				.withTransaction( session -> session
 						.find( Person.class, thePerson.getId() )
 						.thenAccept( foundPerson -> {
 							context.assertNotNull( foundPerson );
 							context.assertFalse( foundPerson.getPhones().isEmpty() );
 							foundPerson.setPhones( new HashMap<>() );
 							foundPerson.getPhones().put( "aaaa", "555" );
-						} )
-						.thenCompose( v -> session.flush() ) )
+						} ) )
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, thePerson.getId() ) )
 				.thenAccept( changedPerson -> assertPhones( context, changedPerson, "555" ) )
@@ -169,12 +162,11 @@ public class EagerElementCollectionForBasicTypeMapTest extends BaseReactiveTest 
 
 	@Test
 	public void removePersonWithStageAPI(TestContext context) {
-		test( context, openSession()
-				.thenCompose( session -> session
+		test( context, getSessionFactory()
+				.withTransaction( session -> session
 						.find( Person.class, thePerson.getId() )
 						// remove thePerson entity and flush
-						.thenCompose( session::remove )
-						.thenCompose( v -> session.flush() ) )
+						.thenCompose( session::remove ) )
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, thePerson.getId() ) )
 				.thenAccept( context::assertNull )
@@ -190,10 +182,8 @@ public class EagerElementCollectionForBasicTypeMapTest extends BaseReactiveTest 
 		secondPerson.getPhones().put( "aaaa", "222-222-2222" );
 		secondPerson.getPhones().put( "bbbb", "333-333-3333" );
 
-		test( context, openSession()
-				.thenCompose( session -> session
-						.persist( secondPerson )
-						.thenCompose( v -> session.flush() ) )
+		test( context, getSessionFactory()
+				.withTransaction( session -> session.persist( secondPerson ) )
 				// Check new person collection
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, secondPerson.getId() ) )
@@ -211,10 +201,8 @@ public class EagerElementCollectionForBasicTypeMapTest extends BaseReactiveTest 
 		secondPerson.getPhones().put( "xxx", null );
 		secondPerson.getPhones().put( "yyy", null );
 
-		test( context, openSession()
-				.thenCompose( session -> session
-						.persist( secondPerson )
-						.thenCompose( v -> session.flush() ) )
+		test( context, getSessionFactory()
+				.withTransaction( session -> session.persist( secondPerson ) )
 				// Check new person collection
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, secondPerson.getId() ) )
@@ -244,14 +232,13 @@ public class EagerElementCollectionForBasicTypeMapTest extends BaseReactiveTest 
 
 	@Test
 	public void setCollectionToNullWithStageAPI(TestContext context) {
-		test( context, openSession()
-				.thenCompose( session -> session
+		test( context, getSessionFactory()
+				.withTransaction( session -> session
 						.find( Person.class, thePerson.getId() )
 						.thenAccept( found -> {
 							context.assertFalse( found.getPhones().isEmpty() );
 							found.setPhones( null );
-						} )
-						.thenCompose( v -> session.flush() ) )
+						} ) )
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( Person.class, thePerson.getId() ) )
 				.thenAccept( foundPerson -> assertPhones( context, foundPerson ) )

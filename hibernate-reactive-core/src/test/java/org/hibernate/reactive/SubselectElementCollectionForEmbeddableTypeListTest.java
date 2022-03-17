@@ -68,9 +68,8 @@ public class SubselectElementCollectionForEmbeddableTypeListTest extends BaseRea
 		phones3.add( new Phone( "111-111-1111" ) );
 		Person p3 = new Person( 999999, "Claude", phones3 );
 
-		test( context, openSession()
-				.thenCompose( session -> session.persist( p1, p2, p3 )
-						.thenCompose( v -> session.flush() ) ) );
+		test( context, getSessionFactory()
+				.withTransaction( session -> session.persist( p1, p2, p3 ) ) );
 	}
 
 	@After

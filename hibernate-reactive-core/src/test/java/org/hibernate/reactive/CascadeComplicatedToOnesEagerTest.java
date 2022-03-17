@@ -5,67 +5,75 @@
  */
 package org.hibernate.reactive;
 
-import io.vertx.ext.unit.TestContext;
-import org.hibernate.cfg.Configuration;
-import org.hibernate.Hibernate;
-import org.hibernate.reactive.stage.Stage;
-import org.junit.Before;
-import org.junit.Test;
-
-import javax.persistence.*;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
+import javax.persistence.Basic;
+import javax.persistence.CascadeType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.ManyToOne;
+import javax.persistence.MappedSuperclass;
+import javax.persistence.OneToMany;
 
-import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
+import org.hibernate.Hibernate;
+import org.hibernate.cfg.Configuration;
+
+import org.junit.Before;
+import org.junit.Test;
+
+import io.vertx.ext.unit.TestContext;
 
 /**
  * This test uses a complicated model that requires Hibernate to delay
  * inserts until non-nullable transient entity dependencies are resolved.
- *
+ * <p>
  * All IDs are generated from a sequence.
- *
+ * <p>
  * JPA cascade types are used (javax.persistence.CascadeType)..
- *
+ * <p>
  * This test uses the following model:
  *
  * <code>
- *     ------------------------------ N G
- *     |
- *     |                                1
- *     |                                |
- *     |                                |
- *     |                                N
- *     |
- *     |         E N--------------0,1 * F
- *     |
- *     |         1                      N
- *     |         |                      |
- *     |         |                      |
- *     1         N                      |
- *     *                                |
- *     B * N---1 D * 1------------------
- *     *
- *     N         N
- *     |         |
- *     |         |
- *     1         |
- *               |
- *     C * 1-----
- *</code>
- *
+ * ------------------------------ N G
+ * |
+ * |                                1
+ * |                                |
+ * |                                |
+ * |                                N
+ * |
+ * |         E N--------------0,1 * F
+ * |
+ * |         1                      N
+ * |         |                      |
+ * |         |                      |
+ * 1         N                      |
+ * *                                |
+ * B * N---1 D * 1------------------
+ * *
+ * N         N
+ * |         |
+ * |         |
+ * 1         |
+ * |
+ * C * 1-----
+ * </code>
+ * <p>
  * In the diagram, all associations are bidirectional;
  * assocations marked with '*' cascade persist, save, merge operations to the
  * associated entities (e.g., B cascades persist to D, but D does not cascade
  * persist to B);
- *
+ * <p>
  * All many-to-one associations are eager; all collection associations are lazy.
- *
+ * <p>
  * b, c, d, e, f, and g are all transient unsaved that are associated with each other.
- *
+ * <p>
  * When persisting b with ORM, the entities are added to the ActionQueue in the following order:
  * c, d (depends on e), f (depends on d, g), e, b, g.
- *
+ * <p>
  * Entities are inserted in the following order:
  * c, e, d, b, g, f.
  */
@@ -94,187 +102,156 @@ public class CascadeComplicatedToOnesEagerTest extends BaseReactiveTest {
 
 	@Test
 	public void testPersist(TestContext context) {
-		test(
-				context,
-				openSession()
-						.thenCompose( s -> s.persist(b).thenAccept(v -> bId = b.id).thenCompose(v -> s.flush()) )
-						.thenCompose( ignore -> check( openSession(), context ) )
+		test( context, getSessionFactory()
+				.withTransaction( s -> s.persist( b )
+						.thenAccept( v -> bId = b.id ) )
+				.thenCompose( ignore -> check( context ) )
 		);
 	}
 
 	@Test
 	public void testMergeTransient(TestContext context) {
-		test(
-				context,
-				openSession()
-						.thenCompose( s -> s.merge(b).thenAccept(bMerged -> bId = bMerged.id).thenCompose(v -> s.flush()) )
-						.thenCompose( v -> check(openSession(), context) )
+		test( context, getSessionFactory()
+				.withTransaction( s -> s.merge( b )
+						.thenAccept( bMerged -> bId = bMerged.id ) )
+				.thenCompose( v -> check( context ) )
 		);
 	}
 
 	@Test
 	public void testMergeDetached(TestContext context) {
-		test(
-				context,
-				openSession()
-						.thenCompose( s -> s.persist(b).thenAccept(v -> bId = b.id).thenCompose(v -> s.flush()) )
-						.thenCompose(ignore -> openSession()
-								.thenCompose(s2 -> s2.merge(b))
-						)
-						.thenCompose(v -> check(openSession(), context))
+		test( context, getSessionFactory()
+				.withTransaction( s -> s.persist( b )
+						.thenAccept( v -> bId = b.id ) )
+				.thenCompose( ignore -> getSessionFactory()
+						.withTransaction( s2 -> s2.merge( b ) ) )
+				.thenCompose( v -> check( context ) )
 		);
 	}
 
-
 	@Test
 	public void testRemove(TestContext context) {
-
-		test(
-				context,
-				openSession()
-						.thenCompose( s -> s.persist(b).thenAccept(v -> bId = b.id).thenCompose(v -> s.flush()) )
-						.thenCompose(ignore -> check( openSession(), context ))
-						.thenAccept(ignore -> {
-							// Cascade-remove is not configured, so remove all associations.
-							// Everything will need to be merged, then deleted in the proper order
-							prepareEntitiesForDelete();
-						})
-						.thenCompose(v -> openSession())
-						.thenCompose(s2 -> s2.merge(b).thenApply(merged -> {
-							b = merged;
-							return s2;
-						}))
-						.thenCompose(s2 -> s2.merge(c).thenApply(merged -> {
-							c = merged;
-							return s2;
-						}))
-						.thenCompose(s2 -> s2.merge(d).thenApply(merged -> {
-							d = merged;
-							return s2;
-						}))
-						.thenCompose(s2 -> s2.merge(e).thenApply(merged -> {
-							e = merged;
-							return s2;
-						}))
-						.thenCompose(s2 -> s2.merge(f).thenApply(merged -> {
-							f = merged;
-							return s2;
-						}))
-						.thenCompose(s2 -> s2.merge(g).thenApply(merged -> {
-							g = merged;
-							return s2;
-						}))
-						.thenCompose(s2 -> voidFuture()
-								.thenCompose(v-> s2.remove(f))
-								.thenCompose(v -> s2.remove(g))
-								.thenCompose(v -> s2.remove(b))
-								.thenCompose(v -> s2.remove(d))
-								.thenCompose(v -> s2.remove(e))
-								.thenCompose(v -> s2.remove(c))
-								.thenCompose(v -> s2.flush())
+		test( context, getSessionFactory()
+				.withTransaction( s -> s.persist( b ).thenAccept( v -> bId = b.id ) )
+				.thenCompose( ignore -> check( context ) )
+				// Cascade-remove is not configured, so remove all associations.
+				// Everything will need to be merged, then deleted in the proper order
+				.thenAccept( ignore -> prepareEntitiesForDelete() )
+				.thenCompose( v -> getSessionFactory()
+						.withTransaction( s2 -> s2
+								.merge( b ).thenAccept( merged -> b = merged )
+								.thenCompose( vv -> s2.merge( c ).thenAccept( merged -> c = merged ) )
+								.thenCompose( vv -> s2.merge( d ).thenAccept( merged -> d = merged ) )
+								.thenCompose( vv -> s2.merge( e ).thenAccept( merged -> e = merged ) )
+								.thenCompose( vv -> s2.merge( f ).thenAccept( merged -> f = merged ) )
+								.thenCompose( vv -> s2.merge( g ).thenAccept( merged -> g = merged ) )
+								.thenCompose( vv -> s2.remove( f, g, b, d, e, c ) )
 						)
+				)
 		);
 	}
 
 	private void prepareEntitiesForDelete() {
 		b.c = null;
 		b.d = null;
-		b.gCollection.remove(g);
+		b.gCollection.remove( g );
 
-		c.bCollection.remove(b);
-		c.dCollection.remove(d);
+		c.bCollection.remove( b );
+		c.dCollection.remove( d );
 
-		d.bCollection.remove(b);
+		d.bCollection.remove( b );
 		d.c = null;
 		d.e = null;
-		d.fCollection.remove(f);
+		d.fCollection.remove( f );
 
-		e.dCollection.remove(d);
+		e.dCollection.remove( d );
 		e.f = null;
 
 		f.d = null;
-		f.eCollection.remove(e);
+		f.eCollection.remove( e );
 		f.g = null;
 
 		g.b = null;
-		g.fCollection.remove(f);
+		g.fCollection.remove( f );
 	}
 
-	private CompletionStage<Object> check(CompletionStage<Stage.Session> sessionStage, TestContext context) {
-		return  sessionStage.thenCompose(sCheck -> sCheck.find(B.class, bId)
-				.thenApply(bCheck -> {
-					context.assertEquals(b, bCheck);
-					context.assertTrue(Hibernate.isInitialized(bCheck.c));
-					context.assertEquals(c, bCheck.c);
-					context.assertTrue(Hibernate.isInitialized(bCheck.d));
-					context.assertEquals(d, bCheck.d);
-					context.assertTrue(bCheck.c == bCheck.d.c);
-					context.assertEquals(e, bCheck.d.e);
-					context.assertFalse(Hibernate.isInitialized(bCheck.gCollection));
-					return bCheck;
-				})
-				.thenCompose(bCheck -> sCheck.fetch(bCheck.gCollection)
-						.thenApply(gCollectionCheck -> {
-								final G gElement = gCollectionCheck.iterator().next();
-								context.assertEquals(g, gElement);
-								context.assertTrue(bCheck.d.e.f.g == gElement);
-								context.assertTrue(bCheck == gElement.b);
-								return bCheck;
-							}
+	private CompletionStage<Object> check(TestContext context) {
+		return getSessionFactory()
+				.withSession( sCheck -> sCheck
+						.find( B.class, bId )
+						.thenApply( bCheck -> {
+							context.assertEquals( b, bCheck );
+							context.assertTrue( Hibernate.isInitialized( bCheck.c ) );
+							context.assertEquals( c, bCheck.c );
+							context.assertTrue( Hibernate.isInitialized( bCheck.d ) );
+							context.assertEquals( d, bCheck.d );
+							context.assertTrue( bCheck.c == bCheck.d.c );
+							context.assertEquals( e, bCheck.d.e );
+							context.assertFalse( Hibernate.isInitialized( bCheck.gCollection ) );
+							return bCheck;
+						} )
+						.thenCompose( bCheck -> sCheck.fetch( bCheck.gCollection )
+								.thenApply( gCollectionCheck -> {
+												final G gElement = gCollectionCheck.iterator().next();
+												context.assertEquals( g, gElement );
+												context.assertTrue( bCheck.d.e.f.g == gElement );
+												context.assertTrue( bCheck == gElement.b );
+												return bCheck;
+											}
+								)
 						)
-				)
-				.thenCompose(bCheck -> sCheck.fetch(bCheck.c.bCollection)
-						.thenApply(bCollectionCheck ->
-								context.assertTrue(bCheck == bCollectionCheck.iterator().next()))
-						.thenApply(v -> bCheck)
-				)
-				.thenCompose(bCheck -> sCheck.fetch(bCheck.c.dCollection)
-						.thenApply(dCollectionCheck -> {
-							context.assertTrue(bCheck.d == dCollectionCheck.iterator().next());
-							return bCheck;
-						})
-				)
-				.thenCompose(bCheck -> sCheck.fetch(bCheck.d.bCollection)
-						.thenApply(bCollectionCheck -> {
-							context.assertTrue(bCheck == bCollectionCheck.iterator().next());
-							return bCheck;
-						})
-				)
-				.thenCompose(bCheck -> sCheck.fetch(bCheck.d.fCollection)
-						.thenApply(fCollectionCheck -> {
-							final F fElement = fCollectionCheck.iterator().next();
-							context.assertEquals(f, fElement);
-							context.assertTrue(bCheck.d.e.f == fElement);
-							context.assertTrue(bCheck.d == fElement.d);
-							return bCheck;
-						})
-				)
-				.thenCompose(bCheck -> sCheck.fetch(bCheck.d.e.dCollection)
-						.thenApply(dCollectionCheck -> {
-							context.assertTrue(bCheck.d == dCollectionCheck.iterator().next());
-							return bCheck;
-						})
-				)
-				.thenCompose(bCheck -> sCheck.fetch(bCheck.d.e.f.eCollection)
-						.thenApply(eCollectionCheck -> {
-							context.assertTrue(bCheck.d.e == eCollectionCheck.iterator().next());
-							return bCheck;
-						})
-				)
-				.thenCompose(bCheck -> sCheck.fetch(bCheck.d.e.f.g.fCollection)
-						.thenApply(fCollectionCheck -> {
-							final F fElement = fCollectionCheck.iterator().next();
-							context.assertTrue(bCheck.d.e.f == fElement);
-							return bCheck;
-						})
-				)
-		);
+						.thenCompose( bCheck -> sCheck.fetch( bCheck.c.bCollection )
+								.thenApply( bCollectionCheck -> context
+										.assertTrue( bCheck == bCollectionCheck.iterator().next() ) )
+								.thenApply( v -> bCheck )
+						)
+						.thenCompose( bCheck -> sCheck.fetch( bCheck.c.dCollection )
+								.thenApply( dCollectionCheck -> {
+									context.assertTrue( bCheck.d == dCollectionCheck.iterator().next() );
+									return bCheck;
+								} )
+						)
+						.thenCompose( bCheck -> sCheck.fetch( bCheck.d.bCollection )
+								.thenApply( bCollectionCheck -> {
+									context.assertTrue( bCheck == bCollectionCheck.iterator().next() );
+									return bCheck;
+								} )
+						)
+						.thenCompose( bCheck -> sCheck.fetch( bCheck.d.fCollection )
+								.thenApply( fCollectionCheck -> {
+									final F fElement = fCollectionCheck.iterator().next();
+									context.assertEquals( f, fElement );
+									context.assertTrue( bCheck.d.e.f == fElement );
+									context.assertTrue( bCheck.d == fElement.d );
+									return bCheck;
+								} )
+						)
+						.thenCompose( bCheck -> sCheck.fetch( bCheck.d.e.dCollection )
+								.thenApply( dCollectionCheck -> {
+									context.assertTrue( bCheck.d == dCollectionCheck.iterator().next() );
+									return bCheck;
+								} )
+						)
+						.thenCompose( bCheck -> sCheck.fetch( bCheck.d.e.f.eCollection )
+								.thenApply( eCollectionCheck -> {
+									context.assertTrue( bCheck.d.e == eCollectionCheck.iterator().next() );
+									return bCheck;
+								} )
+						)
+						.thenCompose( bCheck -> sCheck.fetch( bCheck.d.e.f.g.fCollection )
+								.thenApply( fCollectionCheck -> {
+									final F fElement = fCollectionCheck.iterator().next();
+									context.assertTrue( bCheck.d.e.f == fElement );
+									return bCheck;
+								} )
+						)
+				);
 	}
 
 	@Override
 	@Before
 	public void before(TestContext context) {
-		super.before(context);
+		super.before( context );
 
 		bId = null;
 
@@ -325,42 +302,49 @@ public class CascadeComplicatedToOnesEagerTest extends BaseReactiveTest {
 
 		@Override
 		public boolean equals(Object obj) {
-			if (this == obj)
+			if ( this == obj ) {
 				return true;
-			if (obj == null)
+			}
+			if ( obj == null ) {
 				return false;
-			if (!(obj instanceof AbstractEntity ))
+			}
+			if ( !( obj instanceof AbstractEntity ) ) {
 				return false;
+			}
 			final AbstractEntity other = (AbstractEntity) obj;
-			if (uuid == null) {
-				if (other.uuid != null)
-					return false;
-			} else if (!uuid.equals(other.uuid))
+			if ( uuid == null ) {
+				return other.uuid == null;
+			}
+			else if ( !uuid.equals( other.uuid ) ) {
 				return false;
+			}
 			return true;
 		}
 	}
 
 	@Entity(name = "B")
-	public static class B extends AbstractEntity{
+	public static class B extends AbstractEntity {
 
 		@Id
 		@GeneratedValue(strategy = GenerationType.SEQUENCE)
 		private Long id;
 
-		@OneToMany(cascade =  {
-				CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH}
+		@OneToMany(cascade = {
+				CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH
+		}
 				, mappedBy = "b")
 		private java.util.Set<G> gCollection = new java.util.HashSet<>();
 
 
-		@ManyToOne(cascade =  {
-				CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH}
+		@ManyToOne(cascade = {
+				CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH
+		}
 				, optional = false)
 		private C c;
 
-		@ManyToOne(cascade =  {
-				CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH}
+		@ManyToOne(cascade = {
+				CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH
+		}
 				, optional = false)
 		private D d;
 	}
@@ -375,8 +359,9 @@ public class CascadeComplicatedToOnesEagerTest extends BaseReactiveTest {
 		@OneToMany(mappedBy = "c")
 		private Set<B> bCollection = new java.util.HashSet<>();
 
-		@OneToMany(cascade =  {
-				CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH}
+		@OneToMany(cascade = {
+				CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH
+		}
 				, mappedBy = "c")
 		private Set<D> dCollection = new java.util.HashSet<>();
 	}
@@ -397,8 +382,9 @@ public class CascadeComplicatedToOnesEagerTest extends BaseReactiveTest {
 		@ManyToOne(optional = false)
 		private E e;
 
-		@OneToMany(cascade =  {
-				CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH},
+		@OneToMany(cascade = {
+				CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH
+		},
 				mappedBy = "d"
 		)
 		private java.util.Set<F> fCollection = new java.util.HashSet<>();
@@ -425,8 +411,9 @@ public class CascadeComplicatedToOnesEagerTest extends BaseReactiveTest {
 		@GeneratedValue(strategy = GenerationType.SEQUENCE)
 		private Long id;
 
-		@OneToMany(cascade =  {
-				CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH}
+		@OneToMany(cascade = {
+				CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH
+		}
 				, mappedBy = "f")
 		private java.util.Set<E> eCollection = new java.util.HashSet<>();
 
