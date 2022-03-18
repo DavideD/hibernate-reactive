@@ -6,12 +6,19 @@
 package org.hibernate.reactive.pool.impl;
 
 
+import java.lang.invoke.MethodHandles;
 import java.net.URI;
+import java.util.Map;
 import java.util.concurrent.CompletionStage;
 
+import org.hibernate.HibernateError;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.jdbc.spi.SqlStatementLogger;
+import org.hibernate.internal.util.config.ConfigurationHelper;
+import org.hibernate.reactive.logging.impl.Log;
+import org.hibernate.reactive.logging.impl.LoggerFactory;
 import org.hibernate.reactive.pool.ReactiveConnection;
+import org.hibernate.reactive.provider.Settings;
 import org.hibernate.reactive.vertx.VertxInstance;
 import org.hibernate.service.spi.ServiceRegistryAwareService;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
@@ -26,6 +33,8 @@ import io.vertx.sqlclient.SqlConnectOptions;
 import io.vertx.sqlclient.SqlConnection;
 
 public class H2SqlClientPool extends SqlClientPool implements ServiceRegistryAwareService {
+
+	private static final Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
 	//Asynchronous shutdown promise: we can't return it from #close as we implement a
 	//blocking interface.
@@ -45,22 +54,29 @@ public class H2SqlClientPool extends SqlClientPool implements ServiceRegistryAwa
 		sqlStatementLogger = serviceRegistry.getService( JdbcServices.class ).getSqlStatementLogger();
 	}
 
+	public void configure(Map configuration) {
+		uri = jdbcUrl( configuration );
+	}
+
 	public void start() {
 		if ( pools == null ) {
 			pools = createPool( uri );
 		}
 	}
 
-	public void stop() {
-		if ( pools != null ) {
-			this.closeFuture = pools.close();
-		}
+	@Override
+	public CompletionStage<Void> getCloseFuture() {
+		return closeFuture.toCompletionStage();
+	}
+
+	@Override
+	protected Pool getPool() {
+		return pools;
 	}
 
 	private Pool createPool(URI uri) {
 		SqlClientPoolConfiguration configuration = serviceRegistry.getService( SqlClientPoolConfiguration.class );
 		VertxInstance vertx = serviceRegistry.getService( VertxInstance.class );
-
 		return createPool( uri, configuration.connectOptions( uri ), configuration.poolOptions(), vertx.getVertx() );
 	}
 
@@ -73,19 +89,36 @@ public class H2SqlClientPool extends SqlClientPool implements ServiceRegistryAwa
 		return pool;
 	}
 
-	@Override
-	protected Pool getPool() {
-		return pools;
+	private URI jdbcUrl(Map<?, ?> configurationValues) {
+		String url = ConfigurationHelper.getString( Settings.URL, configurationValues );
+		LOG.sqlClientUrl( url );
+		return parse( url );
+	}
+
+	public void stop() {
+		if ( pools != null ) {
+			this.closeFuture = pools.close();
+		}
+	}
+
+	public static URI parse(String url) {
+
+		if ( url == null || url.trim().isEmpty() ) {
+			throw new HibernateError(
+					"The configuration property '" + Settings.URL + "' was not provided, or is in invalid format. This is required when using the default DefaultSqlClientPool: " +
+							"either provide the configuration setting or integrate with a different SqlClientPool implementation" );
+		}
+
+		if ( url.startsWith( "jdbc:" ) ) {
+			return URI.create( url.substring( 5 ) );
+		}
+
+		return URI.create( url );
 	}
 
 	@Override
 	protected SqlStatementLogger getSqlStatementLogger() {
 		return sqlStatementLogger;
-	}
-
-	@Override
-	public CompletionStage<Void> getCloseFuture() {
-		return closeFuture.toCompletionStage();
 	}
 
 	@Override

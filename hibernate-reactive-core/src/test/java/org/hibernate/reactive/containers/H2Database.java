@@ -18,15 +18,14 @@ public class H2Database implements TestableDatabase {
 
 	@Override
 	public String getJdbcUrl() {
-		return getRegularJdbcUrl();
+		return "jdbc:h2:~/test";
 	}
 
 	@Override
 	public String getUri() {
-		{
-			return "h2:~/test";
-		}
+		return "h2:~/test";
 	}
+
 
 	@Override
 	public String getScheme() {
@@ -50,12 +49,12 @@ public class H2Database implements TestableDatabase {
 
 	@Override
 	public String jdbcStartQuery() {
-		throw new UnsupportedOperationException();
+		return ";";
 	}
 
 	@Override
 	public String jdbcParamDelimiter() {
-		throw new UnsupportedOperationException();
+		return ";";
 	}
 
 	private H2Database() {
