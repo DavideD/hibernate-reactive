@@ -17,11 +17,13 @@ import org.hibernate.engine.jdbc.spi.SqlStatementLogger;
 import org.hibernate.internal.util.config.ConfigurationHelper;
 import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.logging.impl.LoggerFactory;
-import org.hibernate.reactive.pool.ReactiveConnection;
 import org.hibernate.reactive.provider.Settings;
 import org.hibernate.reactive.vertx.VertxInstance;
+import org.hibernate.service.spi.Configurable;
 import org.hibernate.service.spi.ServiceRegistryAwareService;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
+import org.hibernate.service.spi.Startable;
+import org.hibernate.service.spi.Stoppable;
 
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
@@ -30,9 +32,9 @@ import io.vertx.jdbcclient.JDBCPool;
 import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.SqlConnectOptions;
-import io.vertx.sqlclient.SqlConnection;
 
-public class H2SqlClientPool extends SqlClientPool implements ServiceRegistryAwareService {
+public class H2SqlClientPool extends SqlClientPool
+		implements ServiceRegistryAwareService, Configurable, Stoppable, Startable {
 
 	private static final Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
@@ -85,7 +87,6 @@ public class H2SqlClientPool extends SqlClientPool implements ServiceRegistryAwa
 		jdbcOptions.setUser( connectOptions.getUser() );
 		jdbcOptions.setJdbcUrl( "jdbc:" + uri.toString() );
 		JDBCPool pool = JDBCPool.pool( vertx, jdbcOptions, poolOptions );
-
 		return pool;
 	}
 
@@ -119,24 +120,5 @@ public class H2SqlClientPool extends SqlClientPool implements ServiceRegistryAwa
 	@Override
 	protected SqlStatementLogger getSqlStatementLogger() {
 		return sqlStatementLogger;
-	}
-
-	@Override
-	public CompletionStage<ReactiveConnection> getConnection() {
-		return getConnectionFromPool( getPool() );
-	}
-
-	@Override
-	public CompletionStage<ReactiveConnection> getConnection(String tenantId) {
-		return getConnectionFromPool( getTenantPool( tenantId ) );
-	}
-
-	private CompletionStage<ReactiveConnection> getConnectionFromPool(Pool pool) {
-		start();
-		return pool.getConnection().toCompletionStage().thenApply( this::newConnection );
-	}
-
-	private SqlClientConnection newConnection(SqlConnection connection) {
-		return new SqlClientConnection( connection, getPool(), getSqlStatementLogger() );
 	}
 }

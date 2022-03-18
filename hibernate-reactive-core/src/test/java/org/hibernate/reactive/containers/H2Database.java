@@ -12,10 +12,6 @@ import java.util.Map;
 public class H2Database implements TestableDatabase {
 	public static H2Database INSTANCE = new H2Database();
 
-	private String getRegularJdbcUrl() {
-		return "jdbc:h2:~/test";
-	}
-
 	@Override
 	public String getJdbcUrl() {
 		return "jdbc:h2:~/test";
@@ -29,7 +25,7 @@ public class H2Database implements TestableDatabase {
 
 	@Override
 	public String getScheme() {
-		return "h2";
+		return "h2:";
 	}
 
 	@Override
@@ -44,7 +40,8 @@ public class H2Database implements TestableDatabase {
 
 	@Override
 	public String createJdbcUrl(String host, int port, String database, Map<String, String> params) {
-		return getRegularJdbcUrl();
+		// FIXME: Host and port might make sense if H2 is started with the right options
+		return TestableDatabase.super.createJdbcUrl( "~", -1, database, params );
 	}
 
 	@Override

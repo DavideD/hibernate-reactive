@@ -16,14 +16,10 @@ import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
-import org.hibernate.engine.jdbc.internal.JdbcServicesImpl;
-import org.hibernate.engine.jdbc.spi.JdbcServices;
-import org.hibernate.engine.jdbc.spi.SqlStatementLogger;
 import org.hibernate.reactive.containers.DatabaseConfiguration;
 import org.hibernate.reactive.containers.DatabaseConfiguration.DBType;
 import org.hibernate.reactive.mutiny.Mutiny;
 import org.hibernate.reactive.pool.ReactiveConnection;
-import org.hibernate.reactive.pool.ReactiveConnectionPool;
 import org.hibernate.reactive.pool.impl.H2SqlClientPool;
 import org.hibernate.reactive.provider.ReactiveServiceRegistryBuilder;
 import org.hibernate.reactive.provider.Settings;
@@ -49,6 +45,8 @@ import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
+import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2;
+import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.H2;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
 import static org.hibernate.reactive.util.impl.CompletionStages.loop;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
@@ -125,14 +123,14 @@ public abstract class BaseReactiveTest {
 		Configuration configuration = new Configuration();
 		configuration.setProperty( Settings.HBM2DDL_AUTO, "create" );
 		configuration.setProperty( Settings.URL, DatabaseConfiguration.getJdbcUrl() );
-		if ( DatabaseConfiguration.dbType() == DBType.DB2 && !doneTablespace ) {
+		if ( dbType() == DB2 && !doneTablespace ) {
 			configuration.setProperty(Settings.HBM2DDL_IMPORT_FILES, "/db2.sql");
 			doneTablespace = true;
-		} else if ( DatabaseConfiguration.dbType() == DBType.H2 ) {
-			configuration.setProperty(Settings.URL, "jdbc:h2:~/test");
-		} else {
-			configuration.setProperty( Settings.URL, DatabaseConfiguration.getJdbcUrl() );
 		}
+		if ( dbType() == H2 ) {
+			configuration.getProperties().put( Settings.SQL_CLIENT_POOL, new H2SqlClientPool() );
+		}
+		configuration.setProperty( Settings.URL, DatabaseConfiguration.getJdbcUrl() );
 		//Use JAVA_TOOL_OPTIONS='-Dhibernate.show_sql=true'
 		configuration.setProperty( Settings.SHOW_SQL, System.getProperty(Settings.SHOW_SQL, "false") );
 		configuration.setProperty( Settings.FORMAT_SQL, System.getProperty(Settings.FORMAT_SQL, "false") );
@@ -205,15 +203,6 @@ public abstract class BaseReactiveTest {
 	}
 
 	protected void addServices(StandardServiceRegistryBuilder builder) {
-		if(dbType()  == DBType.H2 ) {
-			builder.addService( ReactiveConnectionPool.class, new H2SqlClientPool() );
-			builder.addService( JdbcServices.class, new JdbcServicesImpl() {
-				@Override
-				public SqlStatementLogger getSqlStatementLogger() {
-					return new SqlStatementLogger();
-				}
-			} );
-		}
 	}
 
 	/*
