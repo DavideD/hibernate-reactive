@@ -38,7 +38,13 @@ public class ReactiveConnectionPoolInitiator implements StandardServiceInitiator
 	@Override
 	public ReactiveConnectionPool initiateService(Map configurationValues, ServiceRegistryImplementor registry) {
 		Object configValue = configurationValues.get( Settings.SQL_CLIENT_POOL );
-		if (configValue==null) {
+
+		String dbType = (String) configurationValues.get( "db" );
+		if ( dbType.equalsIgnoreCase( "h2" ) ) {
+			configValue = "org.hibernate.reactive.pool.impl.H2SqlClientPool";
+		}
+
+		if ( configValue == null ) {
 			return new DefaultSqlClientPool();
 		}
 
