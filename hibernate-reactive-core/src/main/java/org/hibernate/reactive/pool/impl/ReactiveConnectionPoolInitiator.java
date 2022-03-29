@@ -40,7 +40,7 @@ public class ReactiveConnectionPoolInitiator implements StandardServiceInitiator
 		Object configValue = configurationValues.get( Settings.SQL_CLIENT_POOL );
 
 		String dbType = (String) configurationValues.get( "db" );
-		if ( dbType.equalsIgnoreCase( "h2" ) ) {
+		if ( dbType != null && dbType.equalsIgnoreCase( "h2" ) ) {
 			configValue = "org.hibernate.reactive.pool.impl.H2SqlClientPool";
 		}
 

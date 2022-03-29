@@ -13,16 +13,22 @@ import org.hibernate.reactive.pool.BatchingConnection;
 import org.hibernate.reactive.pool.impl.SqlClientConnection;
 import org.hibernate.reactive.stage.impl.StageSessionImpl;
 import org.hibernate.reactive.stage.impl.StageStatelessSessionImpl;
+import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
+import org.junit.Rule;
 import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.H2;
 import static org.hibernate.reactive.util.impl.CompletionStages.loop;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
 public class BatchingConnectionTest extends ReactiveSessionTest {
+
+	@Rule
+	public DatabaseSelectionRule selectionRule = DatabaseSelectionRule.skipTestsFor( H2 );
 
 	@Override
 	protected Configuration constructConfiguration() {

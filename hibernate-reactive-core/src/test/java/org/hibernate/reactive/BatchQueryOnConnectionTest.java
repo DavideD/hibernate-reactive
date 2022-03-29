@@ -18,16 +18,22 @@ import org.hibernate.reactive.pool.ReactiveConnection;
 import org.hibernate.reactive.pool.impl.OracleParameters;
 import org.hibernate.reactive.pool.impl.PostgresParameters;
 import org.hibernate.reactive.pool.impl.SQLServerParameters;
+import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
+import org.junit.Rule;
 import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
 
+import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.H2;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
 
 public class BatchQueryOnConnectionTest extends BaseReactiveTest {
 
 	private static final int BATCH_SIZE = 20;
+
+	@Rule
+	public DatabaseSelectionRule selectionRule = DatabaseSelectionRule.skipTestsFor( H2 );
 
 	@Override
 	protected Set<Class<?>> annotatedEntities() {
