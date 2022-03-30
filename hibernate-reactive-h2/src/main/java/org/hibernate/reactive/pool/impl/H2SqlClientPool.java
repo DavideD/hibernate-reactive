@@ -25,12 +25,8 @@ import org.hibernate.service.spi.Startable;
 import org.hibernate.service.spi.Stoppable;
 
 import io.vertx.core.Future;
-import io.vertx.core.Vertx;
-import io.vertx.jdbcclient.JDBCConnectOptions;
 import io.vertx.jdbcclient.JDBCPool;
 import io.vertx.sqlclient.Pool;
-import io.vertx.sqlclient.PoolOptions;
-import io.vertx.sqlclient.SqlConnectOptions;
 
 public class H2SqlClientPool extends SqlClientPool
 		implements ServiceRegistryAwareService, Configurable, Stoppable, Startable {
@@ -62,6 +58,12 @@ public class H2SqlClientPool extends SqlClientPool
 		uri = jdbcUrl( configuration );
 	}
 
+	protected URI jdbcUrl(Map<?,?> configurationValues) {
+		String url = ConfigurationHelper.getString( Settings.URL, configurationValues, DEFAULT_URL );
+		LOG.sqlClientUrl( url);
+		return URI.create( url );
+	}
+
 	@Override
 	public void start() {
 		if ( pools == null ) {
@@ -80,51 +82,9 @@ public class H2SqlClientPool extends SqlClientPool
 	}
 
 	private Pool createPool(URI uri) {
-		SqlClientPoolConfiguration configuration = serviceRegistry.getService( SqlClientPoolConfiguration.class );
+		JdbcClientPoolConfiguration configuration = serviceRegistry.getService( JdbcClientPoolConfiguration.class );
 		VertxInstance vertx = serviceRegistry.getService( VertxInstance.class );
-		return createPool( uri, connectOptions( uri ), configuration.poolOptions(), vertx.getVertx() );
-	}
-
-	private Pool createPool(URI uri, SqlConnectOptions connectOptions, PoolOptions poolOptions, Vertx vertx) {
-		JDBCConnectOptions jdbcOptions = new JDBCConnectOptions();
-		jdbcOptions.setUser( connectOptions.getUser() );
-		jdbcOptions.setPassword( connectOptions.getPassword() );
-		// TODO: set other options based on URI parameters
-		jdbcOptions.setJdbcUrl( uri.toString() );
-
-		return JDBCPool.pool( vertx, jdbcOptions, poolOptions );
-	}
-
-	private URI jdbcUrl(Map<?, ?> configurationValues) {
-		String url = ConfigurationHelper.getString( Settings.URL, configurationValues );
-		LOG.sqlClientUrl( url );
-		return parse( url );
-	}
-
-	private SqlConnectOptions connectOptions(URI uri) {
-		// H2 separates parameters in the url with a semicolon (';')
-		// "jdbc:h2:~/test;DATABASE_TO_UPPER=FALSE";
-		SqlConnectOptions options = new SqlConnectOptions()
-				// username
-				.setUser( "sa" )
-				// password
-				.setPassword( "" );
-		int index = uri.toString().indexOf( ';' );
-		if ( index > -1 ) {
-			String query = uri.toString().substring( index + 1 );
-			String[] params = query.split( ";" );
-			for ( String param : params ) {
-				final int position = param.indexOf( "=" );
-				if ( position != -1 ) {
-					// We assume the first '=' is the one separating key and value
-					// TODO: Check for specific JDBCConnectOptions and set based on available parameter values
-					String key = param.substring( 0, position );
-					String value = param.substring( position + 1 );
-					options.addProperty( key, value );
-				}
-			}
-		}
-		return options;
+		return JDBCPool.pool( vertx.getVertx(), configuration.jdbcConnectOptions( uri ), configuration.poolOptions() );
 	}
 
 	@Override
@@ -132,18 +92,6 @@ public class H2SqlClientPool extends SqlClientPool
 		if ( pools != null ) {
 			this.closeFuture = pools.close();
 		}
-	}
-
-	public static URI parse(String url) {
-		if ( url == null || url.trim().isEmpty() ) {
-			return URI.create( DEFAULT_URL );
-		}
-
-		if ( url.startsWith( "jdbc:" ) ) {
-			return URI.create( url );
-		}
-
-		return URI.create( "jdbc:" + url );
 	}
 
 	@Override
