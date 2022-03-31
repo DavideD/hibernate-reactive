@@ -1,5 +1,5 @@
 ext {
-	mavenPomName = 'Hibernate Reactive Core'
+    mavenPomName = 'Hibernate Reactive Core'
 }
 
 description = 'The core module of Hibernate Reactive'
@@ -30,6 +30,8 @@ dependencies {
     // Testing
     testImplementation 'org.assertj:assertj-core:3.20.2'
     testImplementation "io.vertx:vertx-unit:${vertxVersion}"
+
+    testImplementation project(':hibernate-reactive-h2')
 
     // Drivers
     testImplementation "io.vertx:vertx-pg-client:${vertxVersion}"
