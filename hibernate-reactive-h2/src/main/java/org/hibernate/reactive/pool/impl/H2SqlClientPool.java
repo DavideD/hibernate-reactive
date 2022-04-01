@@ -25,6 +25,7 @@ import org.hibernate.service.spi.Startable;
 import org.hibernate.service.spi.Stoppable;
 
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonObject;
 import io.vertx.jdbcclient.JDBCPool;
 import io.vertx.sqlclient.Pool;
 
@@ -84,7 +85,10 @@ public class H2SqlClientPool extends SqlClientPool
 	private Pool createPool(URI uri) {
 		JdbcClientPoolConfiguration configuration = serviceRegistry.getService( JdbcClientPoolConfiguration.class );
 		VertxInstance vertx = serviceRegistry.getService( VertxInstance.class );
-		return JDBCPool.pool( vertx.getVertx(), configuration.jdbcConnectOptions( uri ) );
+		JsonObject poolOptions = configuration.poolOptions().toJson();
+		JsonObject connectOptions = configuration.jdbcConnectOptions( uri );
+		JsonObject config = poolOptions.mergeIn( connectOptions );
+		return JDBCPool.pool( vertx.getVertx(), config );
 	}
 
 	@Override
