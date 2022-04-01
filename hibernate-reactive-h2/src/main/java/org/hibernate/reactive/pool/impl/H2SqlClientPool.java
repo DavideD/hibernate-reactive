@@ -33,7 +33,7 @@ public class H2SqlClientPool extends SqlClientPool
 
 	private static final Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
-	public static final String DEFAULT_URL = "jdbc:h2:~/hreact;DATABASE_TO_UPPER=FALSE";
+	public static final String DEFAULT_URL = "jdbc:h2:mem:hreact;DATABASE_TO_UPPER=FALSE";
 
 	//Asynchronous shutdown promise: we can't return it from #close as we implement a
 	//blocking interface.
