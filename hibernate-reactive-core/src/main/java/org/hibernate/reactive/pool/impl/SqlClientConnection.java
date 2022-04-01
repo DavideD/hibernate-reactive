@@ -187,7 +187,7 @@ public class SqlClientConnection implements ReactiveConnection {
 
 			int i = 0;
 			RowSet<Row> resultNext = result;
-			if ( parametersBatch.size() > 0 ) {
+			if ( result != null && parametersBatch.size() > 0 ) {
 				final RowIterator<Row> iterator = resultNext.iterator();
 				if ( iterator.hasNext() ) {
 					while ( iterator.hasNext() ) {

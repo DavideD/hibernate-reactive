@@ -9,13 +9,12 @@ import java.net.URI;
 
 import io.vertx.core.json.JsonObject;
 
-public class H2ClientPoolConfiguration extends DefaultSqlClientPoolConfiguration
-		implements JdbcClientPoolConfiguration {
+public class H2ClientPoolConfiguration extends DefaultSqlClientPoolConfiguration implements JdbcClientPoolConfiguration {
 
 	@Override
 	public JsonObject jdbcConnectOptions(URI uri) {
 		return new JsonObject()
-				.put( "url", H2SqlClientPool.DEFAULT_URL )
+				.put( "url", uri.toString() )
 				.put( "user", "sa" )
 				.put( "pass", null );
 	}
