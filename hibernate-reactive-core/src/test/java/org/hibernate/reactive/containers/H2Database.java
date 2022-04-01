@@ -51,8 +51,8 @@ public class H2Database implements TestableDatabase {
 			expectedDBTypeForClass.put( byte.class, "TINYINT" );
 			expectedDBTypeForClass.put( Byte.class, "TINYINT" );
 			expectedDBTypeForClass.put( PrimitiveByteArrayTypeDescriptor.class, "BINARY VARYING" );
-			expectedDBTypeForClass.put( URL.class, "VARCHAR_IGNORECASE" );
-			expectedDBTypeForClass.put( TimeZone.class, "VARCHAR_IGNORECASE" );
+			expectedDBTypeForClass.put( URL.class, "CHARACTER VARYING" );
+			expectedDBTypeForClass.put( TimeZone.class, "CHARACTER VARYING" );
 			expectedDBTypeForClass.put( Date.class, "DATE" );
 			expectedDBTypeForClass.put( Timestamp.class, "TIMESTAMP" );
 			expectedDBTypeForClass.put( Time.class, "TIME" );
@@ -68,7 +68,7 @@ public class H2Database implements TestableDatabase {
 			expectedDBTypeForClass.put( Character.class, "VARCHAR_IGNORECASE" );
 			expectedDBTypeForClass.put( char.class, "VARCHAR_IGNORECASE" );
 			expectedDBTypeForClass.put( TextType.class, "text" );
-			expectedDBTypeForClass.put( String.class, "VARCHAR_IGNORECASE" );
+			expectedDBTypeForClass.put( String.class, "CHARACTER VARYING" );
 		}
 	}
 

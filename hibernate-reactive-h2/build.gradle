@@ -12,8 +12,6 @@ dependencies {
 
     // Dependencies for using H2 with Vert.x:
     implementation "io.vertx:vertx-jdbc-client:${vertxVersion}"
-    implementation 'io.agroal:agroal-api:1.12'
-    implementation 'io.agroal:agroal-pool:1.12'
 
     // Testing
     testImplementation 'org.assertj:assertj-core:3.20.2'

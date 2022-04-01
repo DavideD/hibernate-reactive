@@ -9,9 +9,8 @@ import java.net.URI;
 
 import org.hibernate.service.Service;
 
-import io.vertx.jdbcclient.JDBCConnectOptions;
+import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.PoolOptions;
-import io.vertx.sqlclient.SqlConnectOptions;
 
 public interface JdbcClientPoolConfiguration extends Service {
 	/**
@@ -20,12 +19,12 @@ public interface JdbcClientPoolConfiguration extends Service {
 	PoolOptions poolOptions();
 
 	/**
-	 * The {@link SqlConnectOptions} used to configure the {@code Pool}
+	 * The {@link JsonObject} used to configure the {@code Pool}
 	 *
 	 * @param uri A {@link URI} representing the JDBC URL or connection URI
 	 * specified in the configuration properties, usually via
 	 * {@link org.hibernate.cfg.Environment#JPA_JDBC_URL}, or
 	 * {@code null} if not specified.
 	 */
-	JDBCConnectOptions jdbcConnectOptions(URI uri);
+	JsonObject jdbcConnectOptions(URI uri);
 }

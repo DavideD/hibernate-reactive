@@ -33,7 +33,7 @@ public class H2SqlClientPool extends SqlClientPool
 
 	private static final Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
-	private static final String DEFAULT_URL = "jdbc:h2:~/hreact;DATABASE_TO_UPPER=FALSE";
+	public static final String DEFAULT_URL = "jdbc:h2:~/hreact;DATABASE_TO_UPPER=FALSE";
 
 	//Asynchronous shutdown promise: we can't return it from #close as we implement a
 	//blocking interface.
@@ -84,7 +84,7 @@ public class H2SqlClientPool extends SqlClientPool
 	private Pool createPool(URI uri) {
 		JdbcClientPoolConfiguration configuration = serviceRegistry.getService( JdbcClientPoolConfiguration.class );
 		VertxInstance vertx = serviceRegistry.getService( VertxInstance.class );
-		return JDBCPool.pool( vertx.getVertx(), configuration.jdbcConnectOptions( uri ), configuration.poolOptions() );
+		return JDBCPool.pool( vertx.getVertx(), configuration.jdbcConnectOptions( uri ) );
 	}
 
 	@Override

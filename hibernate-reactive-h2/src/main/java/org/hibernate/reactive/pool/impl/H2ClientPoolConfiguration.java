@@ -7,20 +7,16 @@ package org.hibernate.reactive.pool.impl;
 
 import java.net.URI;
 
-import io.vertx.jdbcclient.JDBCConnectOptions;
+import io.vertx.core.json.JsonObject;
 
 public class H2ClientPoolConfiguration extends DefaultSqlClientPoolConfiguration
 		implements JdbcClientPoolConfiguration {
 
 	@Override
-	public JDBCConnectOptions jdbcConnectOptions(URI uri) {
-
-		return new JDBCConnectOptions()
-				// H2 connection string
-				.setJdbcUrl( uri.toString() )
-				// username
-				.setUser( getUser() == null ? "SA" : getUser() )
-				// password
-				.setPassword( getPassword() );
+	public JsonObject jdbcConnectOptions(URI uri) {
+		return new JsonObject()
+				.put( "url", H2SqlClientPool.DEFAULT_URL )
+				.put( "user", "sa" )
+				.put( "pass", null );
 	}
 }
