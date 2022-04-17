@@ -66,7 +66,7 @@ and schema to run the tests:
 ```
 podman run --rm --name HibernateTestingMariaDB \
     -e MYSQL_ROOT_PASSWORD=hreact -e MYSQL_DATABASE=hreact -e MYSQL_USER=hreact -e MYSQL_PASSWORD=hreact \
-    -p 3306:3306 mariadb:10.7.1
+    -p 3306:3306 mariadb:10.7.3
 ```
 
 When the database has started, you can run the tests on MariaDB with:
@@ -120,7 +120,7 @@ configured to run the tests:
 ```
 podman run --rm --name=HibernateTestingCockroachDB \
     --hostname=roachrr1 -p 26257:26257 -p 8080:8080 \
-    cockroachdb/cockroach:v21.2.4 start-single-node --insecure
+    cockroachdb/cockroach:v21.2.8 start-single-node --insecure
 ```
 
 Some of tests needs temporary tables and because this is an experimental feature in
