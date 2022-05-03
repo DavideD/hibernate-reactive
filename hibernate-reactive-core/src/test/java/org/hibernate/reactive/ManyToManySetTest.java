@@ -22,7 +22,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class ManyToManySetTest extends BaseReactiveTest {
+public class ManyToManySetTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

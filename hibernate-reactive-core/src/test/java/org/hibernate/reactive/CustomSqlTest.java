@@ -28,7 +28,7 @@ import java.util.List;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.COCKROACHDB;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.POSTGRESQL;
 
-public class CustomSqlTest extends BaseReactiveTest {
+public class CustomSqlTest extends WithVertxContextTest {
 
 	@Rule
 	public DatabaseSelectionRule rule = DatabaseSelectionRule.runOnlyFor( POSTGRESQL, COCKROACHDB );

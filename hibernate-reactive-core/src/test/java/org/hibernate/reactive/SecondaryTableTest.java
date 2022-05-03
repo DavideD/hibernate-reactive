@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Objects;
 
 
-public class SecondaryTableTest extends BaseReactiveTest {
+public class SecondaryTableTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

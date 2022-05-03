@@ -21,7 +21,7 @@ import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
 
-public class MutinyExceptionsTest extends BaseReactiveTest {
+public class MutinyExceptionsTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

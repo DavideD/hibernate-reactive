@@ -5,7 +5,7 @@
  */
 package org.hibernate.reactive.schema;
 
-import org.hibernate.reactive.BaseReactiveTest;
+import org.hibernate.reactive.WithVertxContextTest;
 import org.hibernate.type.NumericBooleanType;
 import org.hibernate.type.TrueFalseType;
 import org.hibernate.type.YesNoType;
@@ -37,7 +37,7 @@ import java.util.TimeZone;
 /**
  * Check that each property is mapped as the expected type in the database.
  */
-public class ColumnTypesMappingTest extends BaseReactiveTest {
+public class ColumnTypesMappingTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

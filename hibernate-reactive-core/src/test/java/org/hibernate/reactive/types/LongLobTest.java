@@ -16,7 +16,7 @@ import javax.persistence.Id;
 import javax.persistence.Lob;
 import javax.persistence.Table;
 
-import org.hibernate.reactive.BaseReactiveTest;
+import org.hibernate.reactive.WithVertxContextTest;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
 import org.junit.Rule;
@@ -26,7 +26,7 @@ import io.vertx.ext.unit.TestContext;
 
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.MYSQL;
 
-public class LongLobTest extends BaseReactiveTest {
+public class LongLobTest extends WithVertxContextTest {
 
 	@Rule
 	public DatabaseSelectionRule selectionRule = DatabaseSelectionRule.runOnlyFor( MYSQL );

@@ -31,7 +31,7 @@ import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.POS
  * This class creates multiple additional databases so that we can check that queries run
  * on the database for the selected tenant.
  */
-public class ReactiveMultitenantTest extends BaseReactiveTest {
+public class ReactiveMultitenantTest extends WithVertxContextTest {
 
 	private static final MyCurrentTenantIdentifierResolver TENANT_RESOLVER = new MyCurrentTenantIdentifierResolver();
 

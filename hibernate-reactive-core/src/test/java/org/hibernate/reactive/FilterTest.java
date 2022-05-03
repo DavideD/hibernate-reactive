@@ -37,7 +37,7 @@ import org.junit.Test;
 import io.vertx.ext.unit.TestContext;
 
 
-public class FilterTest extends BaseReactiveTest {
+public class FilterTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

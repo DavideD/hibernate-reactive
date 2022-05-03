@@ -52,7 +52,7 @@ import javax.persistence.Transient;
 import javax.persistence.Version;
 
 import org.hibernate.annotations.Type;
-import org.hibernate.reactive.BaseReactiveTest;
+import org.hibernate.reactive.WithVertxContextTest;
 
 import org.junit.Test;
 
@@ -61,7 +61,7 @@ import io.vertx.ext.unit.TestContext;
 /**
  * Test all the types and lifecycle callbacks that we expect to work on all supported DBs
  */
-public class BasicTypesAndCallbacksForAllDBsTest extends BaseReactiveTest {
+public class BasicTypesAndCallbacksForAllDBsTest extends WithVertxContextTest {
 
 	@Override
 	protected Set<Class<?>> annotatedEntities() {

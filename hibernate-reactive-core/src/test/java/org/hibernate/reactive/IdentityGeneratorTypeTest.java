@@ -33,7 +33,7 @@ import static org.hibernate.reactive.testing.DatabaseSelectionRule.skipTestsFor;
  * </p>
  * @see IdentityGeneratorTest
  */
-public class IdentityGeneratorTypeTest extends BaseReactiveTest {
+public class IdentityGeneratorTypeTest extends WithVertxContextTest {
 
 	// CockroachDB ids cannot be cast to short or int (they are too big)
 	@Rule

@@ -19,7 +19,7 @@ import org.junit.Test;
 import io.vertx.ext.unit.TestContext;
 
 
-public class OneToOneIdClassParentIdClassTest extends BaseReactiveTest {
+public class OneToOneIdClassParentIdClassTest extends WithVertxContextTest {
 
 	@Override
 	protected Configuration constructConfiguration() {

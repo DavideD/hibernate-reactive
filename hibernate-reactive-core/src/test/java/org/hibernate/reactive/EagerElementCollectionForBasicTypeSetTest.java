@@ -41,7 +41,7 @@ import org.assertj.core.api.Assertions;
  * @see EagerElementCollectionForBasicTypeListTest
  * @see EagerElementCollectionForEmbeddableTypeListTest
  */
-public class EagerElementCollectionForBasicTypeSetTest extends BaseReactiveTest {
+public class EagerElementCollectionForBasicTypeSetTest extends WithVertxContextTest {
 
 	private Person thePerson;
 

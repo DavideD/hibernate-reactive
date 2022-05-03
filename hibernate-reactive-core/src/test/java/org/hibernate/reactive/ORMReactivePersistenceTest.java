@@ -33,7 +33,7 @@ import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.POS
  * This test class verifies that data can be persisted and queried on the same database
  * using both JPA/hibernate and reactive session factories.
  */
-public class ORMReactivePersistenceTest extends BaseReactiveTest {
+public class ORMReactivePersistenceTest extends WithVertxContextTest {
 
 	@Rule
 	public DatabaseSelectionRule rule = DatabaseSelectionRule.runOnlyFor( POSTGRESQL );

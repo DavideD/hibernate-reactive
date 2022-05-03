@@ -21,7 +21,7 @@ import io.vertx.ext.unit.TestContext;
 /**
  * Test a find after a flush and before closing the session
  */
-public class FindAfterFlushTest extends BaseReactiveTest {
+public class FindAfterFlushTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

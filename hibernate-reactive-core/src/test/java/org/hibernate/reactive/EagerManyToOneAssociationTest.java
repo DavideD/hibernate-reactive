@@ -21,7 +21,7 @@ import io.vertx.ext.unit.TestContext;
 
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
-public class EagerManyToOneAssociationTest extends BaseReactiveTest {
+public class EagerManyToOneAssociationTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

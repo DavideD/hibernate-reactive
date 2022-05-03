@@ -24,7 +24,7 @@ import io.vertx.ext.unit.TestContext;
 
 import static org.hibernate.annotations.OptimisticLockType.DIRTY;
 
-public class DynamicUpdateTest extends BaseReactiveTest {
+public class DynamicUpdateTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

@@ -17,7 +17,7 @@ import static org.hibernate.tool.schema.JdbcMetadaAccessStrategy.INDIVIDUALLY;
 
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
-import org.hibernate.reactive.BaseReactiveTest;
+import org.hibernate.reactive.WithVertxContextTest;
 import org.hibernate.reactive.provider.Settings;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 import org.hibernate.tool.schema.spi.SchemaManagementException;
@@ -36,7 +36,7 @@ import io.vertx.ext.unit.TestContext;
  * - TODO: Missing column
  * - TODO: Wrong column type
  */
-public abstract class SchemaValidationTestBase extends BaseReactiveTest {
+public abstract class SchemaValidationTestBase extends WithVertxContextTest {
 
 	public static class IndividuallyStrategyTest extends SchemaValidationTestBase {
 

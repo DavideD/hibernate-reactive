@@ -24,7 +24,7 @@ import io.smallrye.mutiny.Uni;
 import io.vertx.ext.unit.TestContext;
 
 
-public class MutinySessionTest extends BaseReactiveTest {
+public class MutinySessionTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Objects;
 
 
-public class ReferenceTest extends BaseReactiveTest {
+public class ReferenceTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

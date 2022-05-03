@@ -17,7 +17,7 @@ import javax.persistence.Table;
 import javax.persistence.Version;
 
 import org.hibernate.annotations.Type;
-import org.hibernate.reactive.BaseReactiveTest;
+import org.hibernate.reactive.WithVertxContextTest;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
 import org.junit.Rule;
@@ -33,7 +33,7 @@ import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.SQL
 /**
  * Test types that we expect to work only on selected DBs.
  */
-public class UserJsonTypeTest extends BaseReactiveTest {
+public class UserJsonTypeTest extends WithVertxContextTest {
 
 	@Rule
 	public DatabaseSelectionRule selectionRule = DatabaseSelectionRule.skipTestsFor( DB2, SQLSERVER, ORACLE );

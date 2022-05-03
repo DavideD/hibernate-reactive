@@ -22,7 +22,7 @@ import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
 
-public class ManyToManyTest extends BaseReactiveTest {
+public class ManyToManyTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

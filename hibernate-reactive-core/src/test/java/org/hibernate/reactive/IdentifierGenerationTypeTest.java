@@ -24,7 +24,7 @@ import io.vertx.ext.unit.TestContext;
  *
  * @see org.hibernate.reactive.id.impl.IdentifierGeneration
  */
-public class IdentifierGenerationTypeTest extends BaseReactiveTest {
+public class IdentifierGenerationTypeTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

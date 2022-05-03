@@ -26,7 +26,7 @@ import io.vertx.ext.unit.TestContext;
 /**
  * Test importing a SQL script which is using the multi-line format
  */
-public class MultilineImportsTest extends BaseReactiveTest {
+public class MultilineImportsTest extends WithVertxContextTest {
 
 	private static CompletionStage<List<Object>> runQuery(Stage.Session s) {
 		return s.createQuery( "from Hero h where h.heroName = :name" )

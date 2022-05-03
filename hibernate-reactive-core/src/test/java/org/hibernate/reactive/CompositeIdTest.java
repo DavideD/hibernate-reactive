@@ -22,7 +22,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletionStage;
 
 
-public class CompositeIdTest extends BaseReactiveTest {
+public class CompositeIdTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

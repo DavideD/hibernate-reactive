@@ -27,7 +27,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
+public class LazyOneToManyAssociationWithFetchTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

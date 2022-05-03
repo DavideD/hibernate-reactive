@@ -21,7 +21,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.List;
 
-public class TimestampTest extends BaseReactiveTest {
+public class TimestampTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

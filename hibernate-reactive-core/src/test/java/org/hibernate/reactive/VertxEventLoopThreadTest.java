@@ -18,7 +18,7 @@ import io.vertx.ext.unit.TestContext;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Check that the {@link BaseReactiveTest} class is starting a Vert.x event loop
+ * Check that the {@link WithVertxContextTest} class is starting a Vert.x event loop
  * and that a test will use it.
  * <p>
  *    This is important because our assumption is that all tests will run in a single thread and it's
@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *    not shared properly among threads.
  * </p>
  */
-public class VertxEventLoopThreadTest extends BaseReactiveTest {
+public class VertxEventLoopThreadTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

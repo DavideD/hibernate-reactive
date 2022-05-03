@@ -23,7 +23,7 @@ import io.vertx.ext.unit.TestContext;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.ORACLE;
 
 
-public class HQLUpdateQueryTest extends BaseReactiveTest {
+public class HQLUpdateQueryTest extends WithVertxContextTest {
 
 	@Rule // We cannot read a generated id in Oracle (testInsertQuery will fail)
 	public DatabaseSelectionRule dbRule = DatabaseSelectionRule.skipTestsFor( ORACLE );

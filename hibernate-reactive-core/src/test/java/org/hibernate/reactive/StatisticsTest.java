@@ -23,7 +23,7 @@ import io.vertx.ext.unit.TestContext;
 import static org.hibernate.cfg.AvailableSettings.GENERATE_STATISTICS;
 
 
-public class StatisticsTest extends BaseReactiveTest {
+public class StatisticsTest extends WithVertxContextTest {
 
 	@Override
 	protected Configuration constructConfiguration() {

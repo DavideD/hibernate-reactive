@@ -21,7 +21,7 @@ import org.junit.Test;
 import io.vertx.ext.unit.TestContext;
 
 
-public class OneToOneIdClassParentEmbeddedIdTest extends BaseReactiveTest {
+public class OneToOneIdClassParentEmbeddedIdTest extends WithVertxContextTest {
 
 	@Override
 	protected Configuration constructConfiguration() {

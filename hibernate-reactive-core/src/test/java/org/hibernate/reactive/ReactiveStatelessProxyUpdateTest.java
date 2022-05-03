@@ -38,7 +38,7 @@ import static org.hibernate.reactive.testing.ReactiveAssertions.assertThrown;
  * @see org.hibernate.reactive.session.impl.ReactiveStatelessSessionImpl#reactiveUpdate(Object)
  * @see ReactiveStatelessSessionTest
  */
-public class ReactiveStatelessProxyUpdateTest extends BaseReactiveTest {
+public class ReactiveStatelessProxyUpdateTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

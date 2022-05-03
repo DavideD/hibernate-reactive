@@ -27,7 +27,7 @@ import io.smallrye.mutiny.Uni;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 
-public class LazyInitializationExceptionWithMutiny extends BaseReactiveTest {
+public class LazyInitializationExceptionWithMutiny extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

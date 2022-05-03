@@ -22,7 +22,7 @@ import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
 
-public class LazyOneToOneWithJoinColumnTest extends BaseReactiveTest {
+public class LazyOneToOneWithJoinColumnTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

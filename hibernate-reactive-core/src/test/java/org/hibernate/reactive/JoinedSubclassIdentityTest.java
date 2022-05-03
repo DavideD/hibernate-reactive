@@ -20,7 +20,7 @@ import javax.persistence.Id;
 import javax.persistence.Inheritance;
 import javax.persistence.InheritanceType;
 
-public class JoinedSubclassIdentityTest extends BaseReactiveTest {
+public class JoinedSubclassIdentityTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

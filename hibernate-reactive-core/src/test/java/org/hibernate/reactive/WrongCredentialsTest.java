@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *     schema generation. You might just see some warnings in the log.
  * </p>
  */
-public class WrongCredentialsTest extends BaseReactiveTest {
+public class WrongCredentialsTest extends WithVertxContextTest {
 
 	@Override
 	protected Configuration constructConfiguration() {

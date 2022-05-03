@@ -27,7 +27,7 @@ import io.vertx.ext.unit.TestContext;
 
 import static org.hibernate.Hibernate.isInitialized;
 
-public class LazyManyToOneAssociationTest extends BaseReactiveTest {
+public class LazyManyToOneAssociationTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

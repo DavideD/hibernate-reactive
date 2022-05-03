@@ -24,7 +24,7 @@ import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
 
-public class EagerElementCollectionForEmbeddedEmbeddableMapTest extends BaseReactiveTest {
+public class EagerElementCollectionForEmbeddedEmbeddableMapTest extends WithVertxContextTest {
 
 	private Person thePerson;
 

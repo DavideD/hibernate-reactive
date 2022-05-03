@@ -22,7 +22,7 @@ import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
 import org.hibernate.cfg.Configuration;
-import org.hibernate.reactive.BaseReactiveTest;
+import org.hibernate.reactive.WithVertxContextTest;
 import org.hibernate.reactive.provider.Settings;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
@@ -37,7 +37,7 @@ import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.SQL
 import static org.hibernate.tool.schema.JdbcMetadaAccessStrategy.GROUPED;
 import static org.hibernate.tool.schema.JdbcMetadaAccessStrategy.INDIVIDUALLY;
 
-public abstract class SchemaUpdateSqlServerTestBase extends BaseReactiveTest {
+public abstract class SchemaUpdateSqlServerTestBase extends WithVertxContextTest {
 
 	private static final String DEFAULT_CATALOG_NAME = "master";
 

@@ -31,7 +31,7 @@ import io.vertx.ext.unit.TestContext;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.ORACLE;
 
 
-public class JoinedSubclassInheritanceTest extends BaseReactiveTest {
+public class JoinedSubclassInheritanceTest extends WithVertxContextTest {
 
 	@Rule // We cannot read a generated id in Oracle
 	public DatabaseSelectionRule dbRule = DatabaseSelectionRule.skipTestsFor( ORACLE );

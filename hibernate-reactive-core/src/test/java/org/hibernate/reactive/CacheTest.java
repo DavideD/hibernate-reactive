@@ -22,7 +22,7 @@ import io.vertx.ext.unit.TestContext;
 
 import static org.hibernate.annotations.CacheConcurrencyStrategy.NONSTRICT_READ_WRITE;
 
-public class CacheTest extends BaseReactiveTest {
+public class CacheTest extends WithVertxContextTest {
 
 	@Override
 	protected Configuration constructConfiguration() {

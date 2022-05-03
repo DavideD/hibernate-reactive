@@ -27,7 +27,7 @@ import org.junit.Test;
 import io.vertx.ext.unit.TestContext;
 
 
-public class LazyInitializationExceptionWithStage extends BaseReactiveTest {
+public class LazyInitializationExceptionWithStage extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

@@ -24,14 +24,14 @@ import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
 import org.hibernate.TransientPropertyValueException;
-import org.hibernate.reactive.BaseReactiveTest;
+import org.hibernate.reactive.WithVertxContextTest;
 
 import org.junit.Test;
 
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.unit.TestContext;
 
-public class JoinColumnsTest extends BaseReactiveTest {
+public class JoinColumnsTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

@@ -32,7 +32,7 @@ import io.vertx.ext.unit.TestContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class LazyReplaceOrphanedEntityTest extends BaseReactiveTest {
+public class LazyReplaceOrphanedEntityTest extends WithVertxContextTest {
 
 	private Campaign theCampaign;
 

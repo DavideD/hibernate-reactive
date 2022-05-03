@@ -38,7 +38,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletionStage;
 
 
-public class EagerTest extends BaseReactiveTest {
+public class EagerTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

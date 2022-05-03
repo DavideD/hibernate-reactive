@@ -15,7 +15,7 @@ import java.util.Objects;
 
 
 
-public class BlockSequenceGeneratorTest extends BaseReactiveTest {
+public class BlockSequenceGeneratorTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

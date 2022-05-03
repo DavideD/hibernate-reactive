@@ -24,7 +24,7 @@ import static javax.persistence.CascadeType.REMOVE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 
-public class OrphanRemovalTest extends BaseReactiveTest {
+public class OrphanRemovalTest extends WithVertxContextTest {
 
 	@Override
 	protected Configuration constructConfiguration() {

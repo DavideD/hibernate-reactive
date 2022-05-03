@@ -24,7 +24,7 @@ import org.junit.Test;
 import io.vertx.ext.unit.TestContext;
 
 
-public class EmptyCompositeCollectionKeyTest extends BaseReactiveTest {
+public class EmptyCompositeCollectionKeyTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

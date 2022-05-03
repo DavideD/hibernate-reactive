@@ -38,7 +38,7 @@ import static org.hibernate.reactive.testing.DatabaseSelectionRule.runOnlyFor;
 /**
  * Test the @{@link Generated} annotation
  */
-public class GeneratedPropertySingleTableTest extends BaseReactiveTest {
+public class GeneratedPropertySingleTableTest extends WithVertxContextTest {
 
 	// It requires native queries, so it won't work for every db
 	@Rule

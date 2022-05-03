@@ -22,7 +22,7 @@ import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
 
-public class IdentityGeneratorTest extends BaseReactiveTest {
+public class IdentityGeneratorTest extends WithVertxContextTest {
 
 	/**
 	 * When {@link AvailableSettings#USE_GET_GENERATED_KEYS} is enabled, different

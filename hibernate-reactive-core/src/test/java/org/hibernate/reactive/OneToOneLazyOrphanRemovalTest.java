@@ -16,7 +16,7 @@ import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
 
-public class OneToOneLazyOrphanRemovalTest extends BaseReactiveTest {
+public class OneToOneLazyOrphanRemovalTest extends WithVertxContextTest {
 
 
 	@Override

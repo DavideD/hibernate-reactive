@@ -28,7 +28,7 @@ import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.ORA
 import static org.hibernate.reactive.testing.DatabaseSelectionRule.runOnlyFor;
 import static org.hibernate.reactive.testing.DatabaseSelectionRule.skipTestsFor;
 
-public abstract class UUIDAsBinaryType extends BaseReactiveTest {
+public abstract class UUIDAsBinaryType extends WithVertxContextTest {
 
 	public static class ForMySQLandMariaDBTest extends UUIDAsBinaryType {
 		// There's an issue querying for Binary types if the size of the column is different from

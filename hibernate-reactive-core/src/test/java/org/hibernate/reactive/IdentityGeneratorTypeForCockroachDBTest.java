@@ -34,7 +34,7 @@ import static org.hibernate.reactive.testing.ReactiveAssertions.assertThrown;
  * @see IdentityGeneratorTest
  * @see IdentityGeneratorTypeTest
  */
-public class IdentityGeneratorTypeForCockroachDBTest extends BaseReactiveTest {
+public class IdentityGeneratorTypeForCockroachDBTest extends WithVertxContextTest {
 
 	@Rule
 	public DatabaseSelectionRule runOnly = runOnlyFor( COCKROACHDB );

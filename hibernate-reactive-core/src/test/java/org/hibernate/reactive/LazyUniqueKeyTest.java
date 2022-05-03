@@ -24,7 +24,7 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 
-public class LazyUniqueKeyTest extends BaseReactiveTest {
+public class LazyUniqueKeyTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

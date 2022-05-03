@@ -44,7 +44,7 @@ import java.util.Objects;
  * @see EagerElementCollectionForBasicTypeListTest
  * @see EagerElementCollectionForBasicTypeSetTest
  */
-public class SubselectElementCollectionForEmbeddableTypeListTest extends BaseReactiveTest {
+public class SubselectElementCollectionForEmbeddableTypeListTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

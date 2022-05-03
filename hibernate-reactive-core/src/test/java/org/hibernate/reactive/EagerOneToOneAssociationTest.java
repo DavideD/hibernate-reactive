@@ -20,7 +20,7 @@ import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
 
-public class EagerOneToOneAssociationTest extends BaseReactiveTest {
+public class EagerOneToOneAssociationTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

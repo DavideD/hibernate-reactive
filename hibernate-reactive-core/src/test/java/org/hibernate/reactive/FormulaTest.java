@@ -25,7 +25,7 @@ import java.util.List;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.MARIA;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.MYSQL;
 
-public class FormulaTest extends BaseReactiveTest {
+public class FormulaTest extends WithVertxContextTest {
 
 	@Rule
 	public DatabaseSelectionRule rule = DatabaseSelectionRule.skipTestsFor( MARIA, MYSQL );

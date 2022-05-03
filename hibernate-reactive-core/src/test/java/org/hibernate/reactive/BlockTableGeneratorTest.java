@@ -22,7 +22,7 @@ import io.vertx.ext.unit.TestContext;
 
 
 
-public class BlockTableGeneratorTest extends BaseReactiveTest {
+public class BlockTableGeneratorTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

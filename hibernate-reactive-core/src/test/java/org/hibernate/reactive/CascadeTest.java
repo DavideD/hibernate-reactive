@@ -34,7 +34,7 @@ import org.junit.Test;
 import io.vertx.ext.unit.TestContext;
 
 
-public class CascadeTest extends BaseReactiveTest {
+public class CascadeTest extends WithVertxContextTest {
 
 	@Override
 	protected Configuration constructConfiguration() {

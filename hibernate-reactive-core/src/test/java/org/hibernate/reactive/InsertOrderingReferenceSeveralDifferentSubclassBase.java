@@ -40,7 +40,7 @@ import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.POS
  * Verify that duplicate sql insert statements are collapsed to a single insert per entity and are ordered based on
  * parent/child relationships`
  */
-public abstract class InsertOrderingReferenceSeveralDifferentSubclassBase extends BaseReactiveTest {
+public abstract class InsertOrderingReferenceSeveralDifferentSubclassBase extends WithVertxContextTest {
 
 	@Rule
 	public DatabaseSelectionRule rule = DatabaseSelectionRule.runOnlyFor( POSTGRESQL );

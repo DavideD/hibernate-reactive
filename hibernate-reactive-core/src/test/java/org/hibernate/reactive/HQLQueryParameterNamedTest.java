@@ -23,7 +23,7 @@ import io.vertx.ext.unit.TestContext;
  * Tests queries using named parameters like ":name",
  * as defined by the JPA specification.
  */
-public class HQLQueryParameterNamedTest extends BaseReactiveTest {
+public class HQLQueryParameterNamedTest extends WithVertxContextTest {
 
 	Flour spelt = new Flour( 1, "Spelt", "An ancient grain, is a hexaploid species of wheat.", "Wheat flour" );
 	Flour rye = new Flour( 2, "Rye", "Used to bake the traditional sourdough breads of Germany.", "Wheat flour" );

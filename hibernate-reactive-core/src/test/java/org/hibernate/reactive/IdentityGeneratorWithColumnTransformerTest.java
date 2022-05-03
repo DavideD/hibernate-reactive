@@ -30,7 +30,7 @@ import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
 /**
  * Similar to {@link IdentityGeneratorTest} but enables SQL comments and uses a {@link ColumnTransformer}.
  */
-public class IdentityGeneratorWithColumnTransformerTest extends BaseReactiveTest {
+public class IdentityGeneratorWithColumnTransformerTest extends WithVertxContextTest {
 
 	// Comments don't work with Db2
 	private static final String ENABLE_COMMENTS = String.valueOf( dbType() != DB2 );

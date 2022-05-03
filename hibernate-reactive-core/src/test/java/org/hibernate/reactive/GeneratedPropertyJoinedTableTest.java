@@ -39,7 +39,7 @@ import static org.hibernate.reactive.testing.DatabaseSelectionRule.runOnlyFor;
 /**
  * Test the @{@link Generated} annotation with {@link InheritanceType#JOINED}
  */
-public class GeneratedPropertyJoinedTableTest extends BaseReactiveTest {
+public class GeneratedPropertyJoinedTableTest extends WithVertxContextTest {
 
 	// It requires native queries, so it won't work for every db
 	@Rule

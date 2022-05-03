@@ -7,7 +7,7 @@ package org.hibernate.reactive.types;
 
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
-import org.hibernate.reactive.BaseReactiveTest;
+import org.hibernate.reactive.WithVertxContextTest;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -32,7 +32,7 @@ import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.SQL
 /**
  * Test types that we expect to work only on selected DBs.
  */
-public class StringToJsonTypeTest extends BaseReactiveTest {
+public class StringToJsonTypeTest extends WithVertxContextTest {
 
 	@Rule
 	public DatabaseSelectionRule selectionRule = DatabaseSelectionRule.skipTestsFor( DB2, SQLSERVER, MARIA, ORACLE );

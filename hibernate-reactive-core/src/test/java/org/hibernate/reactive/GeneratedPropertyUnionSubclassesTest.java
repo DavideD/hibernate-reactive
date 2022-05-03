@@ -42,7 +42,7 @@ import static org.hibernate.reactive.testing.DatabaseSelectionRule.runOnlyFor;
  * Note that id generation using Identity is not a valid mapping.
  * </p>
  */
-public class GeneratedPropertyUnionSubclassesTest extends BaseReactiveTest {
+public class GeneratedPropertyUnionSubclassesTest extends WithVertxContextTest {
 
 	// It requires native queries, so it won't work for every db
 	@Rule

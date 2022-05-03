@@ -22,7 +22,7 @@ import javax.persistence.Id;
 import static org.hibernate.annotations.OptimisticLockType.ALL;
 import static org.hibernate.annotations.OptimisticLockType.DIRTY;
 
-public class OptimisticLockingTest extends BaseReactiveTest {
+public class OptimisticLockingTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

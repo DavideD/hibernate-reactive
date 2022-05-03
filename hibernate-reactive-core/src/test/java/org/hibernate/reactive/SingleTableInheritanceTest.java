@@ -17,7 +17,7 @@ import java.util.Objects;
 
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
-public class SingleTableInheritanceTest extends BaseReactiveTest {
+public class SingleTableInheritanceTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Test the combination of filters, max results and first result.
  */
-public class FilterWithPaginationTest extends BaseReactiveTest {
+public class FilterWithPaginationTest extends WithVertxContextTest {
 
 	FamousPerson margaret = new FamousPerson( 1L, "Margaret Howe Lovatt", Status.LIVING, "the woman who lived in a half-flooded home with a dolphin." );
 	FamousPerson nellie = new FamousPerson( 2L, "Nellie Bly", Status.DECEASED, "In 1888, she traveled around the world in 72 days." );

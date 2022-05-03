@@ -21,7 +21,7 @@ import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
 
-public class NonNullableManyToOneTest extends BaseReactiveTest {
+public class NonNullableManyToOneTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

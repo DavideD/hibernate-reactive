@@ -29,7 +29,7 @@ import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.ORA
 import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
 
 
-public class SequenceGeneratorTest extends BaseReactiveTest {
+public class SequenceGeneratorTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

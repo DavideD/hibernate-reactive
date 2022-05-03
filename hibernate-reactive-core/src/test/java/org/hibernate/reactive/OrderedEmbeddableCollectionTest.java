@@ -30,7 +30,7 @@ import org.assertj.core.api.Assertions;
 
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2;
 
-public class OrderedEmbeddableCollectionTest extends BaseReactiveTest {
+public class OrderedEmbeddableCollectionTest extends WithVertxContextTest {
 
 	@Rule // This exposes a strange bug in the DB2 client
 	public DatabaseSelectionRule dbRule = DatabaseSelectionRule.skipTestsFor( DB2 );

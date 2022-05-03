@@ -79,7 +79,7 @@ import io.vertx.ext.unit.TestContext;
  * Entities are inserted in the following order:
  * c, e, d, b, g, f.
  */
-public class CascadeComplicatedTest extends BaseReactiveTest {
+public class CascadeComplicatedTest extends WithVertxContextTest {
 
 	private B b;
 	private C c;

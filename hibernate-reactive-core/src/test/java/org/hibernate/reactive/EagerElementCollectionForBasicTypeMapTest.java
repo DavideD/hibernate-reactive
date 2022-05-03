@@ -36,7 +36,7 @@ import io.vertx.ext.unit.TestContext;
  * </p>,
  *
  */
-public class EagerElementCollectionForBasicTypeMapTest extends BaseReactiveTest {
+public class EagerElementCollectionForBasicTypeMapTest extends WithVertxContextTest {
 
 	private Person thePerson;
 

@@ -43,7 +43,7 @@ import static org.hibernate.reactive.testing.ReactiveAssertions.assertThrown;
  *
  * @see ReactiveMultitenantTest
  */
-public class ReactiveMultitenantNoResolverTest extends BaseReactiveTest {
+public class ReactiveMultitenantNoResolverTest extends WithVertxContextTest {
 
 	// To check if we are using the right database we run native queries for PostgreSQL
 	@Rule

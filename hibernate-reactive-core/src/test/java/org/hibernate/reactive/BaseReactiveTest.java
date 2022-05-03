@@ -7,9 +7,7 @@ package org.hibernate.reactive;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
 import javax.persistence.criteria.CriteriaQuery;
 
 import org.hibernate.SessionFactory;
@@ -30,14 +28,10 @@ import org.hibernate.tool.schema.spi.SchemaManagementTool;
 
 import org.junit.After;
 import org.junit.AfterClass;
-import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.runner.RunWith;
 
 import io.smallrye.mutiny.Uni;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
@@ -68,14 +62,6 @@ public abstract class BaseReactiveTest {
 
 	@ClassRule
 	public static Timeout rule = Timeout.seconds( 10 * 60 );
-
-	@ClassRule
-	public static RunTestOnContext vertxContextRule = new RunTestOnContext( () -> {
-		VertxOptions options = new VertxOptions();
-		options.setBlockedThreadCheckInterval( 5 );
-		options.setBlockedThreadCheckIntervalUnit( TimeUnit.MINUTES );
-		return Vertx.vertx( options );
-	} );
 
 	private Object session;
 	private Object statelessSession;
@@ -160,42 +146,7 @@ public abstract class BaseReactiveTest {
 		return query;
 	}
 
-	@Before
-	public void before(TestContext context) {
-		test( context, setupSessionFactory( constructConfiguration() ) );
-	}
-
-	protected CompletionStage<Void> setupSessionFactory(Configuration configuration) {
-		CompletableFuture<Void> future = new CompletableFuture<>();
-		vertxContextRule.vertx()
-				.executeBlocking(
-						// schema generation is a blocking operation and so it causes an
-						// exception when run on the Vert.x event loop. So call it using
-						// Vertx.executeBlocking()
-						promise -> startFactoryManager( promise, configuration ),
-						event -> {
-							if ( event.succeeded() ) {
-								future.complete( null );
-							}
-							else {
-								future.completeExceptionally( event.cause() );
-							}
-						}
-				);
-		return future;
-	}
-
-	private void startFactoryManager(Promise<Object> p, Configuration configuration ) {
-		try {
-			factoryManager.start( () -> createHibernateSessionFactory( configuration ) );
-			p.complete();
-		}
-		catch (Throwable e) {
-			p.fail( e );
-		}
-	}
-
-	private SessionFactory createHibernateSessionFactory(Configuration configuration) {
+	protected SessionFactory createHibernateSessionFactory(Configuration configuration) {
 		StandardServiceRegistryBuilder builder = new ReactiveServiceRegistryBuilder()
 				.applySettings( configuration.getProperties() );
 		addServices( builder );
@@ -258,12 +209,12 @@ public abstract class BaseReactiveTest {
 	protected static CompletionStage<Void> closeSession(Object closable) {
 		if ( closable instanceof CompletionStage<?> ) {
 			CompletionStage<?> closableStage = (CompletionStage<?>) closable;
-			return closableStage.thenCompose( BaseReactiveTest::closeSession );
+			return closableStage.thenCompose( WithVertxContextTest::closeSession );
 		}
 		if ( closable instanceof Uni<?> ) {
 			Uni<?> closableUni = (Uni<?>) closable;
 			return closableUni.subscribeAsCompletionStage()
-					.thenCompose( BaseReactiveTest::closeSession );
+					.thenCompose( WithVertxContextTest::closeSession );
 		}
 		if ( closable instanceof ReactiveConnection ) {
 			return ( (ReactiveConnection) closable ).close();

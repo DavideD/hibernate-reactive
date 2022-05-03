@@ -25,7 +25,7 @@ import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
 
-public class ReactiveSessionTest extends BaseReactiveTest {
+public class ReactiveSessionTest extends WithVertxContextTest {
 
 	@Override
 	protected Set<Class<?>> annotatedEntities() {

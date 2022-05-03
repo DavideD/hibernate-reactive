@@ -21,7 +21,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 
-public class IdentityGeneratorDynamicInsertTest extends BaseReactiveTest {
+public class IdentityGeneratorDynamicInsertTest extends WithVertxContextTest {
 
 	/**
 	 * When {@link AvailableSettings#USE_GET_GENERATED_KEYS} is enabled, different

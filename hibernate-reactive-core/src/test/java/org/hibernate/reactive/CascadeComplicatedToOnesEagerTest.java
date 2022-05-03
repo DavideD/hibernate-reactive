@@ -80,7 +80,7 @@ import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
  * Entities are inserted in the following order:
  * c, e, d, b, g, f.
  */
-public class CascadeComplicatedToOnesEagerTest extends BaseReactiveTest {
+public class CascadeComplicatedToOnesEagerTest extends WithVertxContextTest {
 
 	private B b;
 	private C c;

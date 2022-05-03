@@ -28,7 +28,7 @@ import static org.hibernate.cfg.AvailableSettings.USE_NATIONALIZED_CHARACTER_DAT
  *     definition.
  * </p>
  */
-public class UnicodeCharsTest extends BaseReactiveTest {
+public class UnicodeCharsTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

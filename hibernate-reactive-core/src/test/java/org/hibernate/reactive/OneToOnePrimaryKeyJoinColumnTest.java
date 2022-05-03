@@ -18,7 +18,7 @@ import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
 
-public class OneToOnePrimaryKeyJoinColumnTest  extends BaseReactiveTest {
+public class OneToOnePrimaryKeyJoinColumnTest  extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

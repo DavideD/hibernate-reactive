@@ -21,7 +21,7 @@ import javax.persistence.Id;
 import static org.hibernate.reactive.common.Identifier.composite;
 import static org.hibernate.reactive.common.Identifier.id;
 
-public class NaturalIdTest extends BaseReactiveTest {
+public class NaturalIdTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

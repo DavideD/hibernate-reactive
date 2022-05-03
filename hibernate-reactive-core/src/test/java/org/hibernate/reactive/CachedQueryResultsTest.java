@@ -40,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * If the entities aren't in the cache it will load them from the db.
  * </p>
  */
-public class CachedQueryResultsTest extends BaseReactiveTest {
+public class CachedQueryResultsTest extends WithVertxContextTest {
 
 	private static final Fruit[] FRUITS = {
 			new Fruit( "Banana" ), new Fruit( "Pineapple" ), new Fruit( "Tomato" )

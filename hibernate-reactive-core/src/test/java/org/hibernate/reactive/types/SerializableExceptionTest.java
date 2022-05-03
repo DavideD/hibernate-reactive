@@ -14,7 +14,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
-import org.hibernate.reactive.BaseReactiveTest;
+import org.hibernate.reactive.WithVertxContextTest;
 
 import org.junit.Test;
 
@@ -27,7 +27,7 @@ import io.vertx.ext.unit.TestContext;
  * query, it won't guess the right type and won't try again. It's a problem for us when dealing with Buffers and
  * Serializable.
  */
-public class SerializableExceptionTest extends BaseReactiveTest {
+public class SerializableExceptionTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

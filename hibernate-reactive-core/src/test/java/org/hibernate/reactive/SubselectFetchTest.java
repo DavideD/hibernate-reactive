@@ -36,7 +36,7 @@ import org.junit.Test;
 import io.vertx.ext.unit.TestContext;
 
 
-public class SubselectFetchTest extends BaseReactiveTest {
+public class SubselectFetchTest extends WithVertxContextTest {
 
 	@Override
 	protected Configuration constructConfiguration() {

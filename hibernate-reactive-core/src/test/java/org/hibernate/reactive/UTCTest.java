@@ -32,7 +32,7 @@ import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
 
-public class UTCTest extends BaseReactiveTest {
+public class UTCTest extends WithVertxContextTest {
 
 	final Thing thing = new Thing();
 

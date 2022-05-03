@@ -39,7 +39,7 @@ import org.junit.Test;
 import io.vertx.ext.unit.TestContext;
 
 
-public class FetchModeSubselectEagerTest extends BaseReactiveTest {
+public class FetchModeSubselectEagerTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

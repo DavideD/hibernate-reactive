@@ -19,7 +19,7 @@ import org.junit.Test;
 import io.vertx.ext.unit.TestContext;
 
 
-public class TableGeneratorTest extends BaseReactiveTest {
+public class TableGeneratorTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

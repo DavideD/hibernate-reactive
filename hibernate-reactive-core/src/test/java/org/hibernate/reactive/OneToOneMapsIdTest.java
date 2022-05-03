@@ -17,7 +17,7 @@ import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
 
-public class OneToOneMapsIdTest extends BaseReactiveTest {
+public class OneToOneMapsIdTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

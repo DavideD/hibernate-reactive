@@ -27,7 +27,7 @@ import java.util.concurrent.CompletionStage;
 
 import static org.hibernate.reactive.util.impl.CompletionStages.completedFuture;
 
-public class CustomGeneratorTest extends BaseReactiveTest {
+public class CustomGeneratorTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

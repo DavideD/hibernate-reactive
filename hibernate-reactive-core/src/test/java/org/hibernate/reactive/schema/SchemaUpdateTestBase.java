@@ -8,7 +8,7 @@ package org.hibernate.reactive.schema;
 import java.util.concurrent.CompletionStage;
 
 import org.hibernate.cfg.Configuration;
-import org.hibernate.reactive.BaseReactiveTest;
+import org.hibernate.reactive.WithVertxContextTest;
 import org.hibernate.reactive.provider.Settings;
 import org.hibernate.reactive.stage.Stage;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
@@ -30,7 +30,7 @@ import static org.hibernate.tool.schema.JdbcMetadaAccessStrategy.INDIVIDUALLY;
  * Schema update will run different queries when the table already exists or
  * when columns are missing.
  */
-public abstract class SchemaUpdateTestBase extends BaseReactiveTest {
+public abstract class SchemaUpdateTestBase extends WithVertxContextTest {
 
 	public static class IndividuallyStrategyTest extends SchemaUpdateTestBase {
 

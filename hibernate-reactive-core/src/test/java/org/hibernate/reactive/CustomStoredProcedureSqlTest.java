@@ -28,7 +28,7 @@ import io.vertx.ext.unit.TestContext;
 
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.POSTGRESQL;
 
-public class CustomStoredProcedureSqlTest extends BaseReactiveTest {
+public class CustomStoredProcedureSqlTest extends WithVertxContextTest {
 
 	@Rule
 	public DatabaseSelectionRule rule = DatabaseSelectionRule.runOnlyFor( POSTGRESQL );

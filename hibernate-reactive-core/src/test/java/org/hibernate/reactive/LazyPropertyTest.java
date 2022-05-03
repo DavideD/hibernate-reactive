@@ -28,7 +28,7 @@ import static java.util.Collections.singleton;
 import static javax.persistence.CascadeType.PERSIST;
 import static javax.persistence.FetchType.LAZY;
 
-public class LazyPropertyTest extends BaseReactiveTest {
+public class LazyPropertyTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

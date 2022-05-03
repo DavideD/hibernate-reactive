@@ -44,7 +44,7 @@ import io.vertx.ext.unit.TestContext;
  * @see EagerElementCollectionForBasicTypeListTest
  * @see EagerElementCollectionForBasicTypeSetTest
  */
-public class LazyOrderedElementCollectionForEmbeddableTypeListTest extends BaseReactiveTest {
+public class LazyOrderedElementCollectionForEmbeddableTypeListTest extends WithVertxContextTest {
 
 	private Person thePerson;
 

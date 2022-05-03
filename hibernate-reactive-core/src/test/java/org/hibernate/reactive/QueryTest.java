@@ -39,7 +39,7 @@ import static javax.persistence.CascadeType.PERSIST;
 import static javax.persistence.FetchType.LAZY;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
 
-public class QueryTest extends BaseReactiveTest {
+public class QueryTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

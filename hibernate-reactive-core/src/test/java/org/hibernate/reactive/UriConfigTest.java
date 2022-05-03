@@ -24,7 +24,7 @@ import io.vertx.ext.unit.TestContext;
 
 import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
 
-public class UriConfigTest extends BaseReactiveTest {
+public class UriConfigTest extends WithVertxContextTest {
 
 	@Override
 	protected Configuration constructConfiguration() {

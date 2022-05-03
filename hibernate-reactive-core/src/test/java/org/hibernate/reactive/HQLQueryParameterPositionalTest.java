@@ -26,7 +26,7 @@ import java.util.Objects;
  * Note that ORM treats such parameters as "named", not "positional";
  * that should be considered an internal implementation detail.
  */
-public class HQLQueryParameterPositionalTest extends BaseReactiveTest {
+public class HQLQueryParameterPositionalTest extends WithVertxContextTest {
 
 	Flour spelt = new Flour( 1, "Spelt", "An ancient grain, is a hexaploid species of wheat.", "Wheat flour" );
 	Flour rye = new Flour( 2, "Rye", "Used to bake the traditional sourdough breads of Germany.", "Wheat flour" );

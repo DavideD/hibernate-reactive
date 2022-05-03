@@ -22,7 +22,7 @@ import org.junit.Test;
 import io.vertx.ext.unit.TestContext;
 
 
-public class StageExceptionsTest extends BaseReactiveTest {
+public class StageExceptionsTest extends WithVertxContextTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {

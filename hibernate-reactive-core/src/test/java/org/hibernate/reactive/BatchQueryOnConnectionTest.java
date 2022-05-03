@@ -25,7 +25,7 @@ import io.vertx.ext.unit.TestContext;
 
 import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
 
-public class BatchQueryOnConnectionTest extends BaseReactiveTest {
+public class BatchQueryOnConnectionTest extends WithVertxContextTest {
 
 	private static final int BATCH_SIZE = 20;
 
