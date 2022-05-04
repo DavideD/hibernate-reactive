@@ -13,12 +13,12 @@ import java.util.concurrent.Executor;
 import org.junit.Test;
 
 
-public class CompletionStageTest {
+public class ExecutorTest {
 
 	@Test
 	public void test() {
 		CompletableFuture
-				.completedFuture( printThread("Start") )
+				.completedFuture( printThread( "Start" ) )
 				.thenComposeAsync( v -> subStage(), new TestExecutor( "Main exec - " ) );
 	}
 
@@ -36,16 +36,29 @@ public class CompletionStageTest {
 
 	private static class TestExecutor implements Executor {
 
-		private final String id;
+		private final String name;
 
 		public TestExecutor(String id) {
-			this.id = id;
+			this.name = id;
 		}
 
 		@Override
 		public void execute(Runnable command) {
-			System.out.println( "Test executor" + id );
-			command.run();
+			System.out.println( "Test executor " + name );
+			new TestThread( command ).start();
+		}
+	}
+
+	private static class TestThread extends Thread {
+
+		public TestThread(Runnable command) {
+			super( command );
+		}
+
+		@Override
+		public void run() {
+			System.out.println( "Starting the thread" );
+			super.run();
 		}
 	}
 }
