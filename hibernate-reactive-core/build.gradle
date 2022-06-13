@@ -46,7 +46,10 @@ dependencies {
 
     // JDBC driver for Testcontainers with MS SQL Server
     testRuntimeOnly "com.microsoft.sqlserver:mssql-jdbc:10.2.1.jre11"
-    // EHCache
+
+
+    testRuntimeOnly "mysql:mysql-connector-java:8.0.29"
+
     testRuntimeOnly "org.ehcache:ehcache:3.10.0"
     testRuntimeOnly ("org.hibernate:hibernate-jcache:${hibernateOrmVersion}") {
         //We don't need any of these:
