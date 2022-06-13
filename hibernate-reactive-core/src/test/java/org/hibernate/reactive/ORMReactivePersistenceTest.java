@@ -6,17 +6,27 @@
 package org.hibernate.reactive;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+import javax.persistence.Column;
+import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.Inheritance;
+import javax.persistence.InheritanceType;
+import javax.persistence.ManyToOne;
 import javax.persistence.Table;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
 
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
+import org.hibernate.dialect.MySQL8Dialect;
 import org.hibernate.reactive.provider.Settings;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
@@ -26,8 +36,9 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
+import org.assertj.core.api.Assertions;
 
-import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.POSTGRESQL;
+import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.MYSQL;
 
 /**
  * This test class verifies that data can be persisted and queried on the same database
@@ -36,20 +47,21 @@ import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.POS
 public class ORMReactivePersistenceTest extends BaseReactiveTest {
 
 	@Rule
-	public DatabaseSelectionRule rule = DatabaseSelectionRule.runOnlyFor( POSTGRESQL );
+	public DatabaseSelectionRule rule = DatabaseSelectionRule.runOnlyFor( MYSQL );
 
 	private SessionFactory ormFactory;
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
-		return List.of( Flour.class );
+		return List.of( Author.class, SpellBook.class, Book.class );
 	}
 
 	@Before
 	public void prepareOrmFactory() {
 		Configuration configuration = constructConfiguration();
-		configuration.setProperty( Settings.DRIVER, "org.postgresql.Driver" );
-		configuration.setProperty( Settings.DIALECT, "org.hibernate.dialect.PostgreSQL95Dialect");
+		configuration.setProperty( Settings.SHOW_SQL, "true" );
+		configuration.setProperty( Settings.DRIVER, "com.mysql.cj.jdbc.Driver" );
+		configuration.setProperty( Settings.DIALECT, MySQL8Dialect.class.getName() );
 
 		StandardServiceRegistryBuilder builder = new StandardServiceRegistryBuilder()
 				.applySettings( configuration.getProperties() );
@@ -63,57 +75,162 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 		ormFactory.close();
 	}
 
-	@Test
-	public void testORMWithStageSession(TestContext context) {
-		final Flour almond = new Flour( 1, "Almond", "made from ground almonds.", "Gluten free" );
-
-		Session session = ormFactory.openSession();
-		session.beginTransaction();
-		session.persist( almond );
-		session.getTransaction().commit();
-		session.close();
-
-		// Check database with Stage session and verify 'almond' flour exists
-		test( context, openSession()
-				.thenCompose( stageSession -> stageSession.find( Flour.class, almond.id ) )
-				.thenAccept( entityFound -> context.assertEquals( almond, entityFound ) )
-		);
-	}
-
+	/**
+	 * Non reaactive version of {@link UnionSubclassInheritanceTest#testQueryUpdateWithParameters(TestContext)}
+	 * @see UnionSubclassInheritanceTest#testQueryUpdateWithParameters(TestContext)
+	 */
 	@Test
 	public void testORMWitMutinySession(TestContext context) {
-		final Flour rose = new Flour( 2, "Rose", "made from ground rose pedals.", "Full fragrance" );
+		final SpellBook spells = new SpellBook( 6, "Necronomicon", true, new Date() );
 
-		Session ormSession = ormFactory.openSession();
-		ormSession.beginTransaction();
-		ormSession.persist( rose );
-		ormSession.getTransaction().commit();
-		ormSession.close();
-
-		// Check database with Mutiny session and verify 'rose' flour exists
-		test( context, openMutinySession()
-				.chain( session -> session.find( Flour.class, rose.id ) )
-				.invoke( foundRose -> context.assertEquals( rose, foundRose ) )
-		);
-	}
-
-	@Entity(name = "Flour")
-	@Table(name = "Flour")
-	public static class Flour {
-		@Id
-		private Integer id;
-		private String name;
-		private String description;
-		private String type;
-
-		public Flour() {
+		try (Session s = ormFactory.openSession()) {
+			s.beginTransaction();
+			s.persist( spells );
+			s.getTransaction().commit();
 		}
 
-		public Flour(Integer id, String name, String description, String type) {
+		try (Session s = ormFactory.openSession()) {
+			s.beginTransaction();
+			s.createQuery("update SpellBook set forbidden=:fob where title=:tit")
+					.setParameter("fob", false)
+					.setParameter("tit", "Necronomicon")
+					.executeUpdate();
+			s.getTransaction().commit();
+		}
+
+		try (Session s = ormFactory.openSession()) {
+			s.beginTransaction();
+			s.createQuery("update Book set title=title||:sfx where title=:tit")
+					.setParameter("sfx", " II")
+					.setParameter("tit", "Necronomicon")
+					.executeUpdate();
+			s.getTransaction().commit();
+		}
+
+		try (Session s = ormFactory.openSession()) {
+			Book book = s.find( Book.class, 6 );
+			Assertions.assertThat( book ).isNotNull();
+		}
+
+		try (Session s = ormFactory.openSession()) {
+			s.beginTransaction();
+			s.createQuery( "delete Book where title=:tit" )
+					.setParameter( "tit", "Necronomicon II" )
+					.executeUpdate();
+			s.getTransaction().commit();
+		}
+
+		try (Session s = ormFactory.openSession()) {
+			Book book = s.find( Book.class, 6 );
+			Assertions.assertThat( book ).isNull();
+		}
+	}
+
+	@Entity(name="SpellBook")
+	@Table(name = "SpellBookUS")
+	@DiscriminatorValue("S")
+	public static class SpellBook extends Book {
+
+		private boolean forbidden;
+
+		public SpellBook(Integer id, String title, boolean forbidden, Date published) {
+			super(id, title, published);
+			this.forbidden = forbidden;
+		}
+
+		SpellBook() {}
+
+		public boolean getForbidden() {
+			return forbidden;
+		}
+	}
+
+	@Entity(name="Book")
+	@Table(name = "BookUS")
+	@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
+	public static class Book {
+
+		@Id private Integer id;
+		private String title;
+		@Temporal(TemporalType.DATE)
+		private Date published;
+
+		public Book() {
+		}
+
+		public Book(Integer id, String title, Date published) {
+			this.id = id;
+			this.title = title;
+			this.published = published;
+		}
+
+		public Integer getId() {
+			return id;
+		}
+
+		public void setId(Integer id) {
+			this.id = id;
+		}
+
+		public String getTitle() {
+			return title;
+		}
+
+		public void setTitle(String title) {
+			this.title = title;
+		}
+
+		public Date getPublished() {
+			return published;
+		}
+
+		public void setPublished(Date published) {
+			this.published = published;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if ( this == o ) {
+				return true;
+			}
+			if ( o == null || getClass() != o.getClass() ) {
+				return false;
+			}
+			Book book = (Book) o;
+			return Objects.equals( title, book.title );
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash( title );
+		}
+	}
+
+	@Entity(name = "Author")
+	@Table(name = "AuthorUS")
+	public static class Author {
+
+		@Id @GeneratedValue
+		private Integer id;
+
+		@Column(name = "`name`")
+		private String name;
+
+		@ManyToOne
+		private Book book;
+
+		public Author() {
+		}
+
+		public Author(String name, Book book) {
+			this.name = name;
+			this.book = book;
+		}
+
+		public Author(Integer id, String name, Book book) {
 			this.id = id;
 			this.name = name;
-			this.description = description;
-			this.type = type;
+			this.book = book;
 		}
 
 		public Integer getId() {
@@ -132,25 +249,12 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 			this.name = name;
 		}
 
-		public String getDescription() {
-			return description;
+		public Book getBook() {
+			return book;
 		}
 
-		public void setDescription(String description) {
-			this.description = description;
-		}
-
-		public String getType() {
-			return type;
-		}
-
-		public void setType(String type) {
-			this.type = type;
-		}
-
-		@Override
-		public String toString() {
-			return name;
+		public void setBook(Book book) {
+			this.book = book;
 		}
 
 		@Override
@@ -161,15 +265,13 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 			if ( o == null || getClass() != o.getClass() ) {
 				return false;
 			}
-			Flour flour = (Flour) o;
-			return Objects.equals( name, flour.name ) &&
-					Objects.equals( description, flour.description ) &&
-					Objects.equals( type, flour.type );
+			Author author = (Author) o;
+			return Objects.equals( name, author.name );
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hash( name, description, type );
+			return Objects.hash( name );
 		}
 	}
 }
