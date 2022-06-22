@@ -8,7 +8,7 @@ apply from: publishScript
 
 dependencies {
     implementation project(':hibernate-reactive-core')
-    implementation "com.h2database:h2:2.1.212"
+    implementation "com.h2database:h2:2.1.214"
 
     // Dependencies for using H2 with Vert.x:
     implementation "io.vertx:vertx-jdbc-client:${vertxVersion}"
