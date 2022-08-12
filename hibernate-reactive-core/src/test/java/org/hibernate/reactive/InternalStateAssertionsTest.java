@@ -5,13 +5,16 @@
  */
 package org.hibernate.reactive;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 
+import org.hibernate.HibernateException;
 import org.hibernate.reactive.mutiny.Mutiny;
 import org.hibernate.reactive.stage.Stage;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
@@ -39,6 +42,8 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 	 */
 	private static final String ERROR_CODE = "HR000069";
 
+	private static final String ERROR_CODE_MUTINY = "HR000074";
+
 	private Object currentSession;
 
 	// These tests will fail before touching the database, so there is no reason
@@ -65,7 +70,8 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 
 		test( testContext, assertThrown( IllegalStateException.class, sessionStage
 				.thenComposeAsync( session -> session.persist( new Competition( "Cheese Rolling" ) ), executor ) )
-				.thenAccept( InternalStateAssertionsTest::assertException )
+				.thenApply( InternalStateAssertionsTest::assertException )
+				.thenAccept( t -> assertStackTrace( t, "lambda$testPersistWithStage", 72 ) )
 		);
 	}
 
@@ -78,23 +84,42 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 
 		test( testContext, assertThrown( IllegalStateException.class, sessionStage
 				.thenComposeAsync( session -> session.find( Competition.class, "Chess boxing" ), executor ) )
-				.thenAccept( InternalStateAssertionsTest::assertException )
+				.thenApply( InternalStateAssertionsTest::assertException )
+				.thenAccept( t -> assertStackTrace( t, "lambda$testFindWithStage", 86 ) )
 		);
 	}
 
 	@Test
-	public void testOnPersistWithMutiny(TestContext testContext) {
+	public void testPersistWithMutiny(TestContext testContext) {
 		Uni<Mutiny.Session> sessionUni = getMutinySessionFactory().openSession();
 		currentSession = sessionUni;
 
 		ThreadPerCommandExecutor executor = new ThreadPerCommandExecutor();
 
-		test( testContext, assertThrown( IllegalStateException.class, sessionUni
+		test( testContext, assertThrown( HibernateException.class, sessionUni
 				.call( session -> session
 						.persist( new Competition( "Cheese Rolling" ) )
 						.runSubscriptionOn( executor ) ) )
-				.invoke( InternalStateAssertionsTest::assertException )
+				.invoke( InternalStateAssertionsTest::assertExceptionWithMutiny )
+				.invoke( t -> assertStackTrace( t, "lambda$testPersistWithMutiny", 101 ) )
 		);
+	}
+
+	/**
+	 * We expect the stack trace to contain the line that causes the exception.
+	 * But, it's a lambda and the exact line might change if you refactor the code.
+	 * I don't expect to refactor this test class too often in the future,
+	 * so it shouldn't cause too much trouble
+	 */
+	private static void assertStackTrace(Throwable t, String methodName, int line ) {
+		Optional<StackTraceElement> se = Arrays
+				.stream( t.getStackTrace() )
+				.filter( stackTraceElement -> stackTraceElement
+						.getClassName().equals( InternalStateAssertionsTest.class.getName() )
+						&& stackTraceElement.getMethodName().startsWith( methodName )
+						&& stackTraceElement.getLineNumber() == line )
+				.findFirst();
+		assertThat( se ).isPresent();
 	}
 
 	@Test
@@ -104,16 +129,24 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 
 		ThreadPerCommandExecutor executor = new ThreadPerCommandExecutor();
 
-		test( testContext, assertThrown( IllegalStateException.class, sessionUni
+		test( testContext, assertThrown( HibernateException.class, sessionUni
 				.chain( session -> session
 						.find( Competition.class, "Chess boxing" )
 						.runSubscriptionOn( executor ) ) )
-				.invoke( InternalStateAssertionsTest::assertException )
+				.invoke( InternalStateAssertionsTest::assertExceptionWithMutiny )
+				.invoke( t -> assertStackTrace( t, "lambda$testFindWithMutiny", 134 ) )
 		);
 	}
 
-	private static void assertException(Throwable t) {
+	private static Throwable assertException(Throwable t) {
+		t.printStackTrace();
 		assertThat( t.getMessage() ).startsWith( ERROR_CODE );
+		return t;
+	}
+
+	private static void assertExceptionWithMutiny(Throwable t) {
+		assertThat( t.getMessage() ).startsWith( ERROR_CODE_MUTINY );
+		assertThat( t.getCause().getMessage() ).startsWith( ERROR_CODE );
 	}
 
 	/**

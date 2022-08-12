@@ -226,6 +226,9 @@ public interface Log extends BasicLogger {
 	@Message(id = 73, value = "%1$s is an invalid identity type when using CockroachDB (entity %2$s) - CockroachDB might generates identifiers that are too big and won't always fit in a %1$s. java.lang.Long is valid replacement")
 	HibernateException invalidIdentifierTypeForCockroachDB(@FormatWith(ClassFormatter.class) Class<?> idType, String entityName);
 
+	@Message(id = 74, value = "Exception using the session")
+	HibernateException callerStackTrace();
+
 	// Same method that exists in CoreMessageLogger
 	@LogMessage(level = WARN)
 	@Message(id = 104, value = "firstResult/maxResults specified with collection fetch; applying in memory!" )
@@ -260,5 +263,4 @@ public interface Log extends BasicLogger {
 	@LogMessage(level = WARN)
 	@Message(id = 447, value= "Explicit use of UPGRADE_SKIPLOCKED in lock() calls is not recommended; use normal UPGRADE locking instead")
 	void explicitSkipLockedLockCombo();
-
 }
