@@ -25,7 +25,6 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 
-import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.Configuration;
 
 import org.junit.Test;
@@ -44,7 +43,7 @@ public class UTCTest extends BaseReactiveTest {
 	@Override
 	protected Configuration constructConfiguration() {
 		final Configuration configuration = super.constructConfiguration();
-		configuration.setProperty( AvailableSettings.JDBC_TIME_ZONE, "UTC" );
+//		configuration.setProperty( AvailableSettings.JDBC_TIME_ZONE, "UTC" );
 		return configuration;
 	}
 
@@ -188,7 +187,7 @@ public class UTCTest extends BaseReactiveTest {
 		@Column(name = "calendarType")
 		Calendar calendar;
 
-		@Column(name = "offsetDateTimeType")
+		@Column(name = "offsetDateTimeType", columnDefinition = "TIMESTAMPTZ")
 		OffsetDateTime offsetDateTime;
 
 		@Column(name = "offsetTimeType")
