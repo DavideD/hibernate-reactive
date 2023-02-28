@@ -7,6 +7,7 @@ package org.hibernate.reactive;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 import org.hibernate.Hibernate;
 
@@ -22,8 +23,15 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
+import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
+
 
 public class LazyOneToOneWithJoinColumnTest extends BaseReactiveTest {
+
+	@Override
+	protected CompletionStage<Void> cleanDb() {
+		return voidFuture();
+	}
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
@@ -55,7 +63,7 @@ public class LazyOneToOneWithJoinColumnTest extends BaseReactiveTest {
 						.find( EndpointWebhook.class, webhook.getId() )
 						.invoke( optionalAnEntity -> {
 							context.assertNotNull( optionalAnEntity );
-							context.assertNotNull( optionalAnEntity.endpoint );
+							context.assertNotNull( optionalAnEntity.getEndpoint() );
 							// This is actually lazy
 							context.assertFalse( Hibernate.isInitialized( optionalAnEntity.getEndpoint() ) );
 						} ) )

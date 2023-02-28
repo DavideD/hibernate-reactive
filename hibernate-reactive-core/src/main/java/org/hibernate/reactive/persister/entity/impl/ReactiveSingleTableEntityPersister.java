@@ -35,7 +35,13 @@ import org.hibernate.reactive.loader.ast.spi.ReactiveSingleUniqueKeyEntityLoader
 import org.hibernate.reactive.persister.entity.mutation.ReactiveDeleteCoordinator;
 import org.hibernate.reactive.persister.entity.mutation.ReactiveInsertCoordinator;
 import org.hibernate.reactive.persister.entity.mutation.ReactiveUpdateCoordinator;
+import org.hibernate.reactive.sql.results.internal.ReactiveEntityResultImpl;
 import org.hibernate.reactive.util.impl.CompletionStages;
+import org.hibernate.spi.NavigablePath;
+import org.hibernate.sql.ast.tree.from.TableGroup;
+import org.hibernate.sql.results.graph.DomainResult;
+import org.hibernate.sql.results.graph.DomainResultCreationState;
+import org.hibernate.sql.results.graph.entity.internal.EntityResultImpl;
 
 /**
  * A {@link ReactiveEntityPersister} backed by {@link SingleTableEntityPersister}
@@ -78,6 +84,22 @@ public class ReactiveSingleTableEntityPersister extends SingleTableEntityPersist
 	@Override
 	public Generator getGenerator() throws HibernateException {
 		return reactiveDelegate.reactive( super.getGenerator() );
+	}
+
+	@Override
+	public <T> DomainResult<T> createDomainResult(
+			NavigablePath navigablePath,
+			TableGroup tableGroup,
+			String resultVariable,
+			DomainResultCreationState creationState) {
+		final EntityResultImpl entityResult = new ReactiveEntityResultImpl(
+				navigablePath,
+				this,
+				tableGroup,
+				resultVariable
+		);
+		entityResult.afterInitialize( entityResult, creationState );
+		return entityResult;
 	}
 
 	@Override

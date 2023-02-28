@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.concurrent.CompletionStage;
 
 import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
+import org.hibernate.reactive.sql.results.graph.entity.ReactiveEntityResultInitializer;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.exec.spi.ExecutionContext;
 import org.hibernate.sql.results.graph.Initializer;
@@ -57,8 +58,13 @@ public final class ReactiveInitializersList {
 
 	public CompletionStage<Void> initializeInstance(final ReactiveRowProcessingState rowProcessingState) {
 		return loop( initializers, initializer -> {
-			initializer.initializeInstance( rowProcessingState );
-			return voidFuture();
+			if ( initializer instanceof ReactiveEntityResultInitializer ) {
+				return ( (ReactiveEntityResultInitializer) initializer ).reactiveInitializeInstance( rowProcessingState );
+			}
+			else {
+				initializer.initializeInstance( rowProcessingState );
+				return voidFuture();
+			}
 		} );
 	}
 

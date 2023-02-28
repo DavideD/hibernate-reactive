@@ -7,10 +7,11 @@ package org.hibernate.reactive;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
+import java.util.concurrent.CompletionStage;
 
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
@@ -23,12 +24,17 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
-import io.vertx.ext.unit.TestContext;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.POSTGRESQL;
+import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
 /**
  * This test class verifies that data can be persisted and queried on the same database
@@ -43,7 +49,7 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
-		return List.of( Flour.class );
+		return List.of( EndpointWebhook.class, Endpoint.class );
 	}
 
 	@Before
@@ -59,118 +65,124 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 		ormFactory = configuration.buildSessionFactory( registry );
 	}
 
+	@Override
+	protected CompletionStage<Void> cleanDb() {
+		return voidFuture();
+	}
+
 	@After
 	public void closeOrmFactory() {
 		ormFactory.close();
 	}
 
 	@Test
-	public void testORMWithStageSession(TestContext context) {
-		final Flour almond = new Flour( 1, "Almond", "made from ground almonds.", "Gluten free" );
+	public void testQuery() {
+		final Endpoint endpoint = new Endpoint();
+		endpoint.setAccountId( "XYZ_123"  );
+		final EndpointWebhook webhook = new EndpointWebhook();
+		endpoint.setWebhook( webhook );
+		webhook.setEndpoint( endpoint );
 
-		Session session = ormFactory.openSession();
-		session.beginTransaction();
-		session.persist( almond );
-		session.getTransaction().commit();
-		session.close();
+		String query = "FROM Endpoint WHERE id = :id AND accountId = :accountId";
+		try (Session session = ormFactory.openSession()) {
+			Transaction transaction = session.beginTransaction();
+			session.persist( endpoint );
+			transaction.commit();
+		}
 
-		// Check database with Stage session and verify 'almond' flour exists
-		test( context, openSession()
-				.thenCompose( stageSession -> stageSession.find( Flour.class, almond.id ) )
-				.thenAccept( entityFound -> context.assertEquals( almond, entityFound ) )
-		);
+		try (Session session = ormFactory.openSession()) {
+			Transaction transaction = session.beginTransaction();
+			Object singleResultOrNull = session.createQuery( query )
+					.setParameter( "id", endpoint.getId() )
+					.setParameter( "accountId", endpoint.getAccountId() )
+					.getSingleResultOrNull();
+			transaction.commit();
+			System.out.println( singleResultOrNull );
+		}
 	}
 
-	@Test
-	public void testORMWitMutinySession(TestContext context) {
-		final Flour rose = new Flour( 2, "Rose", "made from ground rose pedals.", "Full fragrance" );
+	@Entity(name = "Endpoint")
+	@Table(name = "endpoints")
+	public static class Endpoint {
 
-		Session ormSession = ormFactory.openSession();
-		ormSession.beginTransaction();
-		ormSession.persist( rose );
-		ormSession.getTransaction().commit();
-		ormSession.close();
-
-		// Check database with Mutiny session and verify 'rose' flour exists
-		test( context, openMutinySession()
-				.chain( session -> session.find( Flour.class, rose.id ) )
-				.invoke( foundRose -> context.assertEquals( rose, foundRose ) )
-		);
-	}
-
-	@Entity(name = "Flour")
-	@Table(name = "Flour")
-	public static class Flour {
 		@Id
-		private Integer id;
-		private String name;
-		private String description;
-		private String type;
+		@GeneratedValue
+		private Long id;
 
-		public Flour() {
-		}
+		@OneToOne(mappedBy = "endpoint", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+		private EndpointWebhook webhook;
 
-		public Flour(Integer id, String name, String description, String type) {
-			this.id = id;
-			this.name = name;
-			this.description = description;
-			this.type = type;
-		}
+		private String accountId;
 
-		public Integer getId() {
+		public Long getId() {
 			return id;
 		}
 
-		public void setId(Integer id) {
+		public void setId(Long id) {
 			this.id = id;
 		}
 
-		public String getName() {
-			return name;
+		public EndpointWebhook getWebhook() {
+			return webhook;
 		}
 
-		public void setName(String name) {
-			this.name = name;
+		public void setWebhook(EndpointWebhook webhook) {
+			this.webhook = webhook;
 		}
 
-		public String getDescription() {
-			return description;
+		public String getAccountId() {
+			return accountId;
 		}
 
-		public void setDescription(String description) {
-			this.description = description;
-		}
-
-		public String getType() {
-			return type;
-		}
-
-		public void setType(String type) {
-			this.type = type;
+		public void setAccountId(String accountId) {
+			this.accountId = accountId;
 		}
 
 		@Override
 		public String toString() {
-			return name;
+			final StringBuilder sb = new StringBuilder( "Endpoint{" );
+			sb.append( id );
+			sb.append( ", " );
+			sb.append( accountId );
+			sb.append( '}' );
+			return sb.toString();
+		}
+	}
+
+	@Entity
+	@Table(name = "endpoint_webhooks")
+	public static class EndpointWebhook {
+
+		@Id
+		@GeneratedValue
+		private Long id;
+
+		@OneToOne(fetch = FetchType.LAZY)
+		@JoinColumn(name = "endpoint_id")
+		private Endpoint endpoint;
+
+		public Long getId() {
+			return id;
+		}
+
+		public void setId(Long id) {
+			this.id = id;
+		}
+
+		public Endpoint getEndpoint() {
+			return endpoint;
+		}
+
+		public void setEndpoint(Endpoint endpoint) {
+			this.endpoint = endpoint;
 		}
 
 		@Override
-		public boolean equals(Object o) {
-			if ( this == o ) {
-				return true;
-			}
-			if ( o == null || getClass() != o.getClass() ) {
-				return false;
-			}
-			Flour flour = (Flour) o;
-			return Objects.equals( name, flour.name ) &&
-					Objects.equals( description, flour.description ) &&
-					Objects.equals( type, flour.type );
-		}
-
-		@Override
-		public int hashCode() {
-			return Objects.hash( name, description, type );
+		public String toString() {
+			final StringBuilder sb = new StringBuilder( "EndpointWebhook{" );
+			sb.append( id );
+			sb.append( '}' );
+			return sb.toString();
 		}
 	}
 }
