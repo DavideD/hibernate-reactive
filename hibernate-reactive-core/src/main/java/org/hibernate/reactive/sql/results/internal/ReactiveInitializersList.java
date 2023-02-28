@@ -8,14 +8,18 @@ package org.hibernate.reactive.sql.results.internal;
 
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.concurrent.CompletionStage;
 
+import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.exec.spi.ExecutionContext;
 import org.hibernate.sql.results.graph.Initializer;
 import org.hibernate.sql.results.graph.entity.internal.EntityDelayedFetchInitializer;
 import org.hibernate.sql.results.graph.entity.internal.EntitySelectFetchInitializer;
-import org.hibernate.sql.results.internal.InitializersList;
 import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
+
+import static org.hibernate.reactive.util.impl.CompletionStages.loop;
+import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
 /**
  * @see org.hibernate.sql.results.internal.InitializersList
@@ -51,10 +55,11 @@ public final class ReactiveInitializersList {
 		}
 	}
 
-	public void initializeInstance(final RowProcessingState rowProcessingState) {
-		for ( Initializer init : initializers ) {
-			init.initializeInstance( rowProcessingState );
-		}
+	public CompletionStage<Void> initializeInstance(final ReactiveRowProcessingState rowProcessingState) {
+		return loop( initializers, initializer -> {
+			initializer.initializeInstance( rowProcessingState );
+			return voidFuture();
+		} );
 	}
 
 	public void endLoading(final ExecutionContext executionContext) {

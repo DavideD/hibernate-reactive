@@ -33,6 +33,7 @@ import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.pretty.MessageHelper;
 import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.logging.impl.LoggerFactory;
+import org.hibernate.reactive.sql.results.spi.ReactiveRowReader;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.spi.SqlAstCreationContext;
 import org.hibernate.sql.exec.spi.ExecutionContext;
@@ -40,8 +41,6 @@ import org.hibernate.sql.results.ResultsLogger;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
 import org.hibernate.sql.results.graph.DomainResultAssembler;
 import org.hibernate.sql.results.graph.Initializer;
-import org.hibernate.sql.results.internal.InitializersList;
-import org.hibernate.sql.results.internal.StandardRowReader;
 import org.hibernate.sql.results.jdbc.spi.JdbcValues;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMapping;
 import org.hibernate.sql.results.spi.RowReader;
@@ -63,7 +62,7 @@ public class ReactiveResultsHelper {
 		return createRowReader( executionContext, lockOptions, rowTransformer, transformedResultJavaType, jdbcValues.getValuesMapping());
 	}
 
-	public static <R> RowReader<R> createRowReader(
+	public static <R> ReactiveRowReader<R> createRowReader(
 			ExecutionContext executionContext,
 			LockOptions lockOptions,
 			RowTransformer<R> rowTransformer,
@@ -80,9 +79,8 @@ public class ReactiveResultsHelper {
 
 		logInitializers( initializerMap );
 
-		final InitializersList initializersList = initializersBuilder.build( initializerMap );
-
-		return new StandardRowReader<>( assemblers, initializersList, rowTransformer, transformedResultJavaType );
+		final ReactiveInitializersList initializersList = initializersBuilder.build( initializerMap );
+		return new ReactiveStandardRowReader<>( assemblers, initializersList, rowTransformer, transformedResultJavaType );
 	}
 
 	private static AssemblerCreationState creationState(
@@ -90,7 +88,7 @@ public class ReactiveResultsHelper {
 			LockOptions lockOptions,
 			SessionFactoryImplementor sessionFactory,
 			Map<NavigablePath, Initializer> initializerMap,
-			InitializersList.Builder initializersBuilder) {
+			ReactiveInitializersList.Builder initializersBuilder) {
 		return new AssemblerCreationState() {
 
 			@Override

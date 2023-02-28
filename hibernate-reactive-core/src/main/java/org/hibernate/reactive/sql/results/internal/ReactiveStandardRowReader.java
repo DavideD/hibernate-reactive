@@ -5,7 +5,6 @@
  */
 package org.hibernate.reactive.sql.results.internal;
 
-import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
@@ -13,19 +12,17 @@ import java.util.concurrent.CompletionStage;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.ArrayHelper;
 import org.hibernate.query.named.RowReaderMemento;
-import org.hibernate.reactive.logging.impl.Log;
-import org.hibernate.reactive.logging.impl.LoggerFactory;
+import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
 import org.hibernate.reactive.sql.results.spi.ReactiveRowReader;
-import org.hibernate.reactive.util.impl.CompletionStages;
 import org.hibernate.sql.results.LoadingLogger;
 import org.hibernate.sql.results.graph.DomainResultAssembler;
 import org.hibernate.sql.results.graph.Initializer;
-import org.hibernate.sql.results.internal.InitializersList;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesSourceProcessingOptions;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesSourceProcessingState;
 import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 import org.hibernate.sql.results.spi.RowTransformer;
 import org.hibernate.type.descriptor.java.JavaType;
+
 
 /**
  * @see org.hibernate.sql.results.internal.StandardRowReader
@@ -52,23 +49,21 @@ public class ReactiveStandardRowReader<R> implements ReactiveRowReader<R> {
 	}
 
 	@Override
-	public CompletionStage<R> reactiveReadRow(RowProcessingState rowProcessingState, JdbcValuesSourceProcessingOptions options) {
-		LoadingLogger.LOGGER.trace( "StandardRowReader#readRow" );
+	public CompletionStage<R> reactiveReadRow(ReactiveRowProcessingState rowProcessingState, JdbcValuesSourceProcessingOptions options) {
+		LoadingLogger.LOGGER.trace( "ReactiveStandardRowReader#readRow" );
 
-		coordinateInitializers( rowProcessingState );
+		return coordinateInitializers( rowProcessingState )
+				.thenApply( v -> {
+					final Object[] resultRow = new Object[assemblerCount];
 
-		final Object[] resultRow = new Object[assemblerCount];
-
-		for ( int i = 0; i < assemblerCount; i++ ) {
-			final DomainResultAssembler assembler = resultAssemblers.get( i );
-			LoadingLogger.LOGGER.debugf( "Calling top-level assembler (%s / %s) : %s", i, assemblerCount, assembler );
-			resultRow[i] = assembler.assemble( rowProcessingState, options );
-		}
-
-		afterRow( rowProcessingState );
-
-		return CompletionStages.completedFuture( rowTransformer.transformRow( resultRow ) );
-
+					for ( int i = 0; i < assemblerCount; i++ ) {
+						final DomainResultAssembler assembler = resultAssemblers.get( i );
+						LoadingLogger.LOGGER.debugf( "Calling top-level assembler (%s / %s) : %s", i, assemblerCount, assembler );
+						resultRow[i] = assembler.assemble( rowProcessingState, options );
+					}
+					afterRow( rowProcessingState );
+					return rowTransformer.transformRow( resultRow );
+				} );
 	}
 
 	@Override
@@ -95,6 +90,11 @@ public class ReactiveStandardRowReader<R> implements ReactiveRowReader<R> {
 	}
 
 	@Override
+	public List<Initializer> getInitializers() {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public ReactiveInitializersList getReactiveInitializersList() {
 		return initializers;
 	}
@@ -105,15 +105,15 @@ public class ReactiveStandardRowReader<R> implements ReactiveRowReader<R> {
 	}
 
 	private void afterRow(RowProcessingState rowProcessingState) {
-		LOG.trace( "ReactiveStandardRowReader#afterRow" );
+		LoadingLogger.LOGGER.trace( "ReactiveStandardRowReader#afterRow" );
 		initializers.finishUpRow( rowProcessingState );
 	}
 
 	@SuppressWarnings("ForLoopReplaceableByForEach")
-	private void coordinateInitializers(RowProcessingState rowProcessingState) {
+	private CompletionStage<Void> coordinateInitializers(ReactiveRowProcessingState rowProcessingState) {
 		initializers.resolveKeys( rowProcessingState );
 		initializers.resolveInstances( rowProcessingState );
-		initializers.initializeInstance( rowProcessingState );
+		return initializers.initializeInstance( rowProcessingState );
 	}
 
 	@Override
