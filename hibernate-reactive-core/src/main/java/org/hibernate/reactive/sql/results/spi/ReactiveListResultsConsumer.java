@@ -21,6 +21,7 @@ import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
 import org.hibernate.reactive.sql.exec.spi.ReactiveValuesResultSet;
 import org.hibernate.sql.results.jdbc.internal.JdbcValuesSourceProcessingStateStandardImpl;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesSourceProcessingOptions;
+import org.hibernate.sql.results.spi.LoadContexts;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.java.spi.EntityJavaType;
 import org.hibernate.type.descriptor.java.spi.JavaTypeRegistry;
@@ -30,6 +31,7 @@ import static org.hibernate.reactive.sql.results.spi.ReactiveListResultsConsumer
 import static org.hibernate.reactive.sql.results.spi.ReactiveListResultsConsumer.UniqueSemantic.ASSERT;
 import static org.hibernate.reactive.sql.results.spi.ReactiveListResultsConsumer.UniqueSemantic.FILTER;
 import static org.hibernate.reactive.util.impl.CompletionStages.falseFuture;
+import static org.hibernate.reactive.util.impl.CompletionStages.whileLoop;
 
 /**
  *
@@ -50,6 +52,25 @@ public class ReactiveListResultsConsumer<R> implements ReactiveResultsConsumer<L
 					"Duplicate row was found and `%s` was specified",
 					ASSERT
 			) );
+		}
+	}
+
+	private static class RegistrationHandler {
+
+		private final LoadContexts contexts;
+		private final JdbcValuesSourceProcessingStateStandardImpl state;
+
+		private RegistrationHandler(LoadContexts contexts, JdbcValuesSourceProcessingStateStandardImpl state) {
+			this.contexts = contexts;
+			this.state = state;
+		}
+
+		public void register() {
+			contexts.register( state );
+		}
+
+		public void deregister() {
+			contexts.deregister( state );
 		}
 	}
 
@@ -81,29 +102,24 @@ public class ReactiveListResultsConsumer<R> implements ReactiveResultsConsumer<L
 						? new EntityResult<>( domainResultJavaType )
 						: new Results<>( domainResultJavaType );
 
-		return nextState( rowProcessingState, jdbcValuesSourceProcessingState, addToResultsSupplier( results, rowReader, rowProcessingState, processingOptions, isEntityResultType ) )
-				.thenApply( v -> finishUp( results, jdbcValuesSourceProcessingState, rowReader, persistenceContext, queryOptions ) )
-				.handle( (list, ex) -> {
-					end( jdbcValues, session, jdbcValuesSourceProcessingState, rowReader, persistenceContext, ex );
-					return list;
-				} ) ;
-	}
-
-	private CompletionStage<Boolean> nextState(ReactiveRowProcessingState rowProcessingState,
-											   JdbcValuesSourceProcessingStateStandardImpl jdbcValuesSourceProcessingState,
-											   Supplier<CompletionStage<Void>> addToResultsSupplier) {
-		return rowProcessingState
-				.next()
-				.thenCompose( hasNext -> {
-					if ( hasNext ) {
-						return addToResultsSupplier.get()
-								.thenCompose( unique -> {
-									rowProcessingState.finishRowProcessing();
-									return nextState( rowProcessingState, jdbcValuesSourceProcessingState, addToResultsSupplier );
-								} );
-					}
-					return falseFuture();
-				} );
+		Supplier<CompletionStage<Void>> addToResultsSupplier = addToResultsSupplier( results, rowReader, rowProcessingState, processingOptions, isEntityResultType );
+		return whileLoop( () -> rowProcessingState.next()
+					.thenCompose( hasNext -> {
+						if ( hasNext ) {
+							return addToResultsSupplier.get()
+									.thenApply( unused -> {
+										rowProcessingState.finishRowProcessing();
+										return true;
+									} );
+						}
+						return falseFuture();
+					} )
+		)
+		.thenApply( v -> finishUp( results, jdbcValuesSourceProcessingState, rowReader, persistenceContext, queryOptions ) )
+		.handle( (list, ex) -> {
+			end( jdbcValues, session, jdbcValuesSourceProcessingState, rowReader, persistenceContext, ex );
+			return list;
+		} );
 	}
 
 	private Supplier<CompletionStage<Void>> addToResultsSupplier(
