@@ -36,8 +36,12 @@ import org.hibernate.reactive.sql.results.internal.domain.ReactiveCircularFetchI
 import org.hibernate.spi.DotIdentifierSequence;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.SqlAstJoinType;
+import org.hibernate.sql.ast.spi.SqlAliasBase;
+import org.hibernate.sql.ast.spi.SqlAstCreationState;
 import org.hibernate.sql.ast.spi.SqlSelection;
+import org.hibernate.sql.ast.tree.from.LazyTableGroup;
 import org.hibernate.sql.ast.tree.from.TableGroup;
+import org.hibernate.sql.ast.tree.from.TableGroupJoin;
 import org.hibernate.sql.ast.tree.from.TableGroupProducer;
 import org.hibernate.sql.ast.tree.predicate.Predicate;
 import org.hibernate.sql.results.graph.DomainResult;
@@ -204,6 +208,68 @@ public class ReactiveToOneAttributeMapping extends ToOneAttributeMapping {
 			String resultVariable,
 			DomainResultCreationState creationState) {
 		return delegate.createSnapshotDomainResult( navigablePath, tableGroup, resultVariable, creationState );
+	}
+
+	@Override
+	public TableGroup createTableGroupInternal(
+			boolean canUseInnerJoins,
+			NavigablePath navigablePath,
+			boolean fetched,
+			String sourceAlias,
+			SqlAliasBase sqlAliasBase,
+			SqlAstCreationState creationState) {
+		return delegate.createTableGroupInternal(
+				canUseInnerJoins,
+				navigablePath,
+				fetched,
+				sourceAlias,
+				sqlAliasBase,
+				creationState
+		);
+	}
+
+	@Override
+	public TableGroupJoin createTableGroupJoin(
+			NavigablePath navigablePath,
+			TableGroup lhs,
+			String explicitSourceAlias,
+			SqlAliasBase explicitSqlAliasBase,
+			SqlAstJoinType requestedJoinType,
+			boolean fetched,
+			boolean addsPredicate,
+			SqlAstCreationState creationState) {
+		return delegate.createTableGroupJoin(
+				navigablePath,
+				lhs,
+				explicitSourceAlias,
+				explicitSqlAliasBase,
+				requestedJoinType,
+				fetched,
+				addsPredicate,
+				creationState
+		);
+	}
+
+	@Override
+	public LazyTableGroup createRootTableGroupJoin(
+			NavigablePath navigablePath,
+			TableGroup lhs,
+			String explicitSourceAlias,
+			SqlAliasBase explicitSqlAliasBase,
+			SqlAstJoinType requestedJoinType,
+			boolean fetched,
+			Consumer<Predicate> predicateConsumer,
+			SqlAstCreationState creationState) {
+		return delegate.createRootTableGroupJoin(
+				navigablePath,
+				lhs,
+				explicitSourceAlias,
+				explicitSqlAliasBase,
+				requestedJoinType,
+				fetched,
+				predicateConsumer,
+				creationState
+		);
 	}
 
 	@Override
