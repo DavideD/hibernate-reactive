@@ -90,10 +90,9 @@ public class StandardReactiveSelectExecutor implements ReactiveSelectExecutor {
 				executionContext,
 				rowTransformer,
 				domainResultType,
-				sql -> executionContext.getSession()
+				executionContext.getSession()
 						.getJdbcCoordinator()
-						.getStatementPreparer()
-						.prepareStatement( sql ),
+						.getStatementPreparer()::prepareStatement,
 				ReactiveListResultsConsumer.instance( uniqueSemantic )
 		);
 	}
