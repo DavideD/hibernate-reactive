@@ -67,7 +67,7 @@ public class ReactiveEntitySelectFetchInitializer extends EntitySelectFetchIniti
 
 	@Override
 	public void resolveInstance(RowProcessingState rowProcessingState) {
-		throw LOG.nonReactiveMethodCall( "reactiveResolveInstance" );
+		super.resolveInstance( rowProcessingState );
 	}
 
 	@Override

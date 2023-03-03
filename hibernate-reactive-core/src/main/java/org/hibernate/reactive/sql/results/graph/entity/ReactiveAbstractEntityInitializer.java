@@ -19,10 +19,12 @@ import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.logging.impl.LoggerFactory;
 import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
+import org.hibernate.reactive.sql.results.graph.ReactiveDomainResultsAssembler;
 import org.hibernate.reactive.sql.results.graph.ReactiveInitializer;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
 import org.hibernate.sql.results.graph.DomainResult;
+import org.hibernate.sql.results.graph.DomainResultAssembler;
 import org.hibernate.sql.results.graph.Fetch;
 import org.hibernate.sql.results.graph.entity.AbstractEntityInitializer;
 import org.hibernate.sql.results.graph.entity.EntityLoadingLogging;
@@ -31,10 +33,12 @@ import org.hibernate.sql.results.graph.entity.LoadingEntityEntry;
 import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 import org.hibernate.stat.spi.StatisticsImplementor;
 
+import static org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer.UNFETCHED_PROPERTY;
 import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptable;
 import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttributeInterceptable;
 import static org.hibernate.internal.log.LoggingHelper.toLoggableString;
 import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
+import static org.hibernate.reactive.util.impl.CompletionStages.loop;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
 public abstract class ReactiveAbstractEntityInitializer extends AbstractEntityInitializer implements ReactiveInitializer {
@@ -62,7 +66,7 @@ public abstract class ReactiveAbstractEntityInitializer extends AbstractEntityIn
 
 	@Override
 	public void resolveInstance(RowProcessingState rowProcessingState) {
-		throw LOG.nonReactiveMethodCall( "reactiveResolveInstance" );
+		super.resolveInstance( rowProcessingState );
 	}
 
 	@Override
@@ -72,7 +76,6 @@ public abstract class ReactiveAbstractEntityInitializer extends AbstractEntityIn
 
 	@Override
 	public CompletionStage<Void> reactiveResolveInstance(ReactiveRowProcessingState rowProcessingState) {
-		// Not sure if this is correct
 		super.resolveInstance( rowProcessingState );
 		return voidFuture();
 	}
@@ -92,7 +95,7 @@ public abstract class ReactiveAbstractEntityInitializer extends AbstractEntityIn
 						return lazyInitialize( rowProcessingState, lazyInitializer );
 					}
 					else {
-						// FIXME: Read from cache if possiblel
+						// FIXME: Read from cache if possible
 						return initializeEntity( getEntityInstance(), rowProcessingState )
 								.thenAccept( ignore -> setEntityInstanceForNotify( getEntityInstance() ) );
 					}
@@ -163,6 +166,24 @@ public abstract class ReactiveAbstractEntityInitializer extends AbstractEntityIn
 		return voidFuture();
 	}
 
+
+	protected CompletionStage<Object[]> reactiveExtractConcreteTypeStateValues(RowProcessingState rowProcessingState) {
+		final Object[] values = new Object[getConcreteDescriptor().getNumberOfAttributeMappings()];
+		final DomainResultAssembler<?>[] concreteAssemblers = getAssemblers()[getConcreteDescriptor().getSubclassId()];
+		return loop( 0, values.length, i -> {
+			final DomainResultAssembler<?> assembler = concreteAssemblers[i];
+			if ( assembler instanceof  ReactiveDomainResultsAssembler) {
+				return ( (ReactiveDomainResultsAssembler) assembler )
+						.reactiveAssemble( (ReactiveRowProcessingState) rowProcessingState )
+						.thenAccept( obj -> values[i] = obj );
+			}
+			else {
+				values[i] = assembler == null ? UNFETCHED_PROPERTY : assembler.assemble( rowProcessingState );
+				return voidFuture();
+			}
+		} ).thenApply( unused -> values );
+	}
+
 	private CompletionStage<Void> initializeEntityInstance(Object toInitialize, RowProcessingState rowProcessingState) {
 		final Object entityIdentifier = getEntityKey().getIdentifier();
 		final SharedSessionContractImplementor session = rowProcessingState.getSession();
@@ -177,19 +198,16 @@ public abstract class ReactiveAbstractEntityInitializer extends AbstractEntityIn
 		}
 
 		getEntityDescriptor().setIdentifier( toInitialize, entityIdentifier, session );
-		Object[] entityState = extractConcreteTypeStateValues( rowProcessingState );
-		CompletionStage<Void> resolvedStateStage = voidFuture();
-		for ( int i = 0; i < entityState.length; i++ ) {
-			if ( entityState[i] instanceof CompletionStage ) {
-				final int index = i;
-				resolvedStateStage = resolvedStateStage
-						.thenAccept( state -> entityState[index] = state );
-			}
-		}
-		return resolvedStateStage
+		return reactiveExtractConcreteTypeStateValues( rowProcessingState )
+				.thenCompose( entityState -> loop( 0, entityState.length, i -> {
+								  if ( entityState[i] instanceof CompletionStage ) {
+									  CompletionStage<Object> stateStage = (CompletionStage<Object>) entityState[i];
+									  return stateStage.thenAccept( state -> entityState[i] = state );
+								  }
+								  return voidFuture();
+							  } ).thenAccept( v -> setResolvedEntityState( entityState ) )
+				)
 				.thenAccept( v -> {
-					setResolvedEntityState( entityState );
-
 					if ( isPersistentAttributeInterceptable(toInitialize) ) {
 						PersistentAttributeInterceptor persistentAttributeInterceptor =
 								asPersistentAttributeInterceptable( toInitialize ).$$_hibernate_getInterceptor();
