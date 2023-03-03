@@ -10,8 +10,10 @@ import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
 import org.hibernate.sql.results.graph.DomainResult;
+import org.hibernate.sql.results.graph.DomainResultAssembler;
 import org.hibernate.sql.results.graph.FetchParentAccess;
 import org.hibernate.sql.results.graph.Initializer;
+import org.hibernate.sql.results.graph.entity.internal.EntityAssembler;
 import org.hibernate.sql.results.graph.entity.internal.EntityFetchSelectImpl;
 
 public class ReactiveEntityFetchSelectImpl extends EntityFetchSelectImpl {
@@ -38,5 +40,27 @@ public class ReactiveEntityFetchSelectImpl extends EntityFetchSelectImpl {
 				selectByUniqueKey,
 				creationState
 		);
+	}
+
+	@Override
+	public DomainResultAssembler<?> createAssembler(
+			FetchParentAccess parentAccess,
+			AssemblerCreationState creationState) {
+		final Initializer initializer = creationState.resolveInitializer(
+				getNavigablePath(),
+				getFetchedMapping(),
+				() -> entitySelectFetchInitializerBuilder(
+						parentAccess,
+						(ToOneAttributeMapping) getFetchedMapping(),
+						getReferencedMappingContainer().getEntityPersister(),
+						getKey,
+						getNavigablePath(),
+						selectByUniqueKey,
+						creationState
+				)
+		);
+
+		return new EntityAssembler( getResultJavaType(), initializer.asEntityInitializer() );
+
 	}
 }

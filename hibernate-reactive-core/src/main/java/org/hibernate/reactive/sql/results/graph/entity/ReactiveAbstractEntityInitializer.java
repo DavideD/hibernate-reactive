@@ -61,8 +61,20 @@ public abstract class ReactiveAbstractEntityInitializer extends AbstractEntityIn
 	}
 
 	@Override
+	public void resolveInstance(RowProcessingState rowProcessingState) {
+		throw LOG.nonReactiveMethodCall( "reactiveResolveInstance" );
+	}
+
+	@Override
 	public void initializeInstance(RowProcessingState rowProcessingState) {
 		throw LOG.nonReactiveMethodCall( "reactiveInitializeInstance" );
+	}
+
+	@Override
+	public CompletionStage<Void> reactiveResolveInstance(ReactiveRowProcessingState rowProcessingState) {
+		// Not sure if this is correct
+		super.resolveInstance( rowProcessingState );
+		return voidFuture();
 	}
 
 	@Override

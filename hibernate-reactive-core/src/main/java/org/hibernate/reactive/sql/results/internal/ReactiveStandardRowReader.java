@@ -13,8 +13,8 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.ArrayHelper;
 import org.hibernate.query.named.RowReaderMemento;
 import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
+import org.hibernate.reactive.sql.results.graph.ReactiveDomainResultsAssembler;
 import org.hibernate.reactive.sql.results.spi.ReactiveRowReader;
-import org.hibernate.sql.results.LoadingLogger;
 import org.hibernate.sql.results.graph.DomainResultAssembler;
 import org.hibernate.sql.results.graph.Initializer;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesSourceProcessingOptions;
@@ -22,6 +22,10 @@ import org.hibernate.sql.results.jdbc.spi.JdbcValuesSourceProcessingState;
 import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 import org.hibernate.sql.results.spi.RowTransformer;
 import org.hibernate.type.descriptor.java.JavaType;
+
+import static org.hibernate.reactive.util.impl.CompletionStages.loop;
+import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
+import static org.hibernate.sql.results.LoadingLogger.LOGGER;
 
 
 /**
@@ -50,19 +54,26 @@ public class ReactiveStandardRowReader<R> implements ReactiveRowReader<R> {
 
 	@Override
 	public CompletionStage<R> reactiveReadRow(ReactiveRowProcessingState rowProcessingState, JdbcValuesSourceProcessingOptions options) {
-		LoadingLogger.LOGGER.trace( "ReactiveStandardRowReader#readRow" );
+		LOGGER.trace( "ReactiveStandardRowReader#readRow" );
 
 		return coordinateInitializers( rowProcessingState )
-				.thenApply( v -> {
+				.thenCompose( v -> {
 					final Object[] resultRow = new Object[assemblerCount];
-
-					for ( int i = 0; i < assemblerCount; i++ ) {
+					return loop( 0, assemblerCount, i -> {
 						final DomainResultAssembler assembler = resultAssemblers.get( i );
-						LoadingLogger.LOGGER.debugf( "Calling top-level assembler (%s / %s) : %s", i, assemblerCount, assembler );
+						LOGGER.debugf( "Calling top-level assembler (%s / %s) : %s", i, assemblerCount, assembler );
+						if ( assembler instanceof ReactiveDomainResultsAssembler ) {
+							return ( (ReactiveDomainResultsAssembler) assembler )
+									.reactiveAssemble( rowProcessingState, options )
+									.thenAccept( obj -> resultRow[i] = obj );
+						}
 						resultRow[i] = assembler.assemble( rowProcessingState, options );
-					}
-					afterRow( rowProcessingState );
-					return rowTransformer.transformRow( resultRow );
+						return voidFuture();
+					} )
+					.thenApply( ignore -> {
+						afterRow( rowProcessingState );
+						return rowTransformer.transformRow( resultRow );
+					} );
 				} );
 	}
 
@@ -105,14 +116,14 @@ public class ReactiveStandardRowReader<R> implements ReactiveRowReader<R> {
 	}
 
 	private void afterRow(RowProcessingState rowProcessingState) {
-		LoadingLogger.LOGGER.trace( "ReactiveStandardRowReader#afterRow" );
+		LOGGER.trace( "ReactiveStandardRowReader#afterRow" );
 		initializers.finishUpRow( rowProcessingState );
 	}
 
 	private CompletionStage<Void> coordinateInitializers(ReactiveRowProcessingState rowProcessingState) {
 		initializers.resolveKeys( rowProcessingState );
-		initializers.resolveInstances( rowProcessingState );
-		return initializers.initializeInstance( rowProcessingState );
+		return initializers.resolveInstances( rowProcessingState )
+				.thenCompose( v -> initializers.initializeInstance( rowProcessingState ) );
 	}
 
 	@Override

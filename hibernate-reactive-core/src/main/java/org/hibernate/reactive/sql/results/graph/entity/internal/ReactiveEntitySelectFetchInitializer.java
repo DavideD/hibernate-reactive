@@ -16,6 +16,7 @@ import org.hibernate.engine.spi.PersistenceContext;
 import org.hibernate.engine.spi.PersistentAttributeInterceptor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.util.StringHelper;
+import org.hibernate.metamodel.mapping.ForeignKeyDescriptor;
 import org.hibernate.metamodel.mapping.internal.ToOneAttributeMapping;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.proxy.HibernateProxy;
@@ -25,6 +26,7 @@ import org.hibernate.reactive.logging.impl.LoggerFactory;
 import org.hibernate.reactive.session.impl.ReactiveQueryExecutorLookup;
 import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
 import org.hibernate.reactive.sql.results.graph.ReactiveInitializer;
+import org.hibernate.spi.EntityIdentifierNavigablePath;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.DomainResultAssembler;
 import org.hibernate.sql.results.graph.FetchParentAccess;
@@ -38,6 +40,7 @@ import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttrib
 import static org.hibernate.internal.log.LoggingHelper.toLoggableString;
 import static org.hibernate.reactive.util.impl.CompletionStages.failedFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
+import static org.hibernate.reactive.util.impl.CompletionStages.whileLoop;
 import static org.hibernate.sql.results.graph.entity.EntityLoadingLogging.DEBUG_ENABLED;
 import static org.hibernate.sql.results.graph.entity.EntityLoadingLogging.ENTITY_LOADING_LOGGER;
 
@@ -63,8 +66,35 @@ public class ReactiveEntitySelectFetchInitializer extends EntitySelectFetchIniti
 	}
 
 	@Override
+	public void resolveInstance(RowProcessingState rowProcessingState) {
+		throw LOG.nonReactiveMethodCall( "reactiveResolveInstance" );
+	}
+
+	@Override
 	public void initializeInstance(RowProcessingState rowProcessingState) {
 		throw LOG.nonReactiveMethodCall( "reactiveInitializeInstance" );
+	}
+
+	@Override
+	public CompletionStage<Void> reactiveResolveInstance(ReactiveRowProcessingState rowProcessingState) {
+		NavigablePath[] np = { getNavigablePath().getParent() };
+		if ( np[0] == null ) {
+			return voidFuture();
+		}
+		return whileLoop( () -> {
+			CompletionStage<Void> loop = voidFuture();
+			// Defer the select by default to the initialize phase
+			// We only need to select in this phase if this is part of an identifier or foreign key
+			if ( np[0] instanceof EntityIdentifierNavigablePath
+					|| ForeignKeyDescriptor.PART_NAME.equals( np[0].getLocalName() )
+					|| ForeignKeyDescriptor.TARGET_PART_NAME.equals( np[0].getLocalName() ) ) {
+				loop = reactiveInitializeInstance( rowProcessingState );
+			}
+			return loop.thenApply( v -> {
+				np[0] = np[0].getParent();
+				return np[0] != null;
+			} );
+		} );
 	}
 
 	@Override

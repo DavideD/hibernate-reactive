@@ -80,10 +80,16 @@ public final class ReactiveInitializersList {
 		}
 	}
 
-	public void resolveInstances(final ReactiveRowProcessingState rowProcessingState) {
-		for ( Initializer init : sortedNonCollectionsFirst ) {
-			init.resolveInstance( rowProcessingState );
-		}
+	public CompletionStage<Void> resolveInstances(final ReactiveRowProcessingState rowProcessingState) {
+		return loop( sortedNonCollectionsFirst, initializer -> {
+			if ( initializer instanceof ReactiveInitializer ) {
+				return ( (ReactiveInitializer) initializer ).reactiveResolveInstance( rowProcessingState );
+			}
+			else {
+				initializer.resolveInstance( rowProcessingState );
+				return voidFuture();
+			}
+		} );
 	}
 
 	public boolean hasCollectionInitializers() {
