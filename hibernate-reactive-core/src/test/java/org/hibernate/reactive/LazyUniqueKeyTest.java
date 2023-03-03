@@ -20,6 +20,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
@@ -34,46 +35,40 @@ public class LazyUniqueKeyTest extends BaseReactiveTest {
 	@Test
 	public void testFindSelect(TestContext context) {
 		Foo foo = new Foo( new Bar( "unique" ) );
-		test( context, getSessionFactory()
-				.withTransaction( session -> session
-						.persist( foo )
+		test(
+				context,
+				getSessionFactory().withTransaction( session -> session.persist( foo )
 						.thenCompose( v -> session.flush() )
 						.thenAccept( v -> session.clear() )
-						.thenCompose( v -> session.find( Foo.class, foo.id ) )
-//                        .thenApply( result -> {
-//                            context.assertFalse( Hibernate.isInitialized(result.bar) );
-//                            return result;
-//                        } )
+						.thenCompose( v -> session.find( Foo.class, foo.getId() ) )
 						.thenCompose( result -> session.fetch( result.bar ) )
-						.thenAccept( bar -> context.assertEquals( "unique", bar.key ) ) )
+						.thenAccept( bar -> context.assertEquals( "unique", bar.getKey() ) ) )
 		);
 	}
 
 	@Test
 	public void testMergeDetached(TestContext context) {
 		Bar bar = new Bar( "unique2" );
-		test( context, getSessionFactory()
-				.withTransaction( (session, tx) -> session.persist( bar ) )
-				.thenCompose( i -> getSessionFactory()
-						.withTransaction( session -> session.merge( new Foo( bar ) ) ) )
-				.thenCompose( result -> getSessionFactory()
-						.withTransaction( session -> session.fetch( result.bar )
-								.thenAccept( b -> context.assertEquals( "unique2", b.key ) )
-				) ) );
+		test(
+				context,
+				getSessionFactory().withTransaction( (session, tx) -> session.persist( bar ) )
+						.thenCompose( i -> getSessionFactory().withTransaction( session -> session.merge( new Foo( bar ) ) ) )
+						.thenCompose( result -> getSessionFactory().withTransaction( session -> session.fetch( result.getBar() )
+								.thenAccept( b -> context.assertEquals( "unique2", b.getKey() ) ) ) )
+		);
 	}
 
 	@Test
 	public void testMergeReference(TestContext context) {
 		Bar bar = new Bar( "unique3" );
-		test( context, getSessionFactory()
-				.withTransaction( session -> session.persist( bar ) )
-				.thenCompose( i -> getSessionFactory()
-						.withTransaction( session-> session.merge( new Foo( session.getReference( Bar.class, bar.id ) ) ) )
-				)
-				.thenCompose( result -> getSessionFactory()
-						.withTransaction( session-> session.fetch( result.bar )
-						.thenAccept( b -> context.assertEquals( "unique3", b.key ) )
-				) ) );
+		test(
+				context,
+				getSessionFactory().withTransaction( session -> session.persist( bar ) )
+						.thenCompose( i -> getSessionFactory().withTransaction( session -> session.merge( new Foo(
+								session.getReference( Bar.class, bar.getId() ) ) ) ) )
+						.thenCompose( result -> getSessionFactory().withTransaction( session -> session.fetch( result.getBar() )
+								.thenAccept( b -> context.assertEquals( "unique3", b.getKey() ) ) ) )
+		);
 	}
 
 	@Entity(name = "Foo")
@@ -87,11 +82,27 @@ public class LazyUniqueKeyTest extends BaseReactiveTest {
 
 		@GeneratedValue
 		@Id
-		long id;
+		private long id;
 		@ManyToOne(cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
 		@Fetch(FetchMode.SELECT)
 		@JoinColumn(name = "bar_key", referencedColumnName = "nat_key")
-		Bar bar;
+		private Bar bar;
+
+		public long getId() {
+			return id;
+		}
+
+		public void setId(long id) {
+			this.id = id;
+		}
+
+		public Bar getBar() {
+			return bar;
+		}
+
+		public void setBar(Bar bar) {
+			this.bar = bar;
+		}
 	}
 
 	@Entity(name = "Bar")
@@ -105,8 +116,24 @@ public class LazyUniqueKeyTest extends BaseReactiveTest {
 
 		@GeneratedValue
 		@Id
-		long id;
+		private long id;
 		@Column(name = "nat_key", unique = true)
-		String key;
+		private String key;
+
+		public long getId() {
+			return id;
+		}
+
+		public void setId(long id) {
+			this.id = id;
+		}
+
+		public String getKey() {
+			return key;
+		}
+
+		public void setKey(String key) {
+			this.key = key;
+		}
 	}
 }

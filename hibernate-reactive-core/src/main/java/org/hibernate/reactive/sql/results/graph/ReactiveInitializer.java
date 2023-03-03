@@ -16,6 +16,8 @@ import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
 @Incubating
 public interface ReactiveInitializer {
 
+	CompletionStage<Void> reactiveResolveInstance(ReactiveRowProcessingState rowProcessingState);
+
 	CompletionStage<Void> reactiveInitializeInstance(ReactiveRowProcessingState rowProcessingState);
 
 }
