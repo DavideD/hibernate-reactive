@@ -76,6 +76,13 @@ public class ReactiveEntitySelectFetchInitializer extends EntitySelectFetchIniti
 	}
 
 	@Override
+	public CompletionStage<Void> reactiveResolveKey(RowProcessingState rowProcessingState) {
+		// It shouldn't do anything
+		resolveInstance( rowProcessingState );
+		return voidFuture();
+	}
+
+	@Override
 	public CompletionStage<Void> reactiveResolveInstance(ReactiveRowProcessingState rowProcessingState) {
 		NavigablePath[] np = { getNavigablePath().getParent() };
 		if ( np[0] == null ) {

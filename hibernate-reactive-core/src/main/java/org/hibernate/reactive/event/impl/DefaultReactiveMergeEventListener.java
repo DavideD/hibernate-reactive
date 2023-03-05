@@ -510,20 +510,19 @@ public class DefaultReactiveMergeEventListener extends AbstractReactiveSaveEvent
 		if ( entity == target ) {
 			return copyValues( persister, entity, target, source, mergeContext );
 		}
-		else {
-			ReactiveSession session = source.unwrap( ReactiveSession.class );
-			final Object[] mergeState = persister.getValues( entity );
-			final Object[] managedState = persister.getValues( target );
 
-			// Cascade-merge mappings do not determine what needs to be fetched.
-			// The value only needs to be fetched if the incoming value (mergeState[i])
-			// is initialized, but its corresponding managed state is not initialized.
-			// Initialization must be done before copyValues() executes.
-			return loop( 0, mergeState.length,
-						  i -> Hibernate.isInitialized( mergeState[i] ) && !Hibernate.isInitialized( managedState[i] ),
-						  i -> session.reactiveFetch( managedState[i], true ) )
-					.thenCompose( v -> copyValues( persister, entity, target, source, mergeContext ) );
-		}
+		ReactiveSession session = source.unwrap( ReactiveSession.class );
+		final Object[] mergeState = persister.getValues( entity );
+		final Object[] managedState = persister.getValues( target );
+
+		// Cascade-merge mappings do not determine what needs to be fetched.
+		// The value only needs to be fetched if the incoming value (mergeState[i])
+		// is initialized, but its corresponding managed state is not initialized.
+		// Initialization must be done before copyValues() executes.
+		return loop( 0, mergeState.length,
+					  i -> Hibernate.isInitialized( mergeState[i] ) && !Hibernate.isInitialized( managedState[i] ),
+					  i -> session.reactiveFetch( managedState[i], true ) )
+				.thenCompose( v -> copyValues( persister, entity, target, source, mergeContext ) );
 	}
 
 	protected CompletionStage<Void> copyValues(

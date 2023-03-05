@@ -70,13 +70,38 @@ public abstract class ReactiveAbstractEntityInitializer extends AbstractEntityIn
 	}
 
 	@Override
+	public CompletionStage<Void> reactiveResolveKey(RowProcessingState rowProcessingState) {
+		super.resolveKey( rowProcessingState );
+		return voidFuture();
+	}
+
+	@Override
 	public void initializeInstance(RowProcessingState rowProcessingState) {
 		throw LOG.nonReactiveMethodCall( "reactiveInitializeInstance" );
 	}
 
 	@Override
 	public CompletionStage<Void> reactiveResolveInstance(ReactiveRowProcessingState rowProcessingState) {
-		super.resolveInstance( rowProcessingState );
+		if ( !missing && !isEntityInitialized() ) {
+			if ( shouldSkipResolveInstance( rowProcessingState ) ) {
+				missing = true;
+				return voidFuture();
+			}
+			// Special case map proxy to avoid stack overflows
+			// We know that a map proxy will always be of "the right type" so just use that object
+			final LoadingEntityEntry existingLoadingEntry = rowProcessingState.getSession()
+					.getPersistenceContextInternal().getLoadContexts()
+					.findLoadingEntityEntry( getEntityKey() );
+
+			setIsOwningInitializer( getEntityKey().getIdentifier(), existingLoadingEntry );
+
+			if ( getEntityInstance() == null ) {
+				resolveEntityInstance( rowProcessingState, existingLoadingEntry, getEntityKey().getIdentifier() );
+			}
+			else if ( existingLoadingEntry != null && existingLoadingEntry.getEntityInitializer() != this ) {
+				setEntityInitialized( true );
+			}
+		}
 		return voidFuture();
 	}
 

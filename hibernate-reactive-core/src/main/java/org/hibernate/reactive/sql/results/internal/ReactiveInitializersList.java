@@ -5,7 +5,6 @@
  */
 package org.hibernate.reactive.sql.results.internal;
 
-
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
@@ -74,10 +73,16 @@ public final class ReactiveInitializersList {
 		}
 	}
 
-	public void resolveKeys(final RowProcessingState rowProcessingState) {
-		for ( Initializer init : sortedNonCollectionsFirst ) {
-			init.resolveKey( rowProcessingState );
-		}
+	public CompletionStage<Void> resolveKeys(final RowProcessingState rowProcessingState) {
+		return loop( sortedNonCollectionsFirst, initializer -> {
+			if ( initializer instanceof ReactiveInitializer ) {
+				return ( (ReactiveInitializer) initializer ).reactiveResolveKey( rowProcessingState );
+			}
+			else {
+				initializer.resolveKey( rowProcessingState );
+				return voidFuture();
+			}
+		} );
 	}
 
 	public CompletionStage<Void> resolveInstances(final ReactiveRowProcessingState rowProcessingState) {

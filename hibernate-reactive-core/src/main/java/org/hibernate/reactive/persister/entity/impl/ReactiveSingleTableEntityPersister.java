@@ -23,11 +23,10 @@ import org.hibernate.loader.ast.internal.SingleIdArrayLoadPlan;
 import org.hibernate.loader.ast.spi.MultiIdLoadOptions;
 import org.hibernate.loader.ast.spi.SingleUniqueKeyEntityLoader;
 import org.hibernate.mapping.PersistentClass;
-import org.hibernate.metamodel.mapping.NaturalIdMapping;
-import org.hibernate.metamodel.mapping.SingularAttributeMapping;
-import org.hibernate.metamodel.mapping.internal.MappingModelCreationProcess;
 import org.hibernate.mapping.Property;
 import org.hibernate.metamodel.mapping.AttributeMapping;
+import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
+import org.hibernate.metamodel.mapping.NaturalIdMapping;
 import org.hibernate.metamodel.mapping.SingularAttributeMapping;
 import org.hibernate.metamodel.mapping.internal.MappingModelCreationProcess;
 import org.hibernate.metamodel.mapping.internal.ToOneAttributeMapping;
@@ -39,6 +38,7 @@ import org.hibernate.persister.entity.mutation.InsertCoordinator;
 import org.hibernate.persister.entity.mutation.UpdateCoordinator;
 import org.hibernate.reactive.loader.ast.spi.ReactiveSingleIdEntityLoader;
 import org.hibernate.reactive.loader.ast.spi.ReactiveSingleUniqueKeyEntityLoader;
+import org.hibernate.reactive.metamodel.mapping.internal.ReactiveMappingModelCreationHelper;
 import org.hibernate.reactive.metamodel.mapping.internal.ReactiveToOneAttributeMapping;
 import org.hibernate.reactive.persister.entity.mutation.ReactiveDeleteCoordinator;
 import org.hibernate.reactive.persister.entity.mutation.ReactiveInsertCoordinator;
@@ -100,6 +100,19 @@ public class ReactiveSingleTableEntityPersister extends SingleTableEntityPersist
 			String resultVariable,
 			DomainResultCreationState creationState) {
 		return reactiveDelegate.createDomainResult( this, navigablePath, tableGroup, resultVariable, creationState );
+	}
+
+	@Override
+	protected EntityIdentifierMapping generateNonEncapsulatedCompositeIdentifierMapping(
+			MappingModelCreationProcess creationProcess,
+			PersistentClass bootEntityDescriptor) {
+		return ReactiveMappingModelCreationHelper.buildNonEncapsulatedCompositeIdentifierMapping(
+				this,
+				getTableName(),
+				getRootTableKeyColumnNames(),
+				bootEntityDescriptor,
+				creationProcess
+		);
 	}
 
 	@Override

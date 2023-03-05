@@ -9,6 +9,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 import org.junit.Ignore;
 import org.junit.Test;
@@ -23,67 +24,142 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 @Ignore // This also fails in 1.1, see issue https://github.com/hibernate/hibernate-reactive/issues/1384
 public class CompositeIdManyToOneTest extends BaseReactiveTest {
 
-    @Override
-    protected Collection<Class<?>> annotatedEntities() {
-        return List.of( GroceryList.class, ShoppingItem.class);
-    }
+	@Override
+	protected Collection<Class<?>> annotatedEntities() {
+		return List.of( GroceryList.class, ShoppingItem.class );
+	}
 
-    @Test
-    public void reactivePersist(TestContext context) {
+	@Test
+	public void reactivePersist(TestContext context) {
+		GroceryList gl = new GroceryList();
+		gl.id = 4L;
+		ShoppingItem si = new ShoppingItem();
+		si.groceryList = gl;
+		si.itemName = "Milk";
+		si.itemCount = 2;
+		gl.shoppingItems.add( si );
 
-        GroceryList gl = new GroceryList();
-        gl.id = 4L;
-        ShoppingItem si = new ShoppingItem();
-        si.groceryList = gl;
-//        si.groceryListId = gl.id;
-        si.itemName = "Milk";
-        si.itemCount = 2;
-        gl.shoppingItems.add(si);
+		test( context, openSession()
+				.thenCompose( s -> s.persist( gl )
+						.thenCompose( v -> s.flush() ) )
+				.thenCompose( v -> openSession() )
+				.thenCompose( s -> s.createQuery( "from ShoppingItem si where si.groceryList.id = :gl" )
+						.setParameter( "gl", gl.id )
+						.getResultList() )
+				.thenAccept( list -> assertThat( list ).contains( si ) )
+		);
+	}
 
-        test(
-                context,
-                openSession()
-                        .thenCompose( s -> s.persist( gl )
-                                .thenCompose( v -> s.flush() )
-                        ).thenCompose( v -> openSession() )
-                        .thenCompose( s -> s.createQuery("from ShoppingItem si where si.groceryList.id = :gl")
-                                .setParameter("gl", gl.id)
-                                .getResultList() )
-                        .thenAccept( list -> context.assertEquals( 1, list.size() ) )
-        );
-    }
+	@Entity(name = "GroceryList")
+	public static class GroceryList implements Serializable {
 
-    @Entity(name = "GroceryList")
-    public static class GroceryList implements Serializable {
+		@Id
+		private Long id;
 
-        @Id private Long id;
+		@OneToMany(mappedBy = "groceryList", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+		private List<ShoppingItem> shoppingItems = new ArrayList<>();
 
-        @OneToMany(mappedBy = "groceryList", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-        private List<ShoppingItem> shoppingItems = new ArrayList<>();
+		public Long getId() {
+			return id;
+		}
 
-    }
+		public void setId(Long id) {
+			this.id = id;
+		}
 
-    @Entity(name = "ShoppingItem")
-    @IdClass(ShoppingItemId.class)
-    public static class ShoppingItem implements Serializable {
+		public List<ShoppingItem> getShoppingItems() {
+			return shoppingItems;
+		}
 
-//        @Id Long groceryListId;
-        @Id private String itemName;
+		public void setShoppingItems(List<ShoppingItem> shoppingItems) {
+			this.shoppingItems = shoppingItems;
+		}
 
-        @Id @ManyToOne
-        @JoinColumn(name = "grocerylistid")
-        private GroceryList groceryList;
+		@Override
+		public boolean equals(Object o) {
+			if ( this == o ) {
+				return true;
+			}
+			if ( o == null || getClass() != o.getClass() ) {
+				return false;
+			}
+			GroceryList that = (GroceryList) o;
+			return Objects.equals( id, that.id );
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash( id );
+		}
+	}
+
+	@Entity(name = "ShoppingItem")
+	@IdClass(ShoppingItemId.class)
+	public static class ShoppingItem implements Serializable {
+
+		@Id
+		private String itemName;
+
+		@Id
+		@ManyToOne
+		@JoinColumn(name = "grocerylistid")
+		private GroceryList groceryList;
 
 
-        private int itemCount;
+		private int itemCount;
 
-    }
+		public String getItemName() {
+			return itemName;
+		}
 
-    public static class ShoppingItemId implements Serializable {
-        private String itemName;
-        private GroceryList groceryList;
-    }
+		public void setItemName(String itemName) {
+			this.itemName = itemName;
+		}
+
+		public GroceryList getGroceryList() {
+			return groceryList;
+		}
+
+		public void setGroceryList(GroceryList groceryList) {
+			this.groceryList = groceryList;
+		}
+
+		public int getItemCount() {
+			return itemCount;
+		}
+
+		public void setItemCount(int itemCount) {
+			this.itemCount = itemCount;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if ( this == o ) {
+				return true;
+			}
+			if ( o == null || getClass() != o.getClass() ) {
+				return false;
+			}
+			ShoppingItem that = (ShoppingItem) o;
+			return itemCount == that.itemCount && Objects.equals(
+					itemName,
+					that.itemName
+			) && Objects.equals( groceryList, that.groceryList );
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash( itemName, groceryList, itemCount );
+		}
+	}
+
+	public static class ShoppingItemId implements Serializable {
+		private String itemName;
+		private GroceryList groceryList;
+	}
 }

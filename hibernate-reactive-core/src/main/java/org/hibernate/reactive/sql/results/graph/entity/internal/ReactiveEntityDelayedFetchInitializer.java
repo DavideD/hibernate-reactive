@@ -26,6 +26,7 @@ import org.hibernate.sql.results.graph.FetchParentAccess;
 import org.hibernate.sql.results.graph.entity.EntityInitializer;
 import org.hibernate.sql.results.graph.entity.LoadingEntityEntry;
 import org.hibernate.sql.results.graph.entity.internal.EntityDelayedFetchInitializer;
+import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 import org.hibernate.type.Type;
 
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
@@ -153,6 +154,11 @@ public class ReactiveEntityDelayedFetchInitializer extends EntityDelayedFetchIni
 			stage = stage.thenAccept( unused -> notifyResolutionListeners( getEntityInstance() ) );
 		}
 		return stage;
+	}
+
+	@Override
+	public CompletionStage<Void> reactiveResolveKey(RowProcessingState rowProcessingState) {
+		return voidFuture();
 	}
 
 	@Override
