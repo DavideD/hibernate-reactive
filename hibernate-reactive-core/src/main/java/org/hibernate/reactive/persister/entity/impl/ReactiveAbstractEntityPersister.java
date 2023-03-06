@@ -29,7 +29,6 @@ import org.hibernate.metamodel.mapping.EntityVersionMapping;
 import org.hibernate.metamodel.mapping.NaturalIdMapping;
 import org.hibernate.metamodel.mapping.SingularAttributeMapping;
 import org.hibernate.metamodel.mapping.internal.MappingModelCreationProcess;
-import org.hibernate.metamodel.mapping.internal.SimpleNaturalIdMapping;
 import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.persister.entity.Lockable;
 import org.hibernate.persister.entity.OuterJoinLoadable;
@@ -38,6 +37,7 @@ import org.hibernate.reactive.loader.ast.spi.ReactiveSingleIdEntityLoader;
 import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.logging.impl.LoggerFactory;
 import org.hibernate.reactive.metamodel.mapping.internal.ReactiveCompoundNaturalIdMapping;
+import org.hibernate.reactive.metamodel.mapping.internal.ReactiveSimpleNaturalIdMapping;
 import org.hibernate.reactive.pool.ReactiveConnection;
 import org.hibernate.reactive.pool.impl.Parameters;
 import org.hibernate.reactive.session.ReactiveSession;
@@ -536,7 +536,7 @@ public interface ReactiveAbstractEntityPersister extends ReactiveEntityPersister
 			final String propertyName = getEntityMetamodel().getPropertyNames()[ naturalIdAttributeIndexes[ 0 ] ];
 			final AttributeMapping attributeMapping = findAttributeMapping( propertyName );
 			final SingularAttributeMapping singularAttributeMapping = (SingularAttributeMapping) attributeMapping;
-			return new SimpleNaturalIdMapping( singularAttributeMapping, this, creationProcess );
+			return new ReactiveSimpleNaturalIdMapping( singularAttributeMapping, this, creationProcess );
 		}
 
 		// collect the names of the attributes making up the natural-id.

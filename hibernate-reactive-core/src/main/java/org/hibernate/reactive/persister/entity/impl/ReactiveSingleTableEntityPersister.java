@@ -168,6 +168,9 @@ public class ReactiveSingleTableEntityPersister extends SingleTableEntityPersist
 
 	}
 
+	/**
+	 * @see SingleTableEntityPersister#loadEntityIdByNaturalId(Object[], LockOptions, SharedSessionContractImplementor)
+	 */
 	@Override
 	public CompletionStage<Object> reactiveLoadEntityIdByNaturalId(Object[] orderedNaturalIdValues, LockOptions lockOptions, EventSource session) {
 		verifyHasNaturalId();
@@ -179,8 +182,8 @@ public class ReactiveSingleTableEntityPersister extends SingleTableEntityPersist
 			);
 		}
 
-		return reactiveDelegate.getSingleNaturalLoader().reactiveResolveNaturalIdToId(orderedNaturalIdValues, session);
-//		return CompletionStages.completedFuture( reactiveDelegate.getSingleNaturalLoader().reactiveResolveNaturalIdToId(orderedNaturalIdValues, session) );
+		Object result = ReactiveAbstractEntityPersister.super.getNaturalIdLoader().resolveNaturalIdToId( orderedNaturalIdValues, session );
+		return CompletionStages.completedFuture(result);
 	}
 
 	public CompletionStage<Object> reactiveResolveNaturalIdToId( Object[] orderedNaturalIdValues, EventSource session ) {

@@ -8,21 +8,18 @@ package org.hibernate.reactive.loader.ast.spi;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.loader.ast.spi.NaturalIdLoadOptions;
 import org.hibernate.loader.ast.spi.NaturalIdLoader;
+import org.hibernate.reactive.logging.impl.Log;
+import org.hibernate.reactive.logging.impl.LoggerFactory;
 
+import java.lang.invoke.MethodHandles;
 import java.util.concurrent.CompletionStage;
 
 public interface ReactiveNaturalIdLoader<T> extends NaturalIdLoader<CompletionStage<T>> {
 
-    /**
-     * @deprecated use {@link #reactiveLoad(Object, NaturalIdLoadOptions, SharedSessionContractImplementor)}
-     */
-    @Deprecated
-    @Override
-    default CompletionStage<T> load(Object naturalIdToLoad, NaturalIdLoadOptions options, SharedSessionContractImplementor session) {
-        throw new UnsupportedOperationException("Use the reactive method: reactiveLoad(Object, NaturalIdLoadOptions, SharedSessionContractImplementor)");
-    }
+    Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
-    CompletionStage<T> reactiveLoad(Object naturalIdToLoad, NaturalIdLoadOptions options, SharedSessionContractImplementor session);
+    @Override
+    CompletionStage<T> load(Object naturalIdToLoad, NaturalIdLoadOptions options, SharedSessionContractImplementor session);
 
     /**
      * @deprecated use {@link #reactiveResolveNaturalIdToId(Object, SharedSessionContractImplementor)}
@@ -30,8 +27,10 @@ public interface ReactiveNaturalIdLoader<T> extends NaturalIdLoader<CompletionSt
     @Deprecated
     @Override
     default Object resolveNaturalIdToId(Object naturalIdValue, SharedSessionContractImplementor session) {
-        throw new UnsupportedOperationException("Use the reactive method: reactiveResolveNaturalIdToId(Object, NaturalIdLoadOptions, SharedSessionContractImplementor)");
+        throw LOG.nonReactiveMethodCall("reactiveResolveNaturalIdToId");
     }
+
+    CompletionStage reactiveLoad(Object naturalIdToLoad, NaturalIdLoadOptions options, SharedSessionContractImplementor session);
 
     CompletionStage<Object> reactiveResolveNaturalIdToId(Object naturalIdValue, SharedSessionContractImplementor session);
 
@@ -39,10 +38,8 @@ public interface ReactiveNaturalIdLoader<T> extends NaturalIdLoader<CompletionSt
      * @deprecated use {@link #reactiveResolveIdToNaturalId(Object, SharedSessionContractImplementor)}
      */
     default Object resolveIdToNaturalId(Object id, SharedSessionContractImplementor session) {
-        throw new UnsupportedOperationException("Use the reactive method: reactiveResolveIdToNaturalId(Object, NaturalIdLoadOptions, SharedSessionContractImplementor)");
+        throw LOG.nonReactiveMethodCall("reactiveResolveIdToNaturalId");
     }
 
-
     CompletionStage<Object> reactiveResolveIdToNaturalId(Object id, SharedSessionContractImplementor session);
-
 }

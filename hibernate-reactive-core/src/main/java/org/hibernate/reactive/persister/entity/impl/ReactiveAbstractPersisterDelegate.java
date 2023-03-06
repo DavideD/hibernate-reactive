@@ -42,7 +42,7 @@ public class ReactiveAbstractPersisterDelegate {
 	private final ReactiveSingleIdEntityLoader<Object> singleIdEntityLoader;
 	private final ReactiveMultiIdEntityLoader<?> multiIdEntityLoader;
 
-	private final ReactiveNaturalIdLoader<Object> singleNaturalIdLoader;
+	private final ReactiveNaturalIdLoader<?> singleNaturalIdLoader;
 
 //	private final ReactiveMultiNaturalIdLoader<?> multiNaturalIdLoader;
 
@@ -53,9 +53,9 @@ public class ReactiveAbstractPersisterDelegate {
 			final PersistentClass persistentClass,
 			final RuntimeModelCreationContext creationContext) {
 		SessionFactoryImplementor factory = creationContext.getSessionFactory();
-		singleIdEntityLoader = createReactiveSingleIdEntityLoader( entityDescriptor, persistentClass, creationContext, factory, entityDescriptor.getEntityName() );
-		multiIdEntityLoader = new ReactiveMultiIdLoaderStandard<>( entityDescriptor, persistentClass, factory );
-		singleNaturalIdLoader = createSingleNaturalIdLoader( );
+		singleIdEntityLoader = createReactiveSingleIdEntityLoader(entityDescriptor, persistentClass, creationContext, factory, entityDescriptor.getEntityName());
+		multiIdEntityLoader = new ReactiveMultiIdLoaderStandard<>(entityDescriptor, persistentClass, factory);
+		singleNaturalIdLoader = getSingleNaturalLoader(); //new ReactiveSimpleNaturalIdLoader(null, entityDescriptor);
 	}
 
 	public ReactiveSingleIdEntityLoader<Object> getSingleIdEntityLoader() {
@@ -92,10 +92,6 @@ public class ReactiveAbstractPersisterDelegate {
 		}
 
 		return new ReactiveSingleIdEntityLoaderStandardImpl<>( entityDescriptor, factory );
-	}
-
-	private static ReactiveNaturalIdLoader<Object> createSingleNaturalIdLoader() {
-		return new ReactiveSimpleNaturalIdLoader();
 	}
 
 	private static int batchSize(PersistentClass bootDescriptor, SessionFactoryImplementor factory) {
