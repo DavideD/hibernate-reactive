@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.hibernate.HibernateException;
@@ -65,8 +66,29 @@ public class ReactiveSimpleNaturalIdLoader<T> extends SimpleNaturalIdLoader<Comp
 
 	private static final Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
+	private final ReactiveNaturalIdLoaderDelegate delegate;
+
 	public ReactiveSimpleNaturalIdLoader(SimpleNaturalIdMapping naturalIdMapping, EntityMappingType entityDescriptor) {
 		super( naturalIdMapping, entityDescriptor );
+		delegate = new ReactiveNaturalIdLoaderDelegate( naturalIdMapping, entityDescriptor ) {
+			@Override
+			protected void applyNaturalIdRestriction(
+					Object bindValue,
+					TableGroup rootTableGroup,
+					Consumer consumer,
+					BiConsumer jdbcParameterConsumer,
+					LoaderSqlAstCreationState sqlAstCreationState,
+					SharedSessionContractImplementor session) {
+				this.applyNaturalIdRestriction(
+						bindValue,
+						rootTableGroup,
+						consumer,
+						jdbcParameterConsumer,
+						sqlAstCreationState,
+						session
+				);
+			}
+		};
 	}
 
 	/**
@@ -74,73 +96,14 @@ public class ReactiveSimpleNaturalIdLoader<T> extends SimpleNaturalIdLoader<Comp
 	 */
 	@Override
 	public CompletionStage<Object> reactiveResolveIdToNaturalId(Object id, SharedSessionContractImplementor session) {
-		final SessionFactoryImplementor sessionFactory = session.getFactory();
-
-		final List<JdbcParameter> jdbcParameters = new ArrayList<>();
-		final SelectStatement sqlSelect = LoaderSelectBuilder.createSelect(
-				entityDescriptor(),
-				Collections.singletonList( naturalIdMapping() ),
-				entityDescriptor().getIdentifierMapping(),
-				null,
-				1,
-				session.getLoadQueryInfluencers(),
-				LockOptions.NONE,
-				jdbcParameters::add,
-				sessionFactory
-		);
-
-		final JdbcServices jdbcServices = sessionFactory.getJdbcServices();
-		final JdbcEnvironment jdbcEnvironment = jdbcServices.getJdbcEnvironment();
-		final SqlAstTranslatorFactory sqlAstTranslatorFactory = jdbcEnvironment.getSqlAstTranslatorFactory();
-
-		final JdbcParameterBindings jdbcParamBindings = new JdbcParameterBindingsImpl( jdbcParameters.size() );
-		int offset = jdbcParamBindings.registerParametersForEachJdbcValue(
-				id,
-				entityDescriptor().getIdentifierMapping(),
-				jdbcParameters,
-				session
-		);
-		assert offset == jdbcParameters.size();
-
-		final JdbcOperationQuerySelect jdbcSelect = sqlAstTranslatorFactory.buildSelectTranslator(
-						sessionFactory,
-						sqlSelect
-				)
-				.translate( jdbcParamBindings, QueryOptions.NONE );
-		return StandardReactiveSelectExecutor.INSTANCE
-				.list(
-						jdbcSelect,
-						jdbcParamBindings,
-						new NoCallbackExecutionContext( session ),
-						row -> {
-							// because we select the natural-id we want to "reduce" the result
-							assert row.length == 1;
-							return row[0];
-						},
-						ReactiveListResultsConsumer.UniqueSemantic.FILTER
-				)
-				.thenApply( results -> {
-					if ( results.isEmpty() ) {
-						return null;
-					}
-
-					if ( results.size() > 1 ) {
-						throw new HibernateException(
-								String.format(
-										"Resolving id to natural-id returned more that one row : %s #%s",
-										entityDescriptor().getEntityName(),
-										id
-								)
-						);
-					}
-					return results.get( 0 );
-				} );
+		return delegate.reactiveResolveIdToNaturalId( id, session );
 	}
 
 	@Override
 	public CompletionStage<Object> reactiveResolveNaturalIdToId(
 			Object naturalIdValue,
 			SharedSessionContractImplementor session) {
+		// TODO: Move it to the delegator
 		return reactiveSelectByNaturalId(
 				naturalIdMapping().normalizeInput( naturalIdValue ),
 				NaturalIdLoadOptions.NONE,
@@ -177,6 +140,7 @@ public class ReactiveSimpleNaturalIdLoader<T> extends SimpleNaturalIdLoader<Comp
 			Object naturalIdValue,
 			NaturalIdLoadOptions options,
 			SharedSessionContractImplementor session) {
+		// TODO: Move it to the delegator
 		return reactiveSelectByNaturalId(
 				naturalIdMapping().normalizeInput( naturalIdValue ),
 				options,
@@ -208,6 +172,7 @@ public class ReactiveSimpleNaturalIdLoader<T> extends SimpleNaturalIdLoader<Comp
 		).thenApply( this::castToClassType );
 	}
 
+	// TODO: Move it to the delegator
 	private static ImmutableFetchList visitFetches(
 			FetchParent fetchParent,
 			LoaderSqlAstCreationState creationState) {
@@ -230,6 +195,7 @@ public class ReactiveSimpleNaturalIdLoader<T> extends SimpleNaturalIdLoader<Comp
 		return fetches.build();
 	}
 
+	// TODO: Move it to the delegator
 	protected CompletionStage<Object> reactiveSelectByNaturalId(
 			Object bindValue,
 			NaturalIdLoadOptions options,
