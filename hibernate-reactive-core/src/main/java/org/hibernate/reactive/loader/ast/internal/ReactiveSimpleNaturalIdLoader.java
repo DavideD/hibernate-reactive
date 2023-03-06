@@ -5,14 +5,27 @@
  */
 package org.hibernate.reactive.loader.ast.internal;
 
+import java.lang.invoke.MethodHandles;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CompletionStage;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+
+import org.hibernate.HibernateException;
 import org.hibernate.LockOptions;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.loader.ast.internal.LoaderSelectBuilder;
 import org.hibernate.loader.ast.internal.LoaderSqlAstCreationState;
+import org.hibernate.loader.ast.internal.NoCallbackExecutionContext;
 import org.hibernate.loader.ast.internal.SimpleNaturalIdLoader;
 import org.hibernate.loader.ast.spi.NaturalIdLoadOptions;
+import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.internal.SimpleNaturalIdMapping;
 import org.hibernate.query.internal.SimpleQueryOptions;
@@ -26,6 +39,7 @@ import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
 import org.hibernate.sql.ast.spi.SimpleFromClauseAccessImpl;
 import org.hibernate.sql.ast.spi.SqlAliasBaseManager;
+import org.hibernate.sql.ast.tree.expression.JdbcParameter;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.select.QuerySpec;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
@@ -35,200 +49,313 @@ import org.hibernate.sql.exec.internal.JdbcParameterBindingsImpl;
 import org.hibernate.sql.exec.spi.Callback;
 import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
-import org.hibernate.sql.results.graph.*;
+import org.hibernate.sql.results.graph.DomainResult;
+import org.hibernate.sql.results.graph.Fetch;
+import org.hibernate.sql.results.graph.FetchParent;
+import org.hibernate.sql.results.graph.Fetchable;
+import org.hibernate.sql.results.graph.FetchableContainer;
 import org.hibernate.sql.results.graph.internal.ImmutableFetchList;
 import org.hibernate.stat.spi.StatisticsImplementor;
-
-import java.lang.invoke.MethodHandles;
-import java.util.Collections;
-import java.util.concurrent.CompletionStage;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 
 /**
  * @see org.hibernate.loader.ast.internal.SimpleNaturalIdLoader
  */
-public class ReactiveSimpleNaturalIdLoader<T> extends SimpleNaturalIdLoader<CompletionStage<T>> implements ReactiveNaturalIdLoader<T> {
+public class ReactiveSimpleNaturalIdLoader<T> extends SimpleNaturalIdLoader<CompletionStage<T>>
+		implements ReactiveNaturalIdLoader<T> {
 
-    private static final Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
+	private static final Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
+	public ReactiveSimpleNaturalIdLoader(SimpleNaturalIdMapping naturalIdMapping, EntityMappingType entityDescriptor) {
+		super( naturalIdMapping, entityDescriptor );
+	}
 
-    public ReactiveSimpleNaturalIdLoader(SimpleNaturalIdMapping naturalIdMapping, EntityMappingType entityDescriptor) {
-        super(naturalIdMapping, entityDescriptor);
-    }
+	/**
+	 * @see org.hibernate.loader.ast.internal.AbstractNaturalIdLoader#resolveIdToNaturalId(Object, SharedSessionContractImplementor)
+	 */
+	@Override
+	public CompletionStage<Object> reactiveResolveIdToNaturalId(Object id, SharedSessionContractImplementor session) {
+		final SessionFactoryImplementor sessionFactory = session.getFactory();
 
-    @Override
-    public CompletionStage<Object> reactiveResolveIdToNaturalId(Object id, SharedSessionContractImplementor session) {
-        throw LOG.notYetImplemented();
-    }
+		final List<JdbcParameter> jdbcParameters = new ArrayList<>();
+		final SelectStatement sqlSelect = LoaderSelectBuilder.createSelect(
+				entityDescriptor(),
+				Collections.singletonList( naturalIdMapping() ),
+				entityDescriptor().getIdentifierMapping(),
+				null,
+				1,
+				session.getLoadQueryInfluencers(),
+				LockOptions.NONE,
+				jdbcParameters::add,
+				sessionFactory
+		);
 
-    @Override
-    public CompletionStage<Object> reactiveResolveNaturalIdToId(Object naturalIdValue, SharedSessionContractImplementor session) {
-        throw LOG.notYetImplemented();
-    }
+		final JdbcServices jdbcServices = sessionFactory.getJdbcServices();
+		final JdbcEnvironment jdbcEnvironment = jdbcServices.getJdbcEnvironment();
+		final SqlAstTranslatorFactory sqlAstTranslatorFactory = jdbcEnvironment.getSqlAstTranslatorFactory();
 
-    @Override
-    public CompletionStage<T> load(Object naturalIdValue, NaturalIdLoadOptions options, SharedSessionContractImplementor session) {
-        return reactiveSelectByNaturalId(
-                naturalIdMapping().normalizeInput( naturalIdValue ),
-                options,
-                (tableGroup, creationState) -> entityDescriptor().createDomainResult(
-                        new NavigablePath( entityDescriptor().getRootPathName() ),
-                        tableGroup,
-                        null,
-                        creationState
-                ),
-                ReactiveSimpleNaturalIdLoader::visitFetches,
-                (statsEnabled) -> {
+		final JdbcParameterBindings jdbcParamBindings = new JdbcParameterBindingsImpl( jdbcParameters.size() );
+		int offset = jdbcParamBindings.registerParametersForEachJdbcValue(
+				id,
+				entityDescriptor().getIdentifierMapping(),
+				jdbcParameters,
+				session
+		);
+		assert offset == jdbcParameters.size();
+
+		final JdbcOperationQuerySelect jdbcSelect = sqlAstTranslatorFactory.buildSelectTranslator(
+						sessionFactory,
+						sqlSelect
+				)
+				.translate( jdbcParamBindings, QueryOptions.NONE );
+		return StandardReactiveSelectExecutor.INSTANCE
+				.list(
+						jdbcSelect,
+						jdbcParamBindings,
+						new NoCallbackExecutionContext( session ),
+						row -> {
+							// because we select the natural-id we want to "reduce" the result
+							assert row.length == 1;
+							return row[0];
+						},
+						ReactiveListResultsConsumer.UniqueSemantic.FILTER
+				)
+				.thenApply( results -> {
+					if ( results.isEmpty() ) {
+						return null;
+					}
+
+					if ( results.size() > 1 ) {
+						throw new HibernateException(
+								String.format(
+										"Resolving id to natural-id returned more that one row : %s #%s",
+										entityDescriptor().getEntityName(),
+										id
+								)
+						);
+					}
+					return results.get( 0 );
+				} );
+	}
+
+	@Override
+	public CompletionStage<Object> reactiveResolveNaturalIdToId(
+			Object naturalIdValue,
+			SharedSessionContractImplementor session) {
+		return reactiveSelectByNaturalId(
+				naturalIdMapping().normalizeInput( naturalIdValue ),
+				NaturalIdLoadOptions.NONE,
+				(tableGroup, creationState) -> entityDescriptor().getIdentifierMapping().createDomainResult(
+						tableGroup.getNavigablePath().append( EntityIdentifierMapping.ROLE_LOCAL_NAME ),
+						tableGroup,
+						null,
+						creationState
+				),
+				ReactiveSimpleNaturalIdLoader::visitFetches,
+				(statsEnabled) -> {
 //					entityDescriptor().getPreLoadListener().startingLoad( entityDescriptor, naturalIdValue, KeyType.NATURAL_ID, LoadSource.DATABASE );
-                    return statsEnabled ? System.nanoTime() : -1;
-                },
-                (result,startToken) -> {
+					return statsEnabled ? System.nanoTime() : -1L;
+				},
+				(result, startToken) -> {
 //					entityDescriptor().getPostLoadListener().completedLoad( result, entityDescriptor(), naturalIdValue, KeyType.NATURAL_ID, LoadSource.DATABASE );
-                    if ( startToken > 0 ) {
-                        session.getFactory().getStatistics().naturalIdQueryExecuted(
-                                entityDescriptor().getEntityPersister().getRootEntityName(),
-                                System.nanoTime() - startToken
-                        );
+					if ( startToken > 0 ) {
+						session.getFactory().getStatistics().naturalIdQueryExecuted(
+								entityDescriptor().getEntityPersister().getRootEntityName(),
+								System.nanoTime() - startToken
+						);
 //						// todo (6.0) : need a "load-by-natural-id" stat
 //						//		e.g.,
 //						// final Object identifier = entityDescriptor().getIdentifierMapping().getIdentifier( result, session );
 //						// session.getFactory().getStatistics().entityLoadedByNaturalId( entityDescriptor(), identifier );
-                    }
-                },
-                session
-        );
-    }
+					}
+				},
+				session
+		);
+	}
 
-    @Override
-    public CompletionStage reactiveLoad(Object naturalIdToLoad, NaturalIdLoadOptions options, SharedSessionContractImplementor session) {
-        return null;
-    }
+	@Override
+	public CompletionStage<T> load(
+			Object naturalIdValue,
+			NaturalIdLoadOptions options,
+			SharedSessionContractImplementor session) {
+		return reactiveSelectByNaturalId(
+				naturalIdMapping().normalizeInput( naturalIdValue ),
+				options,
+				(tableGroup, creationState) -> entityDescriptor().createDomainResult(
+						new NavigablePath( entityDescriptor().getRootPathName() ),
+						tableGroup,
+						null,
+						creationState
+				),
+				ReactiveSimpleNaturalIdLoader::visitFetches,
+				(statsEnabled) -> {
+//					entityDescriptor().getPreLoadListener().startingLoad( entityDescriptor, naturalIdValue, KeyType.NATURAL_ID, LoadSource.DATABASE );
+					return statsEnabled ? System.nanoTime() : -1;
+				},
+				(result, startToken) -> {
+//					entityDescriptor().getPostLoadListener().completedLoad( result, entityDescriptor(), naturalIdValue, KeyType.NATURAL_ID, LoadSource.DATABASE );
+					if ( startToken > 0 ) {
+						session.getFactory().getStatistics().naturalIdQueryExecuted(
+								entityDescriptor().getEntityPersister().getRootEntityName(),
+								System.nanoTime() - startToken
+						);
+//						// todo (6.0) : need a "load-by-natural-id" stat
+//						//		e.g.,
+//						// final Object identifier = entityDescriptor().getIdentifierMapping().getIdentifier( result, session );
+//						// session.getFactory().getStatistics().entityLoadedByNaturalId( entityDescriptor(), identifier );
+					}
+				},
+				session
+		).thenApply( this::castToClassType );
+	}
 
-    private static ImmutableFetchList visitFetches(
-            FetchParent fetchParent,
-            LoaderSqlAstCreationState creationState) {
-        final FetchableContainer fetchableContainer = fetchParent.getReferencedMappingContainer();
-        final int size = fetchableContainer.getNumberOfFetchables();
-        final ImmutableFetchList.Builder fetches = new ImmutableFetchList.Builder( fetchableContainer );
-        for ( int i = 0; i < size; i++ ) {
-            final Fetchable fetchable = fetchableContainer.getFetchable( i );
-            final NavigablePath navigablePath = fetchParent.resolveNavigablePath( fetchable );
-            final Fetch fetch = fetchParent.generateFetchableFetch(
-                    fetchable,
-                    navigablePath,
-                    fetchable.getMappedFetchOptions().getTiming(),
-                    true,
-                    null,
-                    creationState
-            );
-            fetches.add( fetch );
-        }
-        return fetches.build();
-    }
-    protected CompletionStage<T> reactiveSelectByNaturalId(
-            Object bindValue,
-            NaturalIdLoadOptions options,
-            BiFunction<TableGroup,LoaderSqlAstCreationState, DomainResult<?>> domainResultProducer,
-            LoaderSqlAstCreationState.FetchProcessor fetchProcessor,
-            Function<Boolean,Long> statementStartHandler,
-            BiConsumer<Object,Long> statementCompletionHandler,
-            SharedSessionContractImplementor session) {
-        final SessionFactoryImplementor sessionFactory = session.getFactory();
-        final JdbcServices jdbcServices = sessionFactory.getJdbcServices();
-        final JdbcEnvironment jdbcEnvironment = jdbcServices.getJdbcEnvironment();
-        final SqlAstTranslatorFactory sqlAstTranslatorFactory = jdbcEnvironment.getSqlAstTranslatorFactory();
+	private static ImmutableFetchList visitFetches(
+			FetchParent fetchParent,
+			LoaderSqlAstCreationState creationState) {
+		final FetchableContainer fetchableContainer = fetchParent.getReferencedMappingContainer();
+		final int size = fetchableContainer.getNumberOfFetchables();
+		final ImmutableFetchList.Builder fetches = new ImmutableFetchList.Builder( fetchableContainer );
+		for ( int i = 0; i < size; i++ ) {
+			final Fetchable fetchable = fetchableContainer.getFetchable( i );
+			final NavigablePath navigablePath = fetchParent.resolveNavigablePath( fetchable );
+			final Fetch fetch = fetchParent.generateFetchableFetch(
+					fetchable,
+					navigablePath,
+					fetchable.getMappedFetchOptions().getTiming(),
+					true,
+					null,
+					creationState
+			);
+			fetches.add( fetch );
+		}
+		return fetches.build();
+	}
 
-        final LockOptions lockOptions;
-        if ( options.getLockOptions() != null ) {
-            lockOptions = options.getLockOptions();
-        }
-        else {
-            lockOptions = LockOptions.NONE;
-        }
+	protected CompletionStage<Object> reactiveSelectByNaturalId(
+			Object bindValue,
+			NaturalIdLoadOptions options,
+			BiFunction<TableGroup, LoaderSqlAstCreationState, DomainResult<?>> domainResultProducer,
+			LoaderSqlAstCreationState.FetchProcessor fetchProcessor,
+			Function<Boolean, Long> statementStartHandler,
+			BiConsumer<Object, Long> statementCompletionHandler,
+			SharedSessionContractImplementor session) {
+		final SessionFactoryImplementor sessionFactory = session.getFactory();
+		final JdbcServices jdbcServices = sessionFactory.getJdbcServices();
+		final JdbcEnvironment jdbcEnvironment = jdbcServices.getJdbcEnvironment();
+		final SqlAstTranslatorFactory sqlAstTranslatorFactory = jdbcEnvironment.getSqlAstTranslatorFactory();
 
-        final NavigablePath entityPath = new NavigablePath( entityDescriptor().getRootPathName() );
-        final QuerySpec rootQuerySpec = new QuerySpec( true );
+		final LockOptions lockOptions;
+		if ( options.getLockOptions() != null ) {
+			lockOptions = options.getLockOptions();
+		}
+		else {
+			lockOptions = LockOptions.NONE;
+		}
 
-        final LoaderSqlAstCreationState sqlAstCreationState = new LoaderSqlAstCreationState(
-                rootQuerySpec,
-                new SqlAliasBaseManager(),
-                new SimpleFromClauseAccessImpl(),
-                lockOptions,
-                fetchProcessor,
-                true,
-                sessionFactory
-        );
+		final NavigablePath entityPath = new NavigablePath( entityDescriptor().getRootPathName() );
+		final QuerySpec rootQuerySpec = new QuerySpec( true );
 
-        final TableGroup rootTableGroup = entityDescriptor().createRootTableGroup(
-                true,
-                entityPath,
-                null,
-                () -> rootQuerySpec::applyPredicate,
-                sqlAstCreationState,
-                sessionFactory
-        );
+		final LoaderSqlAstCreationState sqlAstCreationState = new LoaderSqlAstCreationState(
+				rootQuerySpec,
+				new SqlAliasBaseManager(),
+				new SimpleFromClauseAccessImpl(),
+				lockOptions,
+				fetchProcessor,
+				true,
+				sessionFactory
+		);
 
-        rootQuerySpec.getFromClause().addRoot( rootTableGroup );
-        sqlAstCreationState.getFromClauseAccess().registerTableGroup( entityPath, rootTableGroup );
+		final TableGroup rootTableGroup = entityDescriptor().createRootTableGroup(
+				true,
+				entityPath,
+				null,
+				() -> rootQuerySpec::applyPredicate,
+				sqlAstCreationState,
+				sessionFactory
+		);
 
-        final DomainResult<?> domainResult = domainResultProducer.apply( rootTableGroup, sqlAstCreationState );
+		rootQuerySpec.getFromClause().addRoot( rootTableGroup );
+		sqlAstCreationState.getFromClauseAccess().registerTableGroup( entityPath, rootTableGroup );
 
-        final SelectStatement sqlSelect = new SelectStatement( rootQuerySpec, Collections.singletonList( domainResult ) );
+		final DomainResult<?> domainResult = domainResultProducer.apply( rootTableGroup, sqlAstCreationState );
 
-        final JdbcParameterBindings jdbcParamBindings = new JdbcParameterBindingsImpl( naturalIdMapping().getJdbcTypeCount() );
+		final SelectStatement sqlSelect = new SelectStatement(
+				rootQuerySpec,
+				Collections.singletonList( domainResult )
+		);
 
-        applyNaturalIdRestriction(
-                bindValue,
-                rootTableGroup,
-                rootQuerySpec::applyPredicate,
-                jdbcParamBindings::addBinding,
-                sqlAstCreationState,
-                session
-        );
+		final JdbcParameterBindings jdbcParamBindings = new JdbcParameterBindingsImpl( naturalIdMapping().getJdbcTypeCount() );
 
-        final QueryOptions queryOptions = new SimpleQueryOptions( lockOptions, false );
-        final JdbcOperationQuerySelect jdbcSelect = sqlAstTranslatorFactory.buildSelectTranslator( sessionFactory, sqlSelect )
-                .translate( jdbcParamBindings, queryOptions );
+		applyNaturalIdRestriction(
+				bindValue,
+				rootTableGroup,
+				rootQuerySpec::applyPredicate,
+				jdbcParamBindings::addBinding,
+				sqlAstCreationState,
+				session
+		);
 
-        final StatisticsImplementor statistics = sessionFactory.getStatistics();
-        final Long startToken = statementStartHandler.apply( statistics.isStatisticsEnabled() );
+		final QueryOptions queryOptions = new SimpleQueryOptions( lockOptions, false );
+		final JdbcOperationQuerySelect jdbcSelect = sqlAstTranslatorFactory.buildSelectTranslator(
+						sessionFactory,
+						sqlSelect
+				)
+				.translate( jdbcParamBindings, queryOptions );
 
-        return StandardReactiveSelectExecutor.INSTANCE
-                .list(
-                        jdbcSelect,
-                        jdbcParamBindings,
-                        new NaturalIdLoaderWithOptionsExecutionContext( session, queryOptions ),
-                        row -> row[0],
-                        ReactiveListResultsConsumer.UniqueSemantic.FILTER
-                )
-                .thenApply( list -> {
-                    // FIXME: This is what ORM does, but should this be an Hibernate exception?
-                    assert list.size() == 1;
-                    return null;
-                } );
-    }
+		final StatisticsImplementor statistics = sessionFactory.getStatistics();
+		final Long startToken = statementStartHandler.apply( statistics.isStatisticsEnabled() );
 
-    private static class NaturalIdLoaderWithOptionsExecutionContext extends BaseExecutionContext {
-        private final Callback callback;
-        private final QueryOptions queryOptions;
+		return StandardReactiveSelectExecutor.INSTANCE
+				.list(
+						jdbcSelect,
+						jdbcParamBindings,
+						new NaturalIdLoaderWithOptionsExecutionContext( session, queryOptions ),
+						row -> row[0],
+						ReactiveListResultsConsumer.UniqueSemantic.FILTER
+				)
+				.thenApply( results -> {
+					if ( results.size() > 1 ) {
+						throw new HibernateException(
+								String.format(
+										"Loading by natural-id returned more that one row : %s",
+										getLoadable().getEntityName()
+								)
+						);
+					}
 
-        public NaturalIdLoaderWithOptionsExecutionContext(SharedSessionContractImplementor session, QueryOptions queryOptions) {
-            super( session );
-            this.queryOptions = queryOptions;
-            callback = new CallbackImpl();
-        }
+					final T result = results.isEmpty()
+							? null
+							: (T) results.get( 0 );
 
-        @Override
-        public QueryOptions getQueryOptions() {
-            return queryOptions;
-        }
+					statementCompletionHandler.accept( result, startToken );
+					return result;
+				} );
+	}
 
-        @Override
-        public Callback getCallback() {
-            return callback;
-        }
+	private T castToClassType(Object o) {
+		return (T) o;
+	}
 
-    }
+	private static class NaturalIdLoaderWithOptionsExecutionContext extends BaseExecutionContext {
+		private final Callback callback;
+		private final QueryOptions queryOptions;
+
+		public NaturalIdLoaderWithOptionsExecutionContext(
+				SharedSessionContractImplementor session,
+				QueryOptions queryOptions) {
+			super( session );
+			this.queryOptions = queryOptions;
+			callback = new CallbackImpl();
+		}
+
+		@Override
+		public QueryOptions getQueryOptions() {
+			return queryOptions;
+		}
+
+		@Override
+		public Callback getCallback() {
+			return callback;
+		}
+
+	}
 }

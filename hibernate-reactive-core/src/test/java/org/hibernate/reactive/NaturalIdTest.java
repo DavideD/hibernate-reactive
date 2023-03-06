@@ -25,24 +25,48 @@ public class NaturalIdTest extends BaseReactiveTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
-		return List.of( Thing.class );
+		return List.of( SimpleThing.class, CompoundThing.class );
 	}
 
 	@Test
-	public void test(TestContext context) {
-		Thing thing1 = new Thing();
+	public void testSimpleNaturalId(TestContext context) {
+		SimpleThing thing1 = new SimpleThing();
 		thing1.naturalKey = "abc123";
+		SimpleThing thing2 = new SimpleThing();
+		thing2.naturalKey = "def456";
+		test(
+				context,
+				getSessionFactory()
+						.withSession( session -> session.persist( thing1, thing2 ).thenCompose( v -> session.flush() ) )
+						.thenCompose( v -> getSessionFactory().withSession(
+								session -> session.find( SimpleThing.class, id( "naturalKey", "abc123" ) )
+						) )
+						.thenAccept( t -> {
+							context.assertNotNull( t );
+							context.assertEquals( thing1.id, t.id );
+						} )
+						.thenCompose( v -> getSessionFactory().withSession(
+								session -> session.find( SimpleThing.class, id( SimpleThing.class, "naturalKey", "not an id" ) )
+						) )
+						.thenAccept( context::assertNull )
+		);
+	}
+
+	@Test
+	public void testCompoundNaturalId(TestContext context) {
+		CompoundThing thing1 = new CompoundThing();
+		thing1.naturalKey = "xyz666";
 		thing1.version = 1;
-		Thing thing2 = new Thing();
-		thing2.naturalKey = "abc123";
+		CompoundThing thing2 = new CompoundThing();
+		thing2.naturalKey = "xyz666";
 		thing2.version = 2;
 		test(
 				context,
 				getSessionFactory()
 						.withSession( session -> session.persist( thing1, thing2 ).thenCompose( v -> session.flush() ) )
 						.thenCompose( v -> getSessionFactory().withSession(
-								session -> session.find( Thing.class, composite(
-										id( "naturalKey", "abc123" ),
+								session -> session.find( CompoundThing.class, composite(
+										id( "naturalKey", "xyz666" ),
 										id( "version", 1 )
 								) )
 						) )
@@ -51,17 +75,26 @@ public class NaturalIdTest extends BaseReactiveTest {
 							context.assertEquals( thing1.id, t.id );
 						} )
 						.thenCompose( v -> getSessionFactory().withSession(
-								session -> session.find( Thing.class, composite(
-										id( Thing.class, "naturalKey", "abc123" ),
-										id( Thing.class, "version", 3 )
+								session -> session.find( CompoundThing.class, composite(
+										id( CompoundThing.class, "naturalKey", "xyz666" ),
+										id( CompoundThing.class, "version", 3 )
 								) )
 						) )
 						.thenAccept( context::assertNull )
 		);
 	}
 
-	@Entity(name = "Thing")
-	static class Thing {
+	@Entity(name = "SimpleThing")
+	static class SimpleThing {
+		@Id
+		@GeneratedValue
+		long id;
+		@NaturalId
+		String naturalKey;
+	}
+
+	@Entity(name = "CompoundThing")
+	static class CompoundThing {
 		@Id
 		@GeneratedValue
 		long id;

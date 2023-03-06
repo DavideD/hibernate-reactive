@@ -98,11 +98,6 @@ public class ReactiveCompoundNaturalIdLoader<T> extends CompoundNaturalIdLoader 
     }
 
     @Override
-    public CompletionStage reactiveLoad(Object naturalIdToLoad, NaturalIdLoadOptions options, SharedSessionContractImplementor session) {
-        throw LOG.notYetImplemented();
-    }
-
-    @Override
     public CompletionStage<Object> reactiveResolveNaturalIdToId(Object naturalIdValue, SharedSessionContractImplementor session) {
         throw LOG.notYetImplemented();
     }

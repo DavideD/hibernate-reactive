@@ -28,6 +28,7 @@ import org.hibernate.persister.entity.SingleTableEntityPersister;
 import org.hibernate.persister.entity.mutation.DeleteCoordinator;
 import org.hibernate.persister.entity.mutation.InsertCoordinator;
 import org.hibernate.persister.entity.mutation.UpdateCoordinator;
+import org.hibernate.reactive.loader.ast.spi.ReactiveNaturalIdLoader;
 import org.hibernate.reactive.loader.ast.spi.ReactiveSingleIdEntityLoader;
 import org.hibernate.reactive.loader.ast.spi.ReactiveSingleUniqueKeyEntityLoader;
 import org.hibernate.reactive.persister.entity.mutation.ReactiveDeleteCoordinator;
@@ -182,14 +183,8 @@ public class ReactiveSingleTableEntityPersister extends SingleTableEntityPersist
 			);
 		}
 
-		Object result = ReactiveAbstractEntityPersister.super.getNaturalIdLoader().resolveNaturalIdToId( orderedNaturalIdValues, session );
-		return CompletionStages.completedFuture(result);
-	}
-
-	public CompletionStage<Object> reactiveResolveNaturalIdToId( Object[] orderedNaturalIdValues, EventSource session ) {
-		Object result = ReactiveAbstractEntityPersister.super.getNaturalIdLoader().resolveNaturalIdToId( orderedNaturalIdValues, session );
-		reactiveDelegate.getSingleNaturalLoader();
-		return CompletionStages.completedFuture( result );
+		return ( (ReactiveNaturalIdLoader) getNaturalIdLoader() )
+				.reactiveResolveNaturalIdToId( orderedNaturalIdValues, session );
 	}
 
 	@Override
