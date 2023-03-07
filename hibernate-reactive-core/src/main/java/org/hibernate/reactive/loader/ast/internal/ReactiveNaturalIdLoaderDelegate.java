@@ -5,6 +5,14 @@
  */
 package org.hibernate.reactive.loader.ast.internal;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CompletionStage;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+
 import org.hibernate.HibernateException;
 import org.hibernate.LockOptions;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
@@ -37,36 +45,21 @@ import org.hibernate.sql.exec.internal.JdbcParameterBindingsImpl;
 import org.hibernate.sql.exec.spi.Callback;
 import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
-import org.hibernate.sql.results.graph.*;
+import org.hibernate.sql.results.graph.DomainResult;
+import org.hibernate.sql.results.graph.Fetch;
+import org.hibernate.sql.results.graph.FetchParent;
+import org.hibernate.sql.results.graph.Fetchable;
+import org.hibernate.sql.results.graph.FetchableContainer;
 import org.hibernate.sql.results.graph.internal.ImmutableFetchList;
 import org.hibernate.stat.spi.StatisticsImplementor;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.CompletionStage;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
+public abstract class ReactiveNaturalIdLoaderDelegate<T> extends AbstractNaturalIdLoader<CompletionStage<T>> implements ReactiveNaturalIdLoader<T> {
 
-public class ReactiveNaturalIdLoaderDelegate<T> extends AbstractNaturalIdLoader<CompletionStage<T>> implements ReactiveNaturalIdLoader<T> {
     public ReactiveNaturalIdLoaderDelegate(
             NaturalIdMapping naturalIdMapping,
             EntityMappingType entityDescriptor) {
         super( naturalIdMapping, entityDescriptor );
     }
-
-//    @Override
-//    protected void applyNaturalIdRestriction(
-//            Object bindValue,
-//            TableGroup rootTableGroup,
-//            Consumer consumer,
-//            BiConsumer jdbcParameterConsumer,
-//            LoaderSqlAstCreationState sqlAstCreationState,
-//            SharedSessionContractImplementor session) {
-//
-//    }
 
     @Override
     public CompletionStage<Object> reactiveResolveNaturalIdToId(
@@ -170,9 +163,12 @@ public class ReactiveNaturalIdLoaderDelegate<T> extends AbstractNaturalIdLoader<
                     }
                 },
                 session
-        ).thenApply( this::castToClassType );
+        );
     }
 
+    /**
+     * @see AbstractNaturalIdLoader#selectByNaturalId(Object, NaturalIdLoadOptions, BiFunction, LoaderSqlAstCreationState.FetchProcessor, Function, BiConsumer, SharedSessionContractImplementor)
+     */
     public CompletionStage<Object> performSelectByNaturalId(
             Object bindValue,
             NaturalIdLoadOptions options,
@@ -228,14 +224,14 @@ public class ReactiveNaturalIdLoaderDelegate<T> extends AbstractNaturalIdLoader<
 
         final JdbcParameterBindings jdbcParamBindings = new JdbcParameterBindingsImpl( naturalIdMapping().getJdbcTypeCount() );
 
-//        applyNaturalIdRestriction(
-//                bindValue,
-//                rootTableGroup,
-//                rootQuerySpec::applyPredicate,
-//                jdbcParamBindings::addBinding,
-//                sqlAstCreationState,
-//                session
-//        );
+        applyNaturalIdRestriction(
+                bindValue,
+                rootTableGroup,
+                rootQuerySpec::applyPredicate,
+                jdbcParamBindings::addBinding,
+                sqlAstCreationState,
+                session
+        );
 
         final QueryOptions queryOptions = new SimpleQueryOptions( lockOptions, false );
         final JdbcOperationQuerySelect jdbcSelect = sqlAstTranslatorFactory.buildSelectTranslator(
@@ -256,24 +252,19 @@ public class ReactiveNaturalIdLoaderDelegate<T> extends AbstractNaturalIdLoader<
                         ReactiveListResultsConsumer.UniqueSemantic.FILTER
                 )
                 .thenApply( results -> {
-                    // TODO:  Verify/Fix
                     // For Compound/Multi naturalId's  the results may be > 1?
-//                    if ( results.size() > 1 ) {
-//                        throw new HibernateException(
-//                                String.format(
-//                                        "Loading by natural-id returned more that one row : %s",
-//                                        getLoadable().getEntityName()
-//                                )
-//                        );
-//                    }
+                    if ( results.size() > 1 ) {
+                        throw new HibernateException(
+                                String.format(
+                                        "Loading by natural-id returned more that one row : %s",
+                                        getLoadable().getEntityName()
+                                )
+                        );
+                    }
 
-                    // TODO:  The result returned is of wrong type
-                    // ERROR:  org.hibernate.TypeMismatchException:
-                    //      Provided id of the wrong type for class org.hibernate.reactive.NaturalIdTest$CompoundThing.
-                    //      Expected: class java.lang.Long, got class java.util.ArrayList
-                    final T result = results.isEmpty()
+                    final Object result = results.isEmpty()
                             ? null
-                            : (T) results;
+                            : results;
 
                     statementCompletionHandler.accept( result, startToken );
                     return result;
@@ -329,23 +320,4 @@ public class ReactiveNaturalIdLoaderDelegate<T> extends AbstractNaturalIdLoader<
         }
 
     }
-
-    @Override
-    protected void applyNaturalIdRestriction(
-            Object bindValue,
-            TableGroup rootTableGroup,
-            Consumer consumer,
-            BiConsumer jdbcParameterConsumer,
-            LoaderSqlAstCreationState sqlAstCreationState,
-            SharedSessionContractImplementor session) {
-        this.applyNaturalIdRestriction(
-                bindValue,
-                rootTableGroup,
-                consumer,
-                jdbcParameterConsumer,
-                sqlAstCreationState,
-                session
-        );
-    }
-
 }

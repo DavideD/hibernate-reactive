@@ -74,7 +74,7 @@ public class ReactiveSimpleNaturalIdLoader<T> extends SimpleNaturalIdLoader<Comp
 					BiConsumer jdbcParameterConsumer,
 					LoaderSqlAstCreationState sqlAstCreationState,
 					SharedSessionContractImplementor session) {
-				this.applyNaturalIdRestriction(
+				ReactiveSimpleNaturalIdLoader.this.applyNaturalIdRestriction(
 						bindValue,
 						rootTableGroup,
 						consumer,

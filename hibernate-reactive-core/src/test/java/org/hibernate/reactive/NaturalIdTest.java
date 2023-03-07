@@ -7,11 +7,12 @@ package org.hibernate.reactive;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import io.vertx.ext.unit.TestContext;
 
 import org.assertj.core.api.Assertions;
-import org.hibernate.NaturalIdMultiLoadAccess;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.annotations.NaturalId;
@@ -91,34 +92,27 @@ public class NaturalIdTest extends BaseReactiveTest {
 		thing2.naturalKey = "xyz666";
 		thing2.version = 2;
 
-		Session session = ormFactory.openSession();
-		session.beginTransaction();
+		try (Session session = ormFactory.openSession() ) {
+			session.beginTransaction();
 
-		session.persist( thing1 );
-		session.persist( thing2 );
+			session.persist( thing1 );
+			session.persist( thing2 );
 
-		session.getTransaction().commit();
-		session.close();
+			session.getTransaction().commit();
+		}
 
-		session = ormFactory.openSession();
-		session.beginTransaction();
-
-		CompoundThing thing_1 = session.find(CompoundThing.class, 1);
-		Assertions.assertThat(thing_1.version).isEqualTo(1);
-		CompoundThing thing_2 = session.find(CompoundThing.class, 2);
-		Assertions.assertThat(thing_2.version).isEqualTo(2);
-
-		final NaturalIdMultiLoadAccess<CompoundThing> loadAccess = session.byMultipleNaturalId( CompoundThing.class );
-		loadAccess.enableOrderedReturn( false );
-		final List<CompoundThing> accounts = loadAccess.multiLoad(
-				NaturalIdMultiLoadAccess.compoundValue( "naturalKey", thing1.naturalKey, "version", thing1.version ),
-				NaturalIdMultiLoadAccess.compoundValue( "naturalKey", thing2.naturalKey, "version", thing2.version )
-		);
-		Assertions.assertThat(accounts.size()).isEqualTo(2);
-		Assertions.assertThat(accounts.get(1).version).isEqualTo(thing2.version);
-
-		session.getTransaction().commit();
-		session.close();
+		try (Session session = ormFactory.openSession() ) {
+			session.beginTransaction();
+			CompoundThing thing = session.bySimpleNaturalId( CompoundThing.class )
+					.load( Map.of(
+							"naturalKey",
+							thing1.naturalKey,
+							"version",
+							thing1.version
+					) );
+			Assertions.assertThat( thing ).isEqualTo( thing1 );
+			session.getTransaction().commit();
+		}
 	}
 
 	@Test
@@ -197,5 +191,22 @@ public class NaturalIdTest extends BaseReactiveTest {
 		String naturalKey;
 		@NaturalId
 		int version;
+
+		@Override
+		public boolean equals(Object o) {
+			if ( this == o ) {
+				return true;
+			}
+			if ( o == null || getClass() != o.getClass() ) {
+				return false;
+			}
+			CompoundThing that = (CompoundThing) o;
+			return version == that.version && Objects.equals( naturalKey, that.naturalKey );
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash( naturalKey, version );
+		}
 	}
 }
