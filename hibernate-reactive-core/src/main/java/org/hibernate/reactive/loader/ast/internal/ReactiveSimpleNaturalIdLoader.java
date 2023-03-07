@@ -5,10 +5,8 @@
  */
 package org.hibernate.reactive.loader.ast.internal;
 
-import java.lang.invoke.MethodHandles;
-import java.util.ArrayList;
+import java.lang.invoke.MethodHandles;;
 import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -21,9 +19,7 @@ import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.loader.ast.internal.LoaderSelectBuilder;
 import org.hibernate.loader.ast.internal.LoaderSqlAstCreationState;
-import org.hibernate.loader.ast.internal.NoCallbackExecutionContext;
 import org.hibernate.loader.ast.internal.SimpleNaturalIdLoader;
 import org.hibernate.loader.ast.spi.NaturalIdLoadOptions;
 import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
@@ -40,7 +36,6 @@ import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
 import org.hibernate.sql.ast.spi.SimpleFromClauseAccessImpl;
 import org.hibernate.sql.ast.spi.SqlAliasBaseManager;
-import org.hibernate.sql.ast.tree.expression.JdbcParameter;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.select.QuerySpec;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
@@ -59,7 +54,7 @@ import org.hibernate.sql.results.graph.internal.ImmutableFetchList;
 import org.hibernate.stat.spi.StatisticsImplementor;
 
 /**
- * @see org.hibernate.loader.ast.internal.SimpleNaturalIdLoader
+ * @see SimpleNaturalIdLoader
  */
 public class ReactiveSimpleNaturalIdLoader<T> extends SimpleNaturalIdLoader<CompletionStage<T>>
 		implements ReactiveNaturalIdLoader<T> {
@@ -88,7 +83,7 @@ public class ReactiveSimpleNaturalIdLoader<T> extends SimpleNaturalIdLoader<Comp
 						session
 				);
 			}
-		};
+		};;
 	}
 
 	/**

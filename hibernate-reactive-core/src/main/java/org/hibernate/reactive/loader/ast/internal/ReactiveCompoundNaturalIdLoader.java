@@ -44,14 +44,36 @@ import java.util.Collections;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class ReactiveCompoundNaturalIdLoader<T> extends CompoundNaturalIdLoader implements ReactiveNaturalIdLoader {
 
     private static final Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
+    private final ReactiveNaturalIdLoaderDelegate delegate;
+
     public ReactiveCompoundNaturalIdLoader(CompoundNaturalIdMapping naturalIdMapping, EntityMappingType entityDescriptor) {
         super(naturalIdMapping, entityDescriptor);
+        delegate = new ReactiveNaturalIdLoaderDelegate( naturalIdMapping, entityDescriptor ) {
+            @Override
+            protected void applyNaturalIdRestriction(
+                    Object bindValue,
+                    TableGroup rootTableGroup,
+                    Consumer consumer,
+                    BiConsumer jdbcParameterConsumer,
+                    LoaderSqlAstCreationState sqlAstCreationState,
+                    SharedSessionContractImplementor session) {
+                this.applyNaturalIdRestriction(
+                        bindValue,
+                        rootTableGroup,
+                        consumer,
+                        jdbcParameterConsumer,
+                        sqlAstCreationState,
+                        session
+                );
+            }
+        };
     }
 
     @Override
@@ -99,7 +121,7 @@ public class ReactiveCompoundNaturalIdLoader<T> extends CompoundNaturalIdLoader 
 
     @Override
     public CompletionStage<Object> reactiveResolveNaturalIdToId(Object naturalIdValue, SharedSessionContractImplementor session) {
-        throw LOG.notYetImplemented();
+        return delegate.reactiveResolveNaturalIdToId( naturalIdValue, session );
     }
 
     @Override
