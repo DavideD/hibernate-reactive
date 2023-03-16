@@ -9,26 +9,23 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.Configuration;
-import org.hibernate.dialect.PostgreSQLDialect;
+import org.hibernate.dialect.MySQLDialect;
 import org.hibernate.reactive.provider.Settings;
-import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.POSTGRESQL;
+import static org.hibernate.tool.schema.JdbcMetadaAccessStrategy.INDIVIDUALLY;
 
 /**
  * This test class verifies that data can be persisted and queried on the same database
@@ -36,66 +33,30 @@ import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.POS
  */
 public class ORMReactivePersistenceTest extends BaseReactiveTest {
 
-	@Rule
-	public DatabaseSelectionRule rule = DatabaseSelectionRule.runOnlyFor( POSTGRESQL );
-
-	private SessionFactory ormFactory;
-
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
 		return List.of( Flour.class );
 	}
 
-	@Before
-	public void prepareOrmFactory() {
+	private SessionFactory createORMFactory(String action) {
 		Configuration configuration = constructConfiguration();
-		configuration.setProperty( Settings.DRIVER, "org.postgresql.Driver" );
-		configuration.setProperty( Settings.DIALECT, PostgreSQLDialect.class.getName() );
+		configuration.setProperty( Settings.DRIVER, "com.mysql.cj.jdbc.Driver" );
+		configuration.setProperty( Settings.DIALECT, MySQLDialect.class.getName() );
+		configuration.setProperty( Settings.HBM2DDL_JDBC_METADATA_EXTRACTOR_STRATEGY, INDIVIDUALLY.toString() );
+		configuration.setProperty( AvailableSettings.HBM2DDL_AUTO, action );
 
 		StandardServiceRegistryBuilder builder = new StandardServiceRegistryBuilder()
 				.applySettings( configuration.getProperties() );
-
 		StandardServiceRegistry registry = builder.build();
-		ormFactory = configuration.buildSessionFactory( registry );
-	}
-
-	@After
-	public void closeOrmFactory() {
-		ormFactory.close();
+		return configuration.buildSessionFactory( registry );
 	}
 
 	@Test
 	public void testORMWithStageSession(TestContext context) {
-		final Flour almond = new Flour( 1, "Almond", "made from ground almonds.", "Gluten free" );
-
-		try (Session session = ormFactory.openSession()) {
-			session.beginTransaction();
-			session.persist( almond );
-			session.getTransaction().commit();
+		try (SessionFactory ormFactory = createORMFactory( "create" )) {
 		}
-
-		// Check database with Stage session and verify 'almond' flour exists
-		test( context, openSession()
-				.thenCompose( stageSession -> stageSession.find( Flour.class, almond.id ) )
-				.thenAccept( entityFound -> context.assertEquals( almond, entityFound ) )
-		);
-	}
-
-	@Test
-	public void testORMWitMutinySession(TestContext context) {
-		final Flour rose = new Flour( 2, "Rose", "made from ground rose pedals.", "Full fragrance" );
-
-		try (Session ormSession = ormFactory.openSession()) {
-			ormSession.beginTransaction();
-			ormSession.persist( rose );
-			ormSession.getTransaction().commit();
+		try (SessionFactory ormFactory = createORMFactory( "validate" )) {
 		}
-
-		// Check database with Mutiny session and verify 'rose' flour exists
-		test( context, openMutinySession()
-				.chain( session -> session.find( Flour.class, rose.id ) )
-				.invoke( foundRose -> context.assertEquals( rose, foundRose ) )
-		);
 	}
 
 	@Entity(name = "Flour")
@@ -106,6 +67,15 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 		private String name;
 		private String description;
 		private String type;
+
+		@Convert(converter = org.hibernate.type.YesNoConverter.class)
+		private Boolean booleanTrueFalse;
+
+		@Convert(converter = org.hibernate.type.TrueFalseConverter.class)
+		private Boolean booleanYesNo;
+
+		@Convert(converter = org.hibernate.type.NumericBooleanConverter.class)
+		private Boolean booleanNumeric;
 
 		public Flour() {
 		}
@@ -148,6 +118,7 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 		public void setType(String type) {
 			this.type = type;
 		}
+
 
 		@Override
 		public String toString() {
