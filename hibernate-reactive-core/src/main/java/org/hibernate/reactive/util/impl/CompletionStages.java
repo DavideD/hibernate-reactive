@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
@@ -227,6 +228,42 @@ public class  CompletionStages {
 
 	public static <U> U nullFuture(Void unused) {
 		return null;
+	}
+
+	public static <R, T extends Throwable> CompletionStageHandler<R, T> handle(R result, T throwable) {
+		return new CompletionStageHandler<>( result, throwable );
+	}
+
+	public static class CompletionStageHandler<R, T extends Throwable> {
+
+		private final R result;
+		private final T throwable;
+
+		public CompletionStageHandler(R result, T throwable) {
+			this.result = result;
+			this.throwable = throwable;
+		}
+
+		public R getResult() throws T {
+			if ( throwable == null ) {
+				return result;
+			}
+			throw (T) throwable;
+		}
+
+		public CompletionStage<R> getResultAsCompletionStage() {
+			if ( throwable == null ) {
+				return completedFuture( result );
+			}
+			return failedFuture( throwable );
+		}
+
+		/**
+		 * Same as {@link #getResultAsCompletionStage()}, but allows method reference
+		 */
+		public CompletionStage<R> getResultAsCompletionStage(Void unused) {
+			return getResultAsCompletionStage();
+		}
 	}
 
 	/**
