@@ -49,6 +49,7 @@ buildscript {
     }
 }
 
+// Hibernate Gradle plugin to enable bytecode enhancements
 apply plugin: 'org.hibernate.orm'
 
 hibernate {

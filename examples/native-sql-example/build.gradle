@@ -44,16 +44,16 @@ buildscript {
     }
 }
 
+// Hibernate Gradle plugin to enable bytecode enhancements
 apply plugin: 'org.hibernate.orm'
 
 hibernate {
-    enhance {
+    enhancement {
         lazyInitialization(true)
         dirtyTracking(true)
         associationManagement(false)
     }
 }
-
 // The following rules define a task to run
 // the different API available.
 //
