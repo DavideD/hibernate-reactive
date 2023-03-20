@@ -32,6 +32,9 @@ buildscript {
             // Useful for local development, it should be disabled otherwise
             mavenLocal()
         }
+        maven {
+            url = uri("https://plugins.gradle.org/m2/")
+        }
 
         mavenCentral()
 

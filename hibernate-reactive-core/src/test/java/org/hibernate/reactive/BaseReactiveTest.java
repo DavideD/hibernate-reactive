@@ -85,7 +85,7 @@ public abstract class BaseReactiveTest {
 		}
 		//Use JAVA_TOOL_OPTIONS='-Dhibernate.show_sql=true'
 		configuration.setProperty( Settings.SHOW_SQL, System.getProperty( Settings.SHOW_SQL, "true" ) );
-		configuration.setProperty( Settings.FORMAT_SQL, System.getProperty( Settings.FORMAT_SQL, "false" ) );
+		configuration.setProperty( Settings.FORMAT_SQL, System.getProperty( Settings.FORMAT_SQL, "true" ) );
 		configuration.setProperty( Settings.HIGHLIGHT_SQL, System.getProperty( Settings.HIGHLIGHT_SQL, "true" ) );
 	}
 

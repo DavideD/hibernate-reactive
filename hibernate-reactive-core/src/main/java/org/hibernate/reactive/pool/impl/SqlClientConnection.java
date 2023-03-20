@@ -233,8 +233,12 @@ public class SqlClientConnection implements ReactiveConnection {
 	public CompletionStage<RowSet<Row>> preparedQuery(String sql, Tuple parameters) {
 		final String readySql = sqlCleaner.process( sql );
 		feedback( readySql );
+		LOG.info("\n         ==========>>>>> calling client().preparedQuery()  =============================");
 		return client().preparedQuery( readySql ).execute( parameters ).toCompletionStage()
-				.handle( (rows, throwable) -> convertException( rows, readySql, throwable ) );
+				.handle( (rows, throwable) -> {
+					LOG.info("\n         ==========>>>>> rows().size() = " + rows.size());
+					return convertException( rows, readySql, throwable );
+				} );
 	}
 
 	public CompletionStage<RowSet<Row>> preparedQuery(String sql, Tuple parameters, PrepareOptions options) {

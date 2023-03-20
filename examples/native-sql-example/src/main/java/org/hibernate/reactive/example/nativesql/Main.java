@@ -53,15 +53,23 @@ public class Main {
 			// TODO:  Restore book1, book2 & book3 to insert(...)
 
 			// obtain a reactive session
-			factory.withStatelessTransaction(
-					// persist the Authors with their Books in a transaction
-					session -> session.withTransaction(
-							tx -> session.insert( author1 , author2 ) //, book1, book2, book3 )
+			factory.withStatelessSession(
+							// persist the Authors with their Books in a transaction
+							session -> session.withTransaction(
+									tx -> session.insert( author1, author2, book1, book2, book3 )
+							)
 					)
-			)
+					// wait for it to finish
 					.toCompletableFuture().join();
 
-//
+			// obtain a reactive session
+//			factory.withStatelessTransaction(
+//							// persist the Authors with their Books in a transaction
+//							session -> session.insert(author1, author2, book1, book2, book3)
+//					)
+//					.toCompletableFuture().join();
+
+
 //			factory.withStatelessSession(
 //					// retrieve a Book
 //					session -> session.get( Book.class, book1.getId() )
@@ -69,7 +77,7 @@ public class Main {
 //							.thenAccept( book -> out.println( book.getTitle() + " is a great book!" ) )
 //			)
 //					.toCompletableFuture().join();
-
+//
 //			factory.withStatelessSession(
 //					// retrieve an Author
 //					session -> session.get( Author.class, author2.getId() )

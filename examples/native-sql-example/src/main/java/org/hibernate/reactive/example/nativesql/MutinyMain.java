@@ -49,14 +49,13 @@ public class MutinyMain {
 			// TODO: FIX
 			// Running the insertAll() below ends up hanging, so logging simple an error message for now
 
-//			factory.withStatelessSession(
-//							session -> session.withTransaction(
-//									// persist the Authors with their Books in a transaction
-//									tx -> session.insertAll( author1, author2 , book1, book2, book3 )
-//							)
-//					)
-//					// wait for it to finish
-//					.await().indefinitely();
+			factory.withStatelessSession(
+							session -> session.withTransaction(
+									// persist the Authors with their Books in a transaction
+									tx -> session.insertAll(author1, author2, book1, book2, book3)
+							)
+					)
+					.await().indefinitely();
 
 //			factory.withStatelessSession(
 //					// retrieve a Book

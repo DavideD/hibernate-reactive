@@ -27,6 +27,9 @@ buildscript {
             // Useful for local development, it should be disabled otherwise
             mavenLocal()
         }
+        maven {
+            url = uri("https://plugins.gradle.org/m2/")
+        }
 
         mavenCentral()
 
@@ -43,13 +46,13 @@ buildscript {
 
 apply plugin: 'org.hibernate.orm'
 
-//hibernate {
-//    enhance {
-//        enableLazyInitialization = true
-//        enableDirtyTracking = true
-//        enableAssociationManagement = false
-//    }
-//}
+hibernate {
+    enhance {
+        lazyInitialization(true)
+        dirtyTracking(true)
+        associationManagement(false)
+    }
+}
 
 // The following rules define a task to run
 // the different API available.
