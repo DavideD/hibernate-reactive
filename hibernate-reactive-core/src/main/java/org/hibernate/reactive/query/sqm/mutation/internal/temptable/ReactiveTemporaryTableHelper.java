@@ -1,10 +1,12 @@
+/* Hibernate, Relational Persistence for Idiomatic Java
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright: Red Hat Inc. and Hibernate Authors
+ */
 package org.hibernate.reactive.query.sqm.mutation.internal.temptable;
 
 import java.lang.invoke.MethodHandles;
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.sql.SQLWarning;
-import java.sql.Statement;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
@@ -16,13 +18,14 @@ import org.hibernate.engine.jdbc.spi.SqlExceptionHelper;
 import org.hibernate.engine.jdbc.spi.SqlStatementLogger;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.jdbc.AbstractWork;
 import org.hibernate.reactive.adaptor.impl.PreparedStatementAdaptor;
 import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.logging.impl.LoggerFactory;
 import org.hibernate.reactive.pool.ReactiveConnection;
 import org.hibernate.reactive.session.ReactiveConnectionSupplier;
 import org.hibernate.reactive.util.impl.CompletionStages;
+
+import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
 /**
  * @see org.hibernate.dialect.temptable.TemporaryTableHelper
@@ -33,7 +36,14 @@ public class ReactiveTemporaryTableHelper {
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Creation
 
-	public static class TemporaryTableCreationWork extends AbstractWork {
+	/**
+	 * @see org.hibernate.jdbc.Work
+	 */
+	public interface ReactiveWork {
+		CompletionStage<Void> reactiveExecute(ReactiveConnection connection);
+	}
+
+	public static class TemporaryTableCreationWork implements ReactiveWork {
 		private final TemporaryTable temporaryTable;
 		private final TemporaryTableExporter exporter;
 		private final SessionFactoryImplementor sessionFactory;
@@ -58,37 +68,30 @@ public class ReactiveTemporaryTableHelper {
 		}
 
 		@Override
-		public void execute(Connection connection) {
+		public CompletionStage<Void> reactiveExecute(ReactiveConnection connection) {
 			final JdbcServices jdbcServices = sessionFactory.getJdbcServices();
 
 			try {
 				final String creationCommand = exporter.getSqlCreateCommand( temporaryTable );
 				logStatement( creationCommand, jdbcServices );
 
-				try (Statement statement = connection.createStatement()) {
-					statement.executeUpdate( creationCommand );
-					jdbcServices.getSqlExceptionHelper().handleAndClearWarnings( statement, WARNING_HANDLER );
-				}
-				catch (SQLException e) {
-					LOG.debugf(
-							"unable to create temporary table [%s]; `%s` failed : %s",
-							temporaryTable.getQualifiedTableName(),
-							creationCommand,
-							e.getMessage()
-					);
-				}
+				return connection.update( creationCommand )
+						.handle( (integer, throwable) -> {
+							logException( "create", creationCommand, temporaryTable, throwable );
+							return null;
+						} );
 			}
-			catch( Exception e ) {
-				LOG.debugf( "Error creating temporary table(s) : %s", e.getMessage() );
+			catch (Exception e) {
+				logException( "create", null, temporaryTable, e );
+				return voidFuture();
 			}
 		}
 	}
 
-
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Drop
 
-	public static class TemporaryTableDropWork extends AbstractWork {
+	public static class TemporaryTableDropWork implements ReactiveWork {
 		private final TemporaryTable temporaryTable;
 		private final TemporaryTableExporter exporter;
 		private final SessionFactoryImplementor sessionFactory;
@@ -113,28 +116,22 @@ public class ReactiveTemporaryTableHelper {
 		}
 
 		@Override
-		public void execute(Connection connection) {
+		public CompletionStage<Void> reactiveExecute(ReactiveConnection connection) {
 			final JdbcServices jdbcServices = sessionFactory.getJdbcServices();
 
 			try {
 				final String dropCommand = exporter.getSqlDropCommand( temporaryTable );
 				logStatement( dropCommand, jdbcServices );
 
-				try (Statement statement = connection.createStatement()) {
-					statement.executeUpdate( dropCommand );
-					jdbcServices.getSqlExceptionHelper().handleAndClearWarnings( statement, WARNING_HANDLER );
-				}
-				catch (SQLException e) {
-					LOG.debugf(
-							"unable to drop temporary table [%s]; `%s` failed : %s",
-							temporaryTable.getQualifiedTableName(),
-							dropCommand,
-							e.getMessage()
-					);
-				}
+				return connection.update( dropCommand )
+						.handle( (integer, throwable) -> {
+							logException( "drop", dropCommand, temporaryTable, throwable );
+							return null;
+						} );
 			}
-			catch( Exception e ) {
-				LOG.debugf( "Error dropping temporary table(s) : %s", e.getMessage() );
+			catch (Exception e) {
+				logException( "drop", null, temporaryTable, e );
+				return voidFuture();
 			}
 		}
 	}
@@ -146,7 +143,7 @@ public class ReactiveTemporaryTableHelper {
 	public static CompletionStage<Void> cleanTemporaryTableRows(
 			TemporaryTable temporaryTable,
 			TemporaryTableExporter exporter,
-			Function<SharedSessionContractImplementor,String> sessionUidAccess,
+			Function<SharedSessionContractImplementor, String> sessionUidAccess,
 			SharedSessionContractImplementor session) {
 		final String sql = exporter.getSqlTruncateCommand( temporaryTable, sessionUidAccess, session );
 		Object[] params = PreparedStatementAdaptor.bind( ps -> {
@@ -181,6 +178,31 @@ public class ReactiveTemporaryTableHelper {
 		}
 	};
 
+	private static void logException(String action, String creationCommand, TemporaryTable temporaryTable, Throwable throwable) {
+		if ( throwable != null ) {
+			if ( creationCommand != null ) {
+				// This is what ORM does
+				LOG.debugf(
+						"unable to " + action + " temporary table [%s]; `%s` failed : %s",
+						temporaryTable.getQualifiedTableName(),
+						creationCommand,
+						throwable.getMessage()
+				);
+			}
+			else {
+				LOG.debugf(
+						"unable to " + action + " temporary table [%s] : %s",
+						temporaryTable.getQualifiedTableName(),
+						throwable.getMessage()
+				);
+			}
+		}
+	}
+
+	private static void logException(String sql, JdbcServices jdbcServices) {
+		final SqlStatementLogger statementLogger = jdbcServices.getSqlStatementLogger();
+		statementLogger.logStatement( sql, FormatStyle.BASIC.getFormatter() );
+	}
 
 	private static void logStatement(String sql, JdbcServices jdbcServices) {
 		final SqlStatementLogger statementLogger = jdbcServices.getSqlStatementLogger();

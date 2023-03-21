@@ -39,10 +39,8 @@ import org.hibernate.query.sqm.internal.DomainParameterXref;
 import org.hibernate.query.sqm.internal.SqmJdbcExecutionContextAdapter;
 import org.hibernate.query.sqm.internal.SqmUtil;
 import org.hibernate.query.sqm.mutation.internal.MultiTableSqmMutationConverter;
-import org.hibernate.query.sqm.mutation.internal.SqmMutationStrategyHelper;
 import org.hibernate.query.sqm.mutation.internal.TableKeyExpressionCollector;
 import org.hibernate.query.sqm.mutation.internal.temptable.AfterUseAction;
-import org.hibernate.query.sqm.mutation.internal.temptable.ExecuteWithTemporaryTableHelper;
 import org.hibernate.query.sqm.mutation.internal.temptable.ExecuteWithoutIdTableHelper;
 import org.hibernate.query.sqm.mutation.internal.temptable.RestrictedDeleteExecutionDelegate;
 import org.hibernate.query.sqm.spi.SqmParameterMappingModelResolutionAccess;
@@ -73,6 +71,8 @@ import org.hibernate.sql.exec.spi.ExecutionContext;
 import org.hibernate.sql.exec.spi.JdbcOperationQueryDelete;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 
+import static org.hibernate.query.sqm.mutation.internal.temptable.ExecuteWithTemporaryTableHelper.createIdTableSelectQuerySpec;
+import static org.hibernate.reactive.util.impl.CompletionStages.completedFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
 /**
@@ -573,78 +573,74 @@ public class ReactiveRestrictedDeleteExecutionDelegate
 			Predicate predicate,
 			ExecutionContext executionContext,
 			JdbcParameterBindings jdbcParameterBindings) {
-		final int rows = ReactiveExecuteWithTemporaryTableHelper.saveMatchingIdsIntoIdTable(
+		return ReactiveExecuteWithTemporaryTableHelper.saveMatchingIdsIntoIdTable(
 				converter,
 				predicate,
 				idTable,
 				sessionUidAccess,
 				jdbcParameterBindings,
-				executionContext
-		);
-
-		final QuerySpec idTableIdentifierSubQuery = ExecuteWithTemporaryTableHelper.createIdTableSelectQuerySpec(
-				idTable,
-				sessionUidAccess,
-				entityDescriptor,
-				executionContext
-		);
-
-		SqmMutationStrategyHelper.cleanUpCollectionTables(
-				entityDescriptor,
-				(tableReference, attributeMapping) -> {
-					final ForeignKeyDescriptor fkDescriptor = attributeMapping.getKeyDescriptor();
-					final QuerySpec idTableFkSubQuery;
-					if ( fkDescriptor.getTargetPart().isEntityIdentifierMapping() ) {
-						idTableFkSubQuery = idTableIdentifierSubQuery;
-					}
-					else {
-						idTableFkSubQuery = ExecuteWithTemporaryTableHelper.createIdTableSelectQuerySpec(
-								idTable,
-								fkDescriptor.getTargetPart(),
-								sessionUidAccess,
-								entityDescriptor,
-								executionContext
-						);
-					}
-					return new InSubQueryPredicate(
-							MappingModelCreationHelper.buildColumnReferenceExpression(
-									new MutatingTableReferenceGroupWrapper(
-											new NavigablePath( attributeMapping.getRootPathName() ),
-											attributeMapping,
-											(NamedTableReference) tableReference
-									),
-									fkDescriptor,
-									null,
-									sessionFactory
-							),
-							idTableFkSubQuery,
-							false
+				executionContext )
+				.thenCompose( rows -> {
+					final QuerySpec idTableIdentifierSubQuery = createIdTableSelectQuerySpec(
+							idTable,
+							sessionUidAccess,
+							entityDescriptor,
+							executionContext
 					);
 
-				},
-				JdbcParameterBindings.NO_BINDINGS,
-				executionContext
-		);
+					return ReactiveSqmMutationStrategyHelper.cleanUpCollectionTables(
+							entityDescriptor,
+							(tableReference, attributeMapping) -> {
+								final ForeignKeyDescriptor fkDescriptor = attributeMapping.getKeyDescriptor();
+								final QuerySpec idTableFkSubQuery = fkDescriptor.getTargetPart()
+										.isEntityIdentifierMapping()
+										? idTableIdentifierSubQuery
+										: createIdTableSelectQuerySpec( idTable, fkDescriptor.getTargetPart(), sessionUidAccess, entityDescriptor, executionContext );
+								return new InSubQueryPredicate(
+										MappingModelCreationHelper.buildColumnReferenceExpression(
+												new MutatingTableReferenceGroupWrapper(
+														new NavigablePath( attributeMapping.getRootPathName() ),
+														attributeMapping,
+														(NamedTableReference) tableReference
+												),
+												fkDescriptor,
+												null,
+												sessionFactory
+										),
+										idTableFkSubQuery,
+										false
+								);
 
-		CompletionStage<Void>
-		entityDescriptor.visitConstraintOrderedTables(
-				(tableExpression, tableKeyColumnVisitationSupplier) -> deleteFromTableUsingIdTable(
-						tableExpression,
-						tableKeyColumnVisitationSupplier,
-						idTableIdentifierSubQuery,
-						executionContext
-				)
-		);
-
-		return rows;
+							},
+							JdbcParameterBindings.NO_BINDINGS,
+							executionContext
+					).thenCompose( unused -> visitConstraintOrderedTables( idTableIdentifierSubQuery, executionContext )
+							.thenApply( v -> rows ) );
+				} );
 	}
 
-	private void deleteFromTableUsingIdTable(
+	private CompletionStage<Void> visitConstraintOrderedTables(QuerySpec idTableIdentifierSubQuery, ExecutionContext executionContext) {
+		final CompletionStage<Integer>[] resultStage = new CompletionStage[]{ completedFuture( -1 ) };
+		entityDescriptor.visitConstraintOrderedTables(
+				(tableExpression, tableKeyColumnVisitationSupplier) -> {
+					resultStage[0] = resultStage[0].thenCompose( ignore -> deleteFromTableUsingIdTable(
+							tableExpression,
+							tableKeyColumnVisitationSupplier,
+							idTableIdentifierSubQuery,
+							executionContext
+					) );
+				}
+		);
+		return resultStage[0]
+				.thenCompose( CompletionStages::voidFuture );
+	}
+
+	private CompletionStage<Integer> deleteFromTableUsingIdTable(
 			String tableExpression,
 			Supplier<Consumer<SelectableConsumer>> tableKeyColumnVisitationSupplier,
 			QuerySpec idTableSubQuery,
 			ExecutionContext executionContext) {
-		log.tracef( "deleteFromTableUsingIdTable - %s", tableExpression );
+		LOG.tracef( "deleteFromTableUsingIdTable - %s", tableExpression );
 
 		final SessionFactoryImplementor factory = executionContext.getSession().getFactory();
 
@@ -662,12 +658,8 @@ public class ReactiveRestrictedDeleteExecutionDelegate
 					assert selection.getCustomReadExpression() == null;
 					assert selection.getCustomWriteExpression() == null;
 
-					keyColumnCollector.apply(
-							new ColumnReference(
-									targetTable,
-									selection
-							)
-					);
+					keyColumnCollector
+							.apply( new ColumnReference( targetTable, selection ) );
 				}
 		);
 
@@ -677,7 +669,7 @@ public class ReactiveRestrictedDeleteExecutionDelegate
 				false
 		);
 
-		executeSqlDelete(
+		return executeSqlDelete(
 				new DeleteStatement( targetTable, predicate ),
 				JdbcParameterBindings.NO_BINDINGS,
 				executionContext

@@ -1,5 +1,12 @@
+/* Hibernate, Relational Persistence for Idiomatic Java
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright: Red Hat Inc. and Hibernate Authors
+ */
 package org.hibernate.reactive.query.sqm.mutation.internal.temptable;
 
+import java.lang.invoke.MethodHandles;
+import java.sql.PreparedStatement;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
@@ -10,7 +17,6 @@ import org.hibernate.boot.TempTableDdlTransactionHandling;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.temptable.TemporaryTable;
 import org.hibernate.dialect.temptable.TemporaryTableColumn;
-import org.hibernate.dialect.temptable.TemporaryTableHelper;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -22,8 +28,10 @@ import org.hibernate.query.sqm.ComparisonOperator;
 import org.hibernate.query.sqm.mutation.internal.MultiTableSqmMutationConverter;
 import org.hibernate.query.sqm.mutation.internal.temptable.AfterUseAction;
 import org.hibernate.query.sqm.mutation.internal.temptable.BeforeUseAction;
+import org.hibernate.reactive.logging.impl.Log;
+import org.hibernate.reactive.logging.impl.LoggerFactory;
+import org.hibernate.reactive.session.ReactiveConnectionSupplier;
 import org.hibernate.reactive.sql.exec.internal.StandardReactiveJdbcMutationExecutor;
-import org.hibernate.resource.transaction.spi.IsolationDelegate;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.SqlAstJoinType;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
@@ -42,10 +50,14 @@ import org.hibernate.sql.exec.spi.JdbcOperationQueryInsert;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.results.internal.SqlSelectionImpl;
 
+import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
+
 /**
  * @see org.hibernate.query.sqm.mutation.internal.temptable.ExecuteWithTemporaryTableHelper
  */
 public final class ReactiveExecuteWithTemporaryTableHelper {
+
+	private static final Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
 	private ReactiveExecuteWithTemporaryTableHelper() {
 	}
@@ -142,15 +154,13 @@ public final class ReactiveExecuteWithTemporaryTableHelper {
 		if ( temporaryTableInsert.getSourceSelectStatement() != null
 				&& !jdbcEnvironment.getDialect().supportsOuterJoinForUpdate() ) {
 			temporaryTableInsert.getSourceSelectStatement().visitQuerySpecs(
-					querySpec -> {
-						querySpec.getFromClause().visitTableJoins(
+					querySpec -> querySpec.getFromClause().visitTableJoins(
 								tableJoin -> {
 									if ( tableJoin.getJoinType() != SqlAstJoinType.INNER ) {
 										lockOptions.setLockMode( lockMode );
 									}
 								}
-						);
-					}
+						)
 			);
 		}
 		final JdbcOperationQueryInsert jdbcInsert = sqlAstTranslatorFactory.buildInsertTranslator( factory, temporaryTableInsert )
@@ -161,11 +171,8 @@ public final class ReactiveExecuteWithTemporaryTableHelper {
 				.executeReactive(
 						jdbcInsert,
 						jdbcParameterBindings,
-						sql -> executionContext.getSession()
-								.getJdbcCoordinator()
-								.getStatementPreparer()
-								.prepareStatement( sql ),
-						(integer, preparedStatement) -> {},
+						executionContext.getSession().getJdbcCoordinator().getStatementPreparer()::prepareStatement,
+						ReactiveExecuteWithTemporaryTableHelper::doNothing,
 						executionContext
 
 				);
@@ -290,24 +297,24 @@ public final class ReactiveExecuteWithTemporaryTableHelper {
 		final SessionFactoryImplementor factory = executionContext.getSession().getFactory();
 		final Dialect dialect = factory.getJdbcServices().getDialect();
 		if ( dialect.getTemporaryTableBeforeUseAction() == BeforeUseAction.CREATE ) {
-			final TemporaryTableHelper.TemporaryTableCreationWork temporaryTableCreationWork = new TemporaryTableHelper.TemporaryTableCreationWork(
-					temporaryTable,
-					factory
-			);
+			final ReactiveTemporaryTableHelper.TemporaryTableCreationWork temporaryTableCreationWork = new ReactiveTemporaryTableHelper
+					.TemporaryTableCreationWork( temporaryTable, factory );
 
 			final TempTableDdlTransactionHandling ddlTransactionHandling = dialect.getTemporaryTableDdlTransactionHandling();
 			if ( ddlTransactionHandling == TempTableDdlTransactionHandling.NONE ) {
-				executionContext.getSession().doWork( temporaryTableCreationWork );
+				return temporaryTableCreationWork.reactiveExecute( ( (ReactiveConnectionSupplier) executionContext.getSession() ).getReactiveConnection() );
 			}
 			else {
-				final IsolationDelegate isolationDelegate = executionContext.getSession()
-						.getJdbcCoordinator()
-						.getJdbcSessionOwner()
-						.getTransactionCoordinator()
-						.createIsolationDelegate();
-				isolationDelegate.delegateWork( temporaryTableCreationWork, ddlTransactionHandling == TempTableDdlTransactionHandling.ISOLATE_AND_TRANSACT );
+				throw LOG.notYetImplemented();
+//				final IsolationDelegate isolationDelegate = executionContext.getSession()
+//						.getJdbcCoordinator()
+//						.getJdbcSessionOwner()
+//						.getTransactionCoordinator()
+//						.createIsolationDelegate();
+//				isolationDelegate.delegateWork( temporaryTableCreationWork, ddlTransactionHandling == TempTableDdlTransactionHandling.ISOLATE_AND_TRANSACT );
 			}
 		}
+		return voidFuture();
 	}
 
 	public static CompletionStage<Void> performAfterTemporaryTableUseActions(
@@ -319,34 +326,39 @@ public final class ReactiveExecuteWithTemporaryTableHelper {
 		final Dialect dialect = factory.getJdbcServices().getDialect();
 		switch ( afterUseAction ) {
 			case CLEAN:
-				TemporaryTableHelper.cleanTemporaryTableRows(
+				return ReactiveTemporaryTableHelper.cleanTemporaryTableRows(
 						temporaryTable,
 						dialect.getTemporaryTableExporter(),
 						sessionUidAccess,
 						executionContext.getSession()
 				);
-				break;
 			case DROP:
-				final TemporaryTableHelper.TemporaryTableDropWork temporaryTableDropWork = new TemporaryTableHelper.TemporaryTableDropWork(
+				final ReactiveTemporaryTableHelper.TemporaryTableDropWork temporaryTableDropWork = new ReactiveTemporaryTableHelper.TemporaryTableDropWork(
 						temporaryTable,
 						factory
 				);
 
 				final TempTableDdlTransactionHandling ddlTransactionHandling = dialect.getTemporaryTableDdlTransactionHandling();
 				if ( ddlTransactionHandling == TempTableDdlTransactionHandling.NONE ) {
-					executionContext.getSession().doWork( temporaryTableDropWork );
+					return temporaryTableDropWork.reactiveExecute( ( (ReactiveConnectionSupplier) executionContext.getSession() ).getReactiveConnection() );
 				}
 				else {
-					final IsolationDelegate isolationDelegate = executionContext.getSession()
-							.getJdbcCoordinator()
-							.getJdbcSessionOwner()
-							.getTransactionCoordinator()
-							.createIsolationDelegate();
-					isolationDelegate.delegateWork(
-							temporaryTableDropWork,
-							ddlTransactionHandling == TempTableDdlTransactionHandling.ISOLATE_AND_TRANSACT
-					);
+					throw LOG.notYetImplemented();
+//					final IsolationDelegate isolationDelegate = executionContext.getSession()
+//							.getJdbcCoordinator()
+//							.getJdbcSessionOwner()
+//							.getTransactionCoordinator()
+//							.createIsolationDelegate();
+//					isolationDelegate.delegateWork(
+//							temporaryTableDropWork,
+//							ddlTransactionHandling == TempTableDdlTransactionHandling.ISOLATE_AND_TRANSACT
+//					);
 				}
+			default:
+				return voidFuture();
 		}
+	}
+
+	private static void doNothing(Integer integer, PreparedStatement preparedStatement) {
 	}
 }

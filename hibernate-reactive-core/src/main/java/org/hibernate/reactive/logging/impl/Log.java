@@ -280,6 +280,6 @@ public interface Log extends BasicLogger {
 	void explicitSkipLockedLockCombo();
 
 	@LogMessage(level = WARN)
-	@Message(id = 447, value = "")
+	@Message(id = 448, value = "Warnings creating temp table : %s")
 	void warningsCreatingTempTable(SQLWarning warning);
 }
