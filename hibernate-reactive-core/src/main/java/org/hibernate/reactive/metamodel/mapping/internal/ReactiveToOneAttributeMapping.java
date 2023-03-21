@@ -31,6 +31,7 @@ import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
 import org.hibernate.metamodel.mapping.internal.ToOneAttributeMapping;
 import org.hibernate.metamodel.model.domain.NavigableRole;
 import org.hibernate.property.access.spi.PropertyAccess;
+import org.hibernate.reactive.sql.results.graph.entity.internal.ReactiveEntityFetchJoinedImpl;
 import org.hibernate.reactive.sql.results.graph.entity.internal.ReactiveEntityFetchSelectImpl;
 import org.hibernate.reactive.sql.results.internal.domain.ReactiveCircularFetchImpl;
 import org.hibernate.spi.DotIdentifierSequence;
@@ -51,6 +52,7 @@ import org.hibernate.sql.results.graph.FetchOptions;
 import org.hibernate.sql.results.graph.FetchParent;
 import org.hibernate.sql.results.graph.Fetchable;
 import org.hibernate.sql.results.graph.entity.EntityFetch;
+import org.hibernate.sql.results.graph.entity.internal.EntityFetchJoinedImpl;
 import org.hibernate.sql.results.graph.entity.internal.EntityFetchSelectImpl;
 import org.hibernate.sql.results.internal.domain.CircularFetchImpl;
 import org.hibernate.type.descriptor.java.JavaType;
@@ -81,6 +83,9 @@ public class ReactiveToOneAttributeMapping extends ToOneAttributeMapping {
 				resultVariable,
 				creationState
 		);
+		if ( entityFetch instanceof EntityFetchJoinedImpl ) {
+			return new ReactiveEntityFetchJoinedImpl( (EntityFetchJoinedImpl) entityFetch );
+		}
 		if (entityFetch instanceof EntityFetchSelectImpl) {
 			return new ReactiveEntityFetchSelectImpl( (EntityFetchSelectImpl) entityFetch );
 		}
