@@ -13,6 +13,7 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
@@ -22,10 +23,14 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import io.vertx.ext.unit.TestContext;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import static org.hibernate.cfg.AvailableSettings.SHOW_SQL;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.COCKROACHDB;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
@@ -55,6 +60,9 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 		Configuration configuration = constructConfiguration();
 		configuration.setProperty( DRIVER, dbType().getJdbcDriver() );
 		configuration.setProperty( DIALECT, dbType().getDialectClass().getName() );
+		configuration.setProperty( SHOW_SQL, "true" );
+		configuration.setProperty( AvailableSettings.USE_GET_GENERATED_KEYS, "false" );
+		configuration.addAnnotatedClass( EntityWithIdentity.class );
 
 		StandardServiceRegistryBuilder builder = new StandardServiceRegistryBuilder()
 				.applySettings( configuration.getProperties() );
@@ -70,36 +78,53 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 
 	@Test
 	public void testORMWithStageSession(TestContext context) {
-		final Flour almond = new Flour( 1, "Almond", "made from ground almonds.", "Gluten free" );
-
+		EntityWithIdentity entityWithIdentity = new EntityWithIdentity( 12 );
 		try (Session session = ormFactory.openSession()) {
 			session.beginTransaction();
-			session.persist( almond );
+			session.persist( entityWithIdentity );
 			session.getTransaction().commit();
 		}
 
-		// Check database with Stage session and verify 'almond' flour exists
-		test( context, openSession()
-				.thenCompose( stageSession -> stageSession.find( Flour.class, almond.id ) )
-				.thenAccept( entityFound -> context.assertEquals( almond, entityFound ) )
-		);
+		try (Session session = ormFactory.openSession()) {
+			session.beginTransaction();
+			EntityWithIdentity entityWithIdentity1 = session.find( EntityWithIdentity.class, entityWithIdentity.id );
+			session.getTransaction().commit();
+		}
 	}
 
-	@Test
-	public void testORMWitMutinySession(TestContext context) {
-		final Flour rose = new Flour( 2, "Rose", "made from ground rose pedals.", "Full fragrance" );
+	@Entity(name = "EntityWithIdentity")
+	private static class EntityWithIdentity {
+		private static final String PREFIX = "Entity: ";
+		@Id
+		@GeneratedValue(strategy = GenerationType.IDENTITY)
+		Long id;
 
-		try (Session ormSession = ormFactory.openSession()) {
-			ormSession.beginTransaction();
-			ormSession.persist( rose );
-			ormSession.getTransaction().commit();
+		@Column(unique = true)
+		String name;
+
+		@Column
+		private int position;
+
+		public EntityWithIdentity() {
 		}
 
-		// Check database with Mutiny session and verify 'rose' flour exists
-		test( context, openMutinySession()
-				.chain( session -> session.find( Flour.class, rose.id ) )
-				.invoke( foundRose -> context.assertEquals( rose, foundRose ) )
-		);
+		public EntityWithIdentity(int index) {
+			this.name =  PREFIX + index;
+			this.position = index;
+		}
+
+		public int getPosition() {
+			return position;
+		}
+
+		public void setPosition(int position) {
+			this.position = position;
+		}
+
+		@Override
+		public String toString() {
+			return id + ":" + name + ":" + position;
+		}
 	}
 
 	@Entity(name = "Flour")

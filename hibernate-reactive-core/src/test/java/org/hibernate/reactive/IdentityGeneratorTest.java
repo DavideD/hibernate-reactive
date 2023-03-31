@@ -91,7 +91,7 @@ public class IdentityGeneratorTest extends BaseReactiveTest {
 	private static class EntityWithIdentity {
 		private static final String PREFIX = "Entity: ";
 		@Id
-		@GeneratedValue(strategy = GenerationType.TABLE)
+		@GeneratedValue(strategy = GenerationType.IDENTITY)
 		Long id;
 
 		@Column(unique = true)
