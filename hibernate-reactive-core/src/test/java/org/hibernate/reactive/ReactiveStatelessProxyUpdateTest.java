@@ -138,7 +138,7 @@ public class ReactiveStatelessProxyUpdateTest extends BaseReactiveTest {
 	@Table(name = "game")
 	public static class Game {
 		@Id
-		@GeneratedValue(strategy = GenerationType.IDENTITY)
+		@GeneratedValue(strategy = GenerationType.TABLE)
 		private Long id;
 
 		@Column(name = "title")
@@ -177,7 +177,7 @@ public class ReactiveStatelessProxyUpdateTest extends BaseReactiveTest {
 	@Table(name = "game_character")
 	public static class GameCharacter {
 		@Id
-		@GeneratedValue(strategy = GenerationType.IDENTITY)
+		@GeneratedValue(strategy = GenerationType.TABLE)
 		private Long id;
 
 		private String name;

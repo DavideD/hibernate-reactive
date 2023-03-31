@@ -105,7 +105,7 @@ public class IdentityGeneratorTypeTest extends BaseReactiveTest {
 	@Table(name = "IntegerTypeEntity")
 	static class IntegerTypeEntity implements TypeIdentity<Integer> {
 		@Id
-		@GeneratedValue(strategy = GenerationType.IDENTITY)
+		@GeneratedValue(strategy = GenerationType.AUTO)
 		public Integer id;
 
 		@Override
@@ -118,7 +118,7 @@ public class IdentityGeneratorTypeTest extends BaseReactiveTest {
 	@Table(name = "LongTypeEntity")
 	static class LongTypeEntity implements TypeIdentity<Long> {
 		@Id
-		@GeneratedValue(strategy = GenerationType.IDENTITY)
+		@GeneratedValue(strategy = GenerationType.AUTO)
 		public Long id;
 
 		@Override

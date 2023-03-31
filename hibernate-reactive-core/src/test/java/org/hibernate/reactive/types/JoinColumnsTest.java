@@ -228,7 +228,7 @@ public class JoinColumnsTest extends BaseReactiveTest {
 	@Table(name = "sample_join_entities")
 	public static class SampleJoinEntity implements Serializable {
 		@Id
-		@GeneratedValue(strategy = GenerationType.IDENTITY)
+		@GeneratedValue(strategy = GenerationType.TABLE)
 		public Long id;
 
 		public String name;
