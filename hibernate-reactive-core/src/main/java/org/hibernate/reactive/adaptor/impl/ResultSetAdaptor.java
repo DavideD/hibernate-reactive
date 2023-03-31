@@ -87,7 +87,8 @@ public class ResultSetAdaptor implements ResultSet {
 			Boolean bool = row.getBoolean( columnIndex - 1 );
 			wasNull = bool == null;
 			return !wasNull && bool;
-		} catch (ClassCastException cce) {
+		}
+		catch (ClassCastException cce) {
 			// Oracle doesn't support an actual boolean/Boolean datatype.
 			// Oracle8iDialect in ORM registers the BOOLEAN type as a 'number( 1, 0 )'
 			// so we need to convert the int to a boolean
@@ -507,19 +508,14 @@ public class ResultSetAdaptor implements ResultSet {
 
 	@Override
 	public int findColumn(String columnLabel) {
-		int result = -1;
-
-		result = rows.columnsNames().indexOf( columnLabel );
-		// Oracle and DB2 use UPPER CASE column names, so if result is -1
-		// check with upper case
-		if( result == -1 ) {
-			result = rows.columnsNames().indexOf( columnLabel.toLowerCase() );
+		int index = 1;
+		for ( String columnsName : rows.columnsNames() ) {
+			if ( columnsName.equalsIgnoreCase( columnLabel ) ) {
+				return index;
+			}
+			index++;
 		}
-		if( result == -1 ) {
-			result = rows.columnsNames().indexOf( columnLabel.toUpperCase() );
-		}
-		System.out.println(" ============ findColumn( " + columnLabel + ")  RESULT = " + result);
-		return result + 1;
+		return -1;
 	}
 
 	@Override
