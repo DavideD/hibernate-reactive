@@ -5,15 +5,20 @@
  */
 package org.hibernate.reactive;
 
-import io.vertx.ext.unit.TestContext;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CompletionStage;
 
 import org.hibernate.Hibernate;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.FetchProfile;
 import org.hibernate.reactive.stage.Stage;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
+import io.vertx.junit5.VertxTestContext;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityGraph;
 import jakarta.persistence.FetchType;
@@ -24,13 +29,9 @@ import jakarta.persistence.NamedEntityGraph;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.CompletionStage;
-
 import static org.hibernate.reactive.util.impl.CompletionStages.loop;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
 
@@ -56,7 +57,7 @@ public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void findBookWithFetchAuthors(TestContext context) {
+	public void findBookWithFetchAuthors(VertxTestContext context) {
 		final Book goodOmens = new Book(
 				7242353,
 				"Good Omens: The Nice and Accurate Prophecies of Agnes Nutter, Witch"
@@ -80,17 +81,17 @@ public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
 										book -> s.fetch( book.getAuthors() )
 								) )
 						.thenAccept( optionalAssociation -> {
-							context.assertTrue( Hibernate.isInitialized( optionalAssociation ) );
-							context.assertNotNull( optionalAssociation );
-							context.assertTrue( optionalAssociation.contains( neilGaiman ) );
-							context.assertTrue( optionalAssociation.contains( terryPratchett ) );
+							assertTrue( Hibernate.isInitialized( optionalAssociation ) );
+							assertNotNull( optionalAssociation );
+							assertTrue( optionalAssociation.contains( neilGaiman ) );
+							assertTrue( optionalAssociation.contains( terryPratchett ) );
 						} )
 		);
 
 	}
 
 	@Test
-	public void findBookWithStaticFetchAuthors(TestContext context) {
+	public void findBookWithStaticFetchAuthors(VertxTestContext context) {
 		final Book goodOmens = new Book(
 				7242353,
 				"Good Omens: The Nice and Accurate Prophecies of Agnes Nutter, Witch"
@@ -113,16 +114,16 @@ public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
 										book -> Stage.fetch( book.getAuthors() )
 								) )
 						.thenAccept( optionalAssociation -> {
-							context.assertTrue( Hibernate.isInitialized( optionalAssociation ) );
-							context.assertNotNull( optionalAssociation );
-							context.assertTrue( optionalAssociation.contains( neilGaiman ) );
-							context.assertTrue( optionalAssociation.contains( terryPratchett ) );
+							assertTrue( Hibernate.isInitialized( optionalAssociation ) );
+							assertNotNull( optionalAssociation );
+							assertTrue( optionalAssociation.contains( neilGaiman ) );
+							assertTrue( optionalAssociation.contains( terryPratchett ) );
 						} )
 		);
 	}
 
 	@Test
-	public void findBookWithNamedEntityGraphFetchAuthors(TestContext context) {
+	public void findBookWithNamedEntityGraphFetchAuthors(VertxTestContext context) {
 		final Book goodOmens = new Book(
 				7242353,
 				"Good Omens: The Nice and Accurate Prophecies of Agnes Nutter, Witch"
@@ -143,18 +144,18 @@ public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
 						.thenCompose( v -> openSession() )
 						.thenCompose( s -> s.find( s.getEntityGraph( Book.class, "withAuthors" ), goodOmens.getId() ) )
 						.thenAccept( book -> {
-							context.assertTrue( Hibernate.isInitialized( book.authors ) );
+							assertTrue( Hibernate.isInitialized( book.authors ) );
 							List<Author> optionalAssociation = book.authors;
-							context.assertNotNull( optionalAssociation );
-							context.assertTrue( optionalAssociation.contains( neilGaiman ) );
-							context.assertTrue( optionalAssociation.contains( terryPratchett ) );
+							assertNotNull( optionalAssociation );
+							assertTrue( optionalAssociation.contains( neilGaiman ) );
+							assertTrue( optionalAssociation.contains( terryPratchett ) );
 						} )
 		);
 
 	}
 
 	@Test
-	public void findBookWithNewEntityGraphFetchAuthors(TestContext context) {
+	public void findBookWithNewEntityGraphFetchAuthors(VertxTestContext context) {
 		final Book goodOmens = new Book(
 				7242353,
 				"Good Omens: The Nice and Accurate Prophecies of Agnes Nutter, Witch"
@@ -179,18 +180,18 @@ public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
 							return s.find( graph, goodOmens.getId() );
 						} )
 						.thenAccept( book -> {
-							context.assertTrue( Hibernate.isInitialized( book.authors ) );
+							assertTrue( Hibernate.isInitialized( book.authors ) );
 							List<Author> optionalAssociation = book.authors;
-							context.assertNotNull( optionalAssociation );
-							context.assertTrue( optionalAssociation.contains( neilGaiman ) );
-							context.assertTrue( optionalAssociation.contains( terryPratchett ) );
+							assertNotNull( optionalAssociation );
+							assertTrue( optionalAssociation.contains( neilGaiman ) );
+							assertTrue( optionalAssociation.contains( terryPratchett ) );
 						} )
 		);
 
 	}
 
 	@Test
-	public void queryBookWithNamedEntityGraphFetchAuthors(TestContext context) {
+	public void queryBookWithNamedEntityGraphFetchAuthors(VertxTestContext context) {
 		final Book goodOmens = new Book(
 				7242353,
 				"Good Omens: The Nice and Accurate Prophecies of Agnes Nutter, Witch"
@@ -213,11 +214,11 @@ public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
 								.setParameter( 1, goodOmens.getId() )
 								.getSingleResult() )
 						.thenAccept( book -> {
-							context.assertTrue( Hibernate.isInitialized( book.getAuthors() ) );
+							assertTrue( Hibernate.isInitialized( book.getAuthors() ) );
 							List<Author> optionalAssociation = book.getAuthors();
-							context.assertNotNull( optionalAssociation );
-							context.assertTrue( optionalAssociation.contains( neilGaiman ) );
-							context.assertTrue( optionalAssociation.contains( terryPratchett ) );
+							assertNotNull( optionalAssociation );
+							assertTrue( optionalAssociation.contains( neilGaiman ) );
+							assertTrue( optionalAssociation.contains( terryPratchett ) );
 						} )
 						.thenCompose( v -> openSession() )
 						.thenCompose( s -> {
@@ -228,13 +229,13 @@ public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
 									.setParameter( 1, neilGaiman.getId() )
 									.getSingleResult();
 						} )
-						.thenAccept( author -> context.assertTrue( Hibernate.isInitialized( author.getBook() ) ) )
+						.thenAccept( author -> assertTrue( Hibernate.isInitialized( author.getBook() ) ) )
 		);
 
 	}
 
 	@Test
-	public void findBookWithFetchProfileAuthors(TestContext context) {
+	public void findBookWithFetchProfileAuthors(VertxTestContext context) {
 		final Book goodOmens = new Book(
 				7242353,
 				"Good Omens: The Nice and Accurate Prophecies of Agnes Nutter, Witch"
@@ -255,18 +256,18 @@ public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
 						.thenCompose( v -> openSession() )
 						.thenCompose( s -> s.enableFetchProfile( "withAuthors" ).find( Book.class, goodOmens.getId() ) )
 						.thenAccept( book -> {
-							context.assertTrue( Hibernate.isInitialized( book.authors ) );
+							assertTrue( Hibernate.isInitialized( book.authors ) );
 							List<Author> optionalAssociation = book.authors;
-							context.assertNotNull( optionalAssociation );
-							context.assertTrue( optionalAssociation.contains( neilGaiman ) );
-							context.assertTrue( optionalAssociation.contains( terryPratchett ) );
+							assertNotNull( optionalAssociation );
+							assertTrue( optionalAssociation.contains( neilGaiman ) );
+							assertTrue( optionalAssociation.contains( terryPratchett ) );
 						} )
 		);
 
 	}
 
 	@Test
-	public void getBookWithFetchAuthors(TestContext context) {
+	public void getBookWithFetchAuthors(VertxTestContext context) {
 		final Book goodOmens = new Book(
 				7242353,
 				"Good Omens: The Nice and Accurate Prophecies of Agnes Nutter, Witch"
@@ -284,17 +285,17 @@ public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
 										.fetch( book.getAuthors() )
 								) )
 						.thenAccept( optionalAssociation -> {
-							context.assertTrue( Hibernate.isInitialized( optionalAssociation ) );
-							context.assertNotNull( optionalAssociation );
-							context.assertTrue( optionalAssociation.contains( neilGaiman ) );
-							context.assertTrue( optionalAssociation.contains( terryPratchett ) );
+							assertTrue( Hibernate.isInitialized( optionalAssociation ) );
+							assertNotNull( optionalAssociation );
+							assertTrue( optionalAssociation.contains( neilGaiman ) );
+							assertTrue( optionalAssociation.contains( terryPratchett ) );
 						} )
 				)
 		);
 	}
 
 	@Test
-	public void getBookWithEntityGraphAuthors(TestContext context) {
+	public void getBookWithEntityGraphAuthors(VertxTestContext context) {
 		final Book goodOmens = new Book(
 				7242353,
 				"Good Omens: The Nice and Accurate Prophecies of Agnes Nutter, Witch"
@@ -314,10 +315,10 @@ public class LazyOneToManyAssociationWithFetchTest extends BaseReactiveTest {
 				} ) )
 				.thenAccept( book -> {
 					List<Author> optionalAssociation = book.getAuthors();
-					context.assertTrue( Hibernate.isInitialized( optionalAssociation ) );
-					context.assertNotNull( optionalAssociation );
-					context.assertTrue( optionalAssociation.contains( neilGaiman ) );
-					context.assertTrue( optionalAssociation.contains( terryPratchett ) );
+					assertTrue( Hibernate.isInitialized( optionalAssociation ) );
+					assertNotNull( optionalAssociation );
+					assertTrue( optionalAssociation.contains( neilGaiman ) );
+					assertTrue( optionalAssociation.contains( terryPratchett ) );
 				} )
 		);
 	}

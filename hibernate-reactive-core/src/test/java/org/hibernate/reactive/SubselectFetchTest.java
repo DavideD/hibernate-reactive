@@ -14,11 +14,11 @@ import org.hibernate.Hibernate;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 
-import org.junit.After;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
-import io.vertx.ext.unit.TestContext;
+import io.vertx.junit5.VertxTestContext;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -37,7 +37,11 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import jakarta.persistence.Version;
 
-@Ignore // see https://github.com/hibernate/hibernate-reactive/issues/1502
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@Disabled // see https://github.com/hibernate/hibernate-reactive/issues/1502
 public class SubselectFetchTest extends BaseReactiveTest {
 
 	@Override
@@ -45,15 +49,15 @@ public class SubselectFetchTest extends BaseReactiveTest {
 		return List.of( Element.class, Node.class );
 	}
 
-	@After
-	public void cleanDb(TestContext context) {
+	@AfterAll
+	public void cleanDb(VertxTestContext context) {
 		test( context, getSessionFactory()
 				.withTransaction( s -> s.createQuery( "delete from Element" ).executeUpdate()
 						.thenCompose( v -> s.createQuery( "delete from Node" ).executeUpdate() ) ) );
 	}
 
 	@Test
-	public void testQuery(TestContext context) {
+	public void testQuery(VertxTestContext context) {
 		Node basik = new Node( "Child" );
 		basik.parent = new Node( "Parent" );
 		basik.elements.add( new Element( basik ) );
@@ -68,15 +72,30 @@ public class SubselectFetchTest extends BaseReactiveTest {
 				.thenCompose( s -> s.createQuery( "from Node n order by id", Node.class )
 						.getResultList()
 						.thenCompose( list -> {
-							context.assertEquals( list.size(), 2 );
+							assertEquals( list.size(), 2 );
 							Node n1 = list.get( 0 );
 							Node n2 = list.get( 1 );
-							context.assertFalse( Hibernate.isInitialized( n1.getElements() ), "'n1.elements' should not be initialized"  );
-							context.assertFalse( Hibernate.isInitialized( n2.getElements() ), "'n2.elements' should not be initialized" );
+							assertFalse(
+									Hibernate.isInitialized( n1.getElements() ),
+									"'n1.elements' should not be initialized"
+							);
+							assertFalse(
+									Hibernate.isInitialized( n2.getElements() ),
+									"'n2.elements' should not be initialized"
+							);
 							return s.fetch( n1.getElements() ).thenAccept( elements -> {
-								context.assertTrue( Hibernate.isInitialized( elements ), "'elements' - after fetch - should be initialized" );
-								context.assertTrue( Hibernate.isInitialized( n1.getElements() ), "'n1.elements' - after fetch - should be initialized" );
-								context.assertTrue( Hibernate.isInitialized( n2.getElements() ), "'n2.elements' - after fetch - should be initialized" );
+								assertTrue(
+										Hibernate.isInitialized( elements ),
+										"'elements' - after fetch - should be initialized"
+								);
+								assertTrue(
+										Hibernate.isInitialized( n1.getElements() ),
+										"'n1.elements' - after fetch - should be initialized"
+								);
+								assertTrue(
+										Hibernate.isInitialized( n2.getElements() ),
+										"'n2.elements' - after fetch - should be initialized"
+								);
 							} );
 						} )
 				)

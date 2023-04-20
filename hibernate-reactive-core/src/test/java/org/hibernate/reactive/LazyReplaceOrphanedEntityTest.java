@@ -10,6 +10,11 @@ import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import io.vertx.junit5.VertxTestContext;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorColumn;
@@ -24,12 +29,6 @@ import jakarta.persistence.InheritanceType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 
-
-import org.junit.Before;
-import org.junit.Test;
-
-import io.vertx.ext.unit.TestContext;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class LazyReplaceOrphanedEntityTest extends BaseReactiveTest {
@@ -41,8 +40,8 @@ public class LazyReplaceOrphanedEntityTest extends BaseReactiveTest {
 		return List.of( Campaign.class, ExecutionDate.class, Schedule.class );
 	}
 
-	@Before
-	public void populateDb(TestContext context) {
+	@BeforeEach
+	public void populateDb(VertxTestContext context) {
 		theCampaign = new Campaign();
 		theCampaign.setSchedule( new ExecutionDate(OffsetDateTime.now(), "ALPHA") );
 
@@ -50,7 +49,7 @@ public class LazyReplaceOrphanedEntityTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testUpdateScheduleChange(TestContext context) {
+	public void testUpdateScheduleChange(VertxTestContext context) {
 		test( context, getMutinySessionFactory()
 				.withSession( session -> session
 						.find( Campaign.class, theCampaign.getId() )
@@ -65,7 +64,7 @@ public class LazyReplaceOrphanedEntityTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testUpdateWithMultipleScheduleChanges(TestContext context) {
+	public void testUpdateWithMultipleScheduleChanges(VertxTestContext context) {
 		test( context, getMutinySessionFactory()
 				.withSession( session -> session
 						.find( Campaign.class, theCampaign.getId() )

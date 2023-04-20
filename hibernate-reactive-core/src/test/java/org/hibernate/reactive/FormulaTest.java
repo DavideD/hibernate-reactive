@@ -12,10 +12,11 @@ import java.util.List;
 import org.hibernate.annotations.Formula;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
-import io.vertx.ext.unit.TestContext;
+import io.vertx.junit5.VertxTestContext;
 import jakarta.persistence.Basic;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -25,9 +26,10 @@ import jakarta.persistence.Table;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.MARIA;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.MYSQL;
 
+
 public class FormulaTest extends BaseReactiveTest {
 
-	@Rule
+	@RegisterExtension
 	public DatabaseSelectionRule rule = DatabaseSelectionRule.skipTestsFor( MARIA, MYSQL );
 
 	@Override
@@ -36,7 +38,7 @@ public class FormulaTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void test(TestContext context) {
+	public void test(VertxTestContext context) {
 		Record record = new Record();
 		record.text = "initial text";
 		test( context, getMutinySessionFactory()
@@ -46,7 +48,7 @@ public class FormulaTest extends BaseReactiveTest {
 				.chain( () -> getMutinySessionFactory()
 						.withSession( session -> session.find( Record.class, record.id ) ) )
 				.map( Record::getCurrent )
-				.invoke( context::assertNotNull )
+				.invoke( Assertions::assertNotNull )
 		);
 	}
 

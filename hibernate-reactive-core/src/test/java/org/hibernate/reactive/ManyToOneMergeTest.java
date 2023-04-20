@@ -9,10 +9,10 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import io.vertx.ext.unit.TestContext;
+import io.vertx.junit5.VertxTestContext;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -21,6 +21,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 public class ManyToOneMergeTest extends BaseReactiveTest {
 
 	@Override
@@ -28,8 +30,8 @@ public class ManyToOneMergeTest extends BaseReactiveTest {
 		return List.of( AcademicYearDetailsDBO.class, CampusDBO.class );
 	}
 
-	@Before
-	public void populateDb(TestContext context) {
+	@BeforeEach
+	public void populateDb(VertxTestContext context) {
 		CampusDBO campusDBO2 = new CampusDBO();
 		campusDBO2.setId( 42 );
 		campusDBO2.setCampusName( "Kuchl" );
@@ -50,7 +52,7 @@ public class ManyToOneMergeTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void test(TestContext context) {
+	public void test(VertxTestContext context) {
 		test( context, getMutinySessionFactory().withSession( session -> session
 						.createQuery( "select dbo from AcademicYearDetailsDBO dbo", AcademicYearDetailsDBO.class )
 						.getSingleResult() )
@@ -61,12 +63,12 @@ public class ManyToOneMergeTest extends BaseReactiveTest {
 				} ) )
 				.chain( merged -> getMutinySessionFactory()
 						.withTransaction( session -> session.fetch( merged.getCampusDBO() ) ) )
-				.invoke( fetched -> context.assertEquals( "Kuchl", fetched.getCampusName() ) )
+				.invoke( fetched -> assertEquals( "Kuchl", fetched.getCampusName() ) )
 		);
 	}
 
 	@Test
-	public void testTransient(TestContext context) {
+	public void testTransient(VertxTestContext context) {
 		CampusDBO campusDBO = new CampusDBO();
 		campusDBO.setId( 77 );
 		campusDBO.setCampusName( "Qualunquelandia" );
@@ -84,7 +86,7 @@ public class ManyToOneMergeTest extends BaseReactiveTest {
 					  } )
 					  .chain( merged -> getMutinySessionFactory()
 							  .withTransaction( session -> session.fetch( merged.getCampusDBO() ) ) )
-					  .invoke( fetched -> context.assertEquals( "Kuchl", fetched.getCampusName() ) )
+					  .invoke( fetched -> assertEquals( "Kuchl", fetched.getCampusName() ) )
 		);
 	}
 

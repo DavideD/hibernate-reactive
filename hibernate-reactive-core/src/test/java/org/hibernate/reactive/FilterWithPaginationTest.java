@@ -9,11 +9,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
-import jakarta.persistence.NamedQuery;
 
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
@@ -22,12 +17,18 @@ import org.hibernate.reactive.mutiny.Mutiny;
 import org.hibernate.reactive.stage.Stage;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 import org.hibernate.type.descriptor.java.StringJavaType;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.smallrye.mutiny.Uni;
-import io.vertx.ext.unit.TestContext;
+import io.vertx.junit5.VertxTestContext;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.NamedQuery;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2;
@@ -39,7 +40,7 @@ import static org.hibernate.reactive.testing.DatabaseSelectionRule.skipTestsFor;
 public class FilterWithPaginationTest extends BaseReactiveTest {
 
 	// Db2: java.lang.ClassCastException: class java.lang.Integer cannot be cast to class java.lang.Long
-	@Rule
+	@RegisterExtension
 	public final DatabaseSelectionRule skipDb2 = skipTestsFor( DB2 );
 
 	FamousPerson margaret = new FamousPerson( 1L, "Margaret Howe Lovatt", Status.LIVING, "the woman who lived in a half-flooded home with a dolphin." );
@@ -55,8 +56,8 @@ public class FilterWithPaginationTest extends BaseReactiveTest {
 		return List.of( FamousPerson.class );
 	}
 
-	@Before
-	public void populateDb(TestContext context) {
+	@BeforeEach
+	public void populateDb(VertxTestContext context) {
 		test( context, getMutinySessionFactory().withSession( s -> s
 					  .persistAll( margaret, nellie, hedy, rebeccaActress, rebeccaSinger )
 					  .chain( s::flush ) ) );
@@ -66,7 +67,7 @@ public class FilterWithPaginationTest extends BaseReactiveTest {
 	 * Sql server run different queries based if order-by is missing and there are no filters
 	 */
 	@Test
-	public void testMaxResultsAndOffsetWithStageWithBasicQuery(TestContext context) {
+	public void testMaxResultsAndOffsetWithStageWithBasicQuery(VertxTestContext context) {
 		test( context, openSession()
 				.thenCompose( session -> session.createNamedQuery( FamousPerson.FIND_ALL_BASIC_QUERY )
 						.setMaxResults( 2 )
@@ -81,7 +82,7 @@ public class FilterWithPaginationTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testOffsetWithStageWithBasicQuery(TestContext context) {
+	public void testOffsetWithStageWithBasicQuery(VertxTestContext context) {
 		test( context, openSession()
 				.thenCompose( session -> session.createNamedQuery( FamousPerson.FIND_ALL_BASIC_QUERY )
 						.setFirstResult( 3 )
@@ -95,7 +96,7 @@ public class FilterWithPaginationTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testMaxResultsWithStageWithBasicQuery(TestContext context) {
+	public void testMaxResultsWithStageWithBasicQuery(VertxTestContext context) {
 		test( context, openSession()
 				.thenCompose( session -> session.createNamedQuery( FamousPerson.FIND_ALL_BASIC_QUERY )
 						.setMaxResults( 4 )
@@ -109,7 +110,7 @@ public class FilterWithPaginationTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testMaxResultsWithStage(TestContext context) {
+	public void testMaxResultsWithStage(VertxTestContext context) {
 		test( context, enableFilter( openSession(), FamousPerson.IS_ALIVE_FILTER )
 				.thenCompose( session -> session.createNamedQuery( FamousPerson.FIND_ALL_QUERY )
 						.setMaxResults( 2 )
@@ -119,7 +120,7 @@ public class FilterWithPaginationTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testMaxResultsWithMutiny(TestContext context) {
+	public void testMaxResultsWithMutiny(VertxTestContext context) {
 		test( context, enableFilter( openMutinySession(), FamousPerson.IS_ALIVE_FILTER )
 				.chain( session -> session.createNamedQuery( FamousPerson.FIND_ALL_QUERY )
 						.setMaxResults( 2 )
@@ -129,7 +130,7 @@ public class FilterWithPaginationTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testFirstResultWithStage(TestContext context) {
+	public void testFirstResultWithStage(VertxTestContext context) {
 		test( context, enableFilter( openSession(), FamousPerson.IS_ALIVE_FILTER )
 				.thenCompose( session -> session.createNamedQuery( FamousPerson.FIND_ALL_QUERY )
 						.setFirstResult( 1 )
@@ -139,7 +140,7 @@ public class FilterWithPaginationTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testFirstResultWithMutiny(TestContext context) {
+	public void testFirstResultWithMutiny(VertxTestContext context) {
 		test( context, enableFilter( openMutinySession(), FamousPerson.IS_ALIVE_FILTER )
 				.chain( session -> session.createNamedQuery( FamousPerson.FIND_ALL_QUERY )
 						.setFirstResult( 1 )
@@ -149,7 +150,7 @@ public class FilterWithPaginationTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testMaxResultsAndOffsetWithStage(TestContext context) {
+	public void testMaxResultsAndOffsetWithStage(VertxTestContext context) {
 		test( context, enableFilter( openSession(), FamousPerson.IS_ALIVE_FILTER )
 				.thenCompose( session -> session.createNamedQuery( FamousPerson.FIND_ALL_QUERY )
 						.setMaxResults( 2 )
@@ -160,7 +161,7 @@ public class FilterWithPaginationTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testMaxResultsAndOffsetWithMutiny(TestContext context) {
+	public void testMaxResultsAndOffsetWithMutiny(VertxTestContext context) {
 		test( context, enableFilter( openMutinySession(), FamousPerson.IS_ALIVE_FILTER )
 				.chain( session -> session.createNamedQuery( FamousPerson.FIND_ALL_QUERY )
 						.setMaxResults( 2 )
@@ -171,7 +172,7 @@ public class FilterWithPaginationTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testMaxResultsForParameterizedFilterWithStage(TestContext context) {
+	public void testMaxResultsForParameterizedFilterWithStage(VertxTestContext context) {
 		test( context, enableFilter( openSession(), FamousPerson.HAS_NAME_FILTER, "name", rebeccaActress.name )
 				.thenCompose( session -> session.createNamedQuery( FamousPerson.FIND_ALL_QUERY )
 						.setMaxResults( 2 )
@@ -181,7 +182,7 @@ public class FilterWithPaginationTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testMaxResultsForParameterizedFilterWithMutiny(TestContext context) {
+	public void testMaxResultsForParameterizedFilterWithMutiny(VertxTestContext context) {
 		test( context, enableFilter( openMutinySession(), FamousPerson.HAS_NAME_FILTER, "name", rebeccaActress.name )
 				.chain( session -> session.createNamedQuery( FamousPerson.FIND_ALL_QUERY )
 						.setMaxResults( 2 )
@@ -191,7 +192,7 @@ public class FilterWithPaginationTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testSingleResultMaxResultsForParameterizedFilterWithStage(TestContext context) {
+	public void testSingleResultMaxResultsForParameterizedFilterWithStage(VertxTestContext context) {
 		test( context, enableFilter( openSession(), FamousPerson.HAS_NAME_FILTER, "name", rebeccaActress.name )
 				.thenCompose( session -> session.createNamedQuery( FamousPerson.FIND_ALL_QUERY )
 						.setMaxResults( 1 )
@@ -201,7 +202,7 @@ public class FilterWithPaginationTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testSingleResultMaxResultsForParameterizedFilterWithMutiny(TestContext context) {
+	public void testSingleResultMaxResultsForParameterizedFilterWithMutiny(VertxTestContext context) {
 		test( context, enableFilter( openMutinySession(), FamousPerson.HAS_NAME_FILTER, "name", rebeccaActress.name )
 				.chain( session -> session.createNamedQuery( FamousPerson.FIND_ALL_QUERY )
 						.setMaxResults( 1 )
@@ -211,7 +212,7 @@ public class FilterWithPaginationTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testFirstResultForParameterizedFilterWithStage(TestContext context) {
+	public void testFirstResultForParameterizedFilterWithStage(VertxTestContext context) {
 		test( context, enableFilter( openSession(), FamousPerson.HAS_NAME_FILTER, "name", rebeccaActress.name )
 				.thenCompose( session -> session.createNamedQuery( FamousPerson.FIND_ALL_QUERY )
 						.setFirstResult( 1 )
@@ -221,7 +222,7 @@ public class FilterWithPaginationTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testFirstResultForParameterizedFilterWithMutiny(TestContext context) {
+	public void testFirstResultForParameterizedFilterWithMutiny(VertxTestContext context) {
 		test( context, enableFilter( openMutinySession(), FamousPerson.HAS_NAME_FILTER, "name", rebeccaActress.name )
 				.chain( session -> session.createNamedQuery( FamousPerson.FIND_ALL_QUERY )
 						.setFirstResult( 1 )
@@ -231,7 +232,7 @@ public class FilterWithPaginationTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testMaxResultsAndFirstResultForParameterizedFilterWithStage(TestContext context) {
+	public void testMaxResultsAndFirstResultForParameterizedFilterWithStage(VertxTestContext context) {
 		test( context, enableFilter( openSession(), FamousPerson.HAS_NAME_FILTER, "name", rebeccaActress.name )
 				.thenCompose( session -> session.createNamedQuery( FamousPerson.FIND_ALL_QUERY )
 						.setMaxResults( 2 )
@@ -242,7 +243,7 @@ public class FilterWithPaginationTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testMaxResultsAndFirstResultForParameterizedFilterWithMutiny(TestContext context) {
+	public void testMaxResultsAndFirstResultForParameterizedFilterWithMutiny(VertxTestContext context) {
 		test( context, enableFilter( openMutinySession(), FamousPerson.HAS_NAME_FILTER, "name", rebeccaActress.name )
 				.chain( session -> session.createNamedQuery( FamousPerson.FIND_ALL_QUERY )
 						.setMaxResults( 2 )

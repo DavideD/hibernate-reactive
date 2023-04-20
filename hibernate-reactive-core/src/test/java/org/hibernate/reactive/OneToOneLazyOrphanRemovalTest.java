@@ -8,13 +8,16 @@ package org.hibernate.reactive;
 import java.util.Collection;
 import java.util.List;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import io.vertx.ext.unit.TestContext;
+import io.vertx.junit5.VertxTestContext;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToOne;
+
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class OneToOneLazyOrphanRemovalTest extends BaseReactiveTest {
 
@@ -24,8 +27,8 @@ public class OneToOneLazyOrphanRemovalTest extends BaseReactiveTest {
 		return List.of( Car.class, PaintColor.class, Engine.class );
 	}
 
-	@Before
-	public void populateDb(TestContext context) {
+	@BeforeEach
+	public void populateDb(VertxTestContext context) {
 		final PaintColor color = new PaintColor( 1, "Red" );
 		final Engine engine = new Engine( 1, 275 );
 		final Car car = new Car( 1, engine, color );
@@ -34,7 +37,7 @@ public class OneToOneLazyOrphanRemovalTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testUnidirectionalOneToOneOrphanRemoval(TestContext context) {
+	public void testUnidirectionalOneToOneOrphanRemoval(VertxTestContext context) {
 		test( context, getMutinySessionFactory()
 				.withTransaction( (session, tx) -> session
 						.find( Car.class, 1 )
@@ -42,16 +45,15 @@ public class OneToOneLazyOrphanRemovalTest extends BaseReactiveTest {
 				.call( () -> getMutinySessionFactory()
 						.withSession( session -> session
 								.find( Car.class, 1 )
-								.invoke( car -> context
-										.assertNull( car.getEngine() ) )
+								.invoke( car -> assertNull( car.getEngine() ) )
 								.chain( () -> session
 										.find( Engine.class, 1 )
-										.invoke( context::assertNull ) ) ) )
+										.invoke( Assertions::assertNull ) ) ) )
 		);
 	}
 
 	@Test
-	public void testBidirectionalOneToOneOrphanRemoval(TestContext context) {
+	public void testBidirectionalOneToOneOrphanRemoval(VertxTestContext context) {
 		test( context, getMutinySessionFactory()
 				.withTransaction( (session, tx) -> session
 						.find( Car.class, 1 )
@@ -62,11 +64,10 @@ public class OneToOneLazyOrphanRemovalTest extends BaseReactiveTest {
 				.call( () -> getMutinySessionFactory()
 						.withSession( session -> session
 								.find( Car.class, 1 )
-								.invoke( car -> context
-										.assertNull( car.getPaintColor() ) )
+								.invoke( car -> assertNull( car.getPaintColor() ) )
 								.chain( () -> session
 										.find( PaintColor.class, 1 )
-										.invoke( context::assertNull ) ) ) )
+										.invoke( Assertions::assertNull ) ) ) )
 		);
 	}
 

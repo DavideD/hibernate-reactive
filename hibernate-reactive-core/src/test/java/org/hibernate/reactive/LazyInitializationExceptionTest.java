@@ -8,6 +8,16 @@ package org.hibernate.reactive;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+
+import org.hibernate.Hibernate;
+import org.hibernate.LazyInitializationException;
+import org.hibernate.reactive.mutiny.Mutiny;
+import org.hibernate.reactive.stage.Stage;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import io.vertx.junit5.VertxTestContext;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -18,19 +28,9 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
-import org.hibernate.Hibernate;
-import org.hibernate.LazyInitializationException;
-import org.hibernate.reactive.mutiny.Mutiny;
-import org.hibernate.reactive.stage.Stage;
-
-import org.junit.Before;
-import org.junit.Test;
-
-import io.vertx.ext.unit.TestContext;
-
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.reactive.testing.ReactiveAssertions.assertThrown;
-
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * We expect to throw the right exception when a lazy initialization error happens.
  *
@@ -43,8 +43,8 @@ public class LazyInitializationExceptionTest extends BaseReactiveTest {
 		return List.of( Painting.class, Artist.class );
 	}
 
-	@Before
-	public void populateDB(TestContext context) {
+	@BeforeEach
+	public void populateDB(VertxTestContext context) {
 		Artist artemisia = new Artist( "Artemisia Gentileschi" );
 		Painting sev = new Painting();
 		sev.setAuthor( artemisia );
@@ -56,7 +56,7 @@ public class LazyInitializationExceptionTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testLazyInitializationExceptionWithMutiny(TestContext context) {
+	public void testLazyInitializationExceptionWithMutiny(VertxTestContext context) {
 		test( context, assertThrown( LazyInitializationException.class, openMutinySession()
 				.chain( ms -> ms.createQuery( "from Artist", Artist.class ).getSingleResult() )
 				.invoke( artist -> artist.getPaintings().size() ) )
@@ -65,7 +65,7 @@ public class LazyInitializationExceptionTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testLazyInitializationExceptionWithStage(TestContext context) {
+	public void testLazyInitializationExceptionWithStage(VertxTestContext context) {
 		test( context, assertThrown( LazyInitializationException.class, openSession()
 				.thenCompose( ss -> ss.createQuery( "from Artist", Artist.class ).getSingleResult() )
 				.thenAccept( artist -> artist.getPaintings().size() ) )
@@ -74,12 +74,12 @@ public class LazyInitializationExceptionTest extends BaseReactiveTest {
 	}
 
 	private static void assertLazyInitialization(LazyInitializationException e) {
-		assertThat( e.getMessage() )
-				.startsWith( "HR000056: Collection cannot be initialized: " + Artist.class.getName() + ".paintings" );
+		assertTrue( e.getMessage()
+							.startsWith( "HR000056: Collection cannot be initialized: " + Artist.class.getName() + ".paintings" ) );
 	}
 
 	@Test
-	public void testLazyInitializationExceptionNotThrownWithMutiny(TestContext context) {
+	public void testLazyInitializationExceptionNotThrownWithMutiny(VertxTestContext context) {
 		test( context, openMutinySession()
 				.chain( session -> session.createQuery( "from Artist", Artist.class ).getSingleResult() )
 				// We are checking `.getPaintings()` but not doing anything with it and therefore it should work.
@@ -88,7 +88,7 @@ public class LazyInitializationExceptionTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testLazyInitializationExceptionNotThrownWithStage(TestContext context) {
+	public void testLazyInitializationExceptionNotThrownWithStage(VertxTestContext context) {
 		test( context, openSession()
 				.thenCompose( session -> session.createQuery( "from Artist", Artist.class ).getSingleResult() )
 				// We are checking `.getPaintings()` but not doing anything with it and therefore it should work.
@@ -97,48 +97,48 @@ public class LazyInitializationExceptionTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testLazyInitializationWithJoinFetchAndMutiny(TestContext context) {
+	public void testLazyInitializationWithJoinFetchAndMutiny(VertxTestContext context) {
 		test( context, openMutinySession()
 				.chain( session -> session.createQuery( "from Artist a join fetch a.paintings", Artist.class ).getSingleResult() )
 				.onItem().invoke( artist -> {
-					context.assertTrue( Hibernate.isInitialized( artist ) );
-					context.assertEquals( 2, artist.getPaintings().size() );
+					assertTrue( Hibernate.isInitialized( artist ) );
+					assertEquals( 2, artist.getPaintings().size() );
 				} ) );
 	}
 
 	@Test
-	public void testLazyInitializationWithJoinFetch(TestContext context) {
+	public void testLazyInitializationWithJoinFetch(VertxTestContext context) {
 		test( context, openSession()
 				.thenCompose( session -> session
 						.createQuery( "from Artist a join fetch a.paintings", Artist.class )
 						.getSingleResult() )
 				.thenAccept( artist -> {
-					context.assertTrue( Hibernate.isInitialized( artist.paintings ) );
-					context.assertEquals( 2, artist.getPaintings().size() );
+					assertTrue( Hibernate.isInitialized( artist.paintings ) );
+					assertEquals( 2, artist.getPaintings().size() );
 				} ) );
 	}
 
 	@Test
-	public void testLazyInitializationWithMutinyFetch(TestContext context) {
+	public void testLazyInitializationWithMutinyFetch(VertxTestContext context) {
 		test( context, openMutinySession()
 				.chain( session -> session.createQuery( "from Artist", Artist.class ).getSingleResult() )
 				.chain( artist -> Mutiny.fetch( artist.paintings )
 						.invoke( paintings -> {
-							context.assertTrue( Hibernate.isInitialized( paintings ) );
-							context.assertEquals( 2, paintings.size() );
+							assertTrue( Hibernate.isInitialized( paintings ) );
+							assertEquals( 2, paintings.size() );
 						} )
 				)
 		);
 	}
 
 	@Test
-	public void testLazyInitializationWithStageFetch(TestContext context) {
+	public void testLazyInitializationWithStageFetch(VertxTestContext context) {
 		test( context, openSession()
 				.thenCompose( session -> session.createQuery( "from Artist", Artist.class ).getSingleResult() )
 				.thenCompose( artist -> Stage.fetch( artist.paintings )
 						.thenAccept( paintings -> {
-							context.assertTrue( Hibernate.isInitialized( paintings ) );
-							context.assertEquals( 2, paintings.size() );
+							assertTrue( Hibernate.isInitialized( paintings ) );
+							assertEquals( 2, paintings.size() );
 						} )
 				)
 		);

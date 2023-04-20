@@ -5,28 +5,28 @@
  */
 package org.hibernate.reactive;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.POSTGRESQL;
-import static org.hibernate.reactive.testing.DatabaseSelectionRule.runOnlyFor;
-import static org.hibernate.reactive.testing.ReactiveAssertions.assertThrown;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 
 import org.hibernate.reactive.mutiny.Mutiny;
-import org.hibernate.reactive.stage.Stage;
 import org.hibernate.reactive.stage.Stage.Session;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
-import org.junit.After;
-import org.junit.Rule;
-import org.junit.Test;
+
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.smallrye.mutiny.Uni;
-import io.vertx.ext.unit.TestContext;
+import io.vertx.junit5.VertxTestContext;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.POSTGRESQL;
+import static org.hibernate.reactive.testing.DatabaseSelectionRule.runOnlyFor;
+import static org.hibernate.reactive.testing.ReactiveAssertions.assertThrown;
 
 /**
  * Checks that we throw the right exception when a session is shared between threads.
@@ -43,7 +43,7 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 
 	// These tests will fail before touching the database, so there is no reason
 	// to run them on all databases
-	@Rule
+	@RegisterExtension
 	public DatabaseSelectionRule rule = runOnlyFor( POSTGRESQL );
 
 	@Override
@@ -51,14 +51,14 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 		return List.of( Competition.class );
 	}
 
-	@After
-	public void closeEverything(TestContext context) {
+	@AfterAll
+	public void closeEverything(VertxTestContext context) {
 		test( context, closeSession( currentSession ) );
 	}
 
 	@Test
-	public void testPersistWithStage(TestContext testContext) {
-		CompletionStage<Stage.Session> sessionStage = getSessionFactory().openSession();
+	public void testPersistWithStage(VertxTestContext testContext) {
+		CompletionStage<Session> sessionStage = getSessionFactory().openSession();
 		currentSession = sessionStage;
 
 		ThreadPerCommandExecutor executor = new ThreadPerCommandExecutor();
@@ -70,8 +70,8 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testFindWithStage(TestContext testContext) {
-		CompletionStage<Stage.Session> sessionStage = getSessionFactory().openSession();
+	public void testFindWithStage(VertxTestContext testContext) {
+		CompletionStage<Session> sessionStage = getSessionFactory().openSession();
 		currentSession = sessionStage;
 
 		ThreadPerCommandExecutor executor = new ThreadPerCommandExecutor();
@@ -87,7 +87,7 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testOnPersistWithMutiny(TestContext testContext) {
+	public void testOnPersistWithMutiny(VertxTestContext testContext) {
 		Uni<Mutiny.Session> sessionUni = getMutinySessionFactory().openSession();
 		currentSession = sessionUni;
 
@@ -102,7 +102,7 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testFindWithMutiny(TestContext testContext) {
+	public void testFindWithMutiny(VertxTestContext testContext) {
 		Uni<Mutiny.Session> sessionUni = getMutinySessionFactory().openSession();
 		currentSession = sessionUni;
 

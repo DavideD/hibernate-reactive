@@ -9,6 +9,16 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+
+import org.hibernate.Hibernate;
+import org.hibernate.LockMode;
+import org.hibernate.annotations.BatchSize;
+
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+
+import io.vertx.junit5.VertxTestContext;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -27,16 +37,9 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import jakarta.persistence.Version;
 
-import org.hibernate.Hibernate;
-import org.hibernate.LockMode;
-import org.hibernate.annotations.BatchSize;
-
-import org.junit.After;
-import org.junit.Ignore;
-import org.junit.Test;
-
-import io.vertx.ext.unit.TestContext;
-
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class BatchFetchTest extends BaseReactiveTest {
 
@@ -45,16 +48,16 @@ public class BatchFetchTest extends BaseReactiveTest {
 		return List.of( Node.class, Element.class );
 	}
 
-	@After
-	public void cleanDb(TestContext context) {
+	@AfterAll
+	public void cleanDb(VertxTestContext context) {
 		test( context, getSessionFactory()
 				.withTransaction( s -> s.createQuery( "delete from Element" ).executeUpdate()
 						.thenCompose( v -> s.createQuery( "delete from Node" ).executeUpdate() ) ) );
 	}
 
 	@Test
-	@Ignore // See https://github.com/hibernate/hibernate-reactive/issues/1501
-	public void testQuery(TestContext context) {
+	@Disabled// See https://github.com/hibernate/hibernate-reactive/issues/1501
+	public void testQuery(VertxTestContext context) {
 		Node basik = new Node( "Child" );
 		basik.parent = new Node( "Parent" );
 		basik.elements.add( new Element( basik ) );
@@ -69,16 +72,16 @@ public class BatchFetchTest extends BaseReactiveTest {
 				.thenCompose( s -> s.createQuery( "from Node n order by id", Node.class )
 						.getResultList()
 						.thenCompose( list -> {
-							context.assertEquals( list.size(), 2 );
+							assertEquals( list.size(), 2 );
 							Node n1 = list.get( 0 );
 							Node n2 = list.get( 1 );
-							context.assertFalse( Hibernate.isInitialized( n1.getElements() ), "'n1.elements' should not be initialize" );
-							context.assertFalse( Hibernate.isInitialized( n2.getElements() ), "'n2.elements' should not be initialize" );
+							assertFalse( Hibernate.isInitialized( n1.getElements() ), "'n1.elements' should not be initialize" );
+							assertFalse( Hibernate.isInitialized( n2.getElements() ), "'n2.elements' should not be initialize" );
 							return s.fetch( n1.getElements() )
 									.thenAccept( elements -> {
-										context.assertTrue( Hibernate.isInitialized( elements ), "'elements' after fetch should not be initialize" );
-										context.assertTrue( Hibernate.isInitialized( n1.getElements() ), "'n1.elements' after fetch should be initialize" );
-										context.assertTrue( Hibernate.isInitialized( n2.getElements() ), "'n2.elements' after fetch should be initialize" );
+										assertTrue( Hibernate.isInitialized( elements ), "'elements' after fetch should not be initialize" );
+										assertTrue( Hibernate.isInitialized( n1.getElements() ), "'n1.elements' after fetch should be initialize" );
+										assertTrue( Hibernate.isInitialized( n2.getElements() ), "'n2.elements' after fetch should be initialize" );
 									} );
 						} )
 				)
@@ -86,16 +89,16 @@ public class BatchFetchTest extends BaseReactiveTest {
 				.thenCompose( s -> s.createQuery( "from Element e order by id", Element.class )
 						.getResultList()
 						.thenCompose( list -> {
-							context.assertEquals( list.size(), 5 );
-							list.forEach( element -> context.assertFalse( Hibernate.isInitialized( element.node ) ) );
-							list.forEach( element -> context.assertEquals( s.getLockMode( element.node ), LockMode.NONE ) );
+							assertEquals( list.size(), 5 );
+							list.forEach( element -> assertFalse( Hibernate.isInitialized( element.node ) ) );
+							list.forEach( element -> assertEquals( s.getLockMode( element.node ), LockMode.NONE ) );
 							return s.fetch( list.get( 0 ).node )
 									.thenAccept( node -> {
-										context.assertTrue( Hibernate.isInitialized( node ) );
+										assertTrue( Hibernate.isInitialized( node ) );
 										//TODO: I would like to assert that they're all initialized
 										//      but apparently it doesn't set the proxies to init'd
 										//      so check the LockMode as a workaround
-										list.forEach( element -> context.assertEquals(
+										list.forEach( element -> assertEquals(
 												s.getLockMode( element.node ),
 												LockMode.READ
 										) );
@@ -106,7 +109,7 @@ public class BatchFetchTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testBatchLoad(TestContext context) {
+	public void testBatchLoad(VertxTestContext context) {
 		Node basik = new Node( "Child" );
 		basik.parent = new Node( "Parent" );
 		basik.elements.add( new Element( basik ) );
@@ -120,11 +123,11 @@ public class BatchFetchTest extends BaseReactiveTest {
 				.thenCompose( v -> openSession() )
 				.thenCompose( s -> s.find( Element.class, basik.elements.get( 1 ).id, basik.elements.get( 2 ).id, basik.elements.get( 0 ).id ) )
 				.thenAccept( elements -> {
-					context.assertFalse( elements.isEmpty() );
-					context.assertEquals( 3, elements.size() );
-					context.assertEquals( basik.elements.get( 1 ).id, elements.get( 0 ).id );
-					context.assertEquals( basik.elements.get( 2 ).id, elements.get( 1 ).id );
-					context.assertEquals( basik.elements.get( 0 ).id, elements.get( 2 ).id );
+					assertFalse( elements.isEmpty() );
+					assertEquals( 3, elements.size() );
+					assertEquals( basik.elements.get( 1 ).id, elements.get( 0 ).id );
+					assertEquals( basik.elements.get( 2 ).id, elements.get( 1 ).id );
+					assertEquals( basik.elements.get( 0 ).id, elements.get( 2 ).id );
 				} )
 		);
 	}
@@ -132,7 +135,7 @@ public class BatchFetchTest extends BaseReactiveTest {
 	// If it's only one collection a different method is called
 	// See ReactivePaddedBatchingCollectionInitializer#reactiveInitialize
 	@Test
-	public void testWithCollection(TestContext context) {
+	public void testWithCollection(VertxTestContext context) {
 		Node node = new Node( "Child" );
 		node.elements.add( new Element( node ) );
 		node.elements.add( new Element( node ) );
@@ -145,12 +148,12 @@ public class BatchFetchTest extends BaseReactiveTest {
 								.createQuery( "from Node n order by id", Node.class )
 								.getResultList()
 								.thenCompose( list -> {
-									context.assertEquals( list.size(), 1 );
+									assertEquals( list.size(), 1 );
 									Node n1 = list.get( 0 );
-									context.assertFalse( Hibernate.isInitialized( n1.elements ) );
+									assertFalse( Hibernate.isInitialized( n1.elements ) );
 									return s.fetch( n1.elements ).thenAccept( elements -> {
-										context.assertTrue( Hibernate.isInitialized( elements ) );
-										context.assertTrue( Hibernate.isInitialized( n1.elements ) );
+										assertTrue( Hibernate.isInitialized( elements ) );
+										assertTrue( Hibernate.isInitialized( n1.elements ) );
 									} );
 								} )
 						)

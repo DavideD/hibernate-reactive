@@ -11,17 +11,18 @@ import java.util.Objects;
 
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
-import io.vertx.ext.unit.TestContext;
+import io.vertx.junit5.VertxTestContext;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2;
 import static org.hibernate.reactive.testing.DatabaseSelectionRule.skipTestsFor;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
 /**
@@ -31,7 +32,7 @@ import static org.hibernate.reactive.testing.DatabaseSelectionRule.skipTestsFor;
 public class HQLQueryParameterNamedLimitTest extends BaseReactiveTest {
 
 	// Db2: java.lang.ClassCastException: class java.lang.Integer cannot be cast to class java.lang.Long
-	@Rule
+	@RegisterExtension
 	public DatabaseSelectionRule skip = skipTestsFor( DB2 );
 
 	Flour spelt = new Flour( 1, "Spelt", "An ancient grain, is a hexaploid species of wheat.", "Wheat flour" );
@@ -43,8 +44,8 @@ public class HQLQueryParameterNamedLimitTest extends BaseReactiveTest {
 		return List.of( Flour.class );
 	}
 
-	@Before
-	public void populateDb(TestContext context) {
+	@BeforeEach
+	public void populateDb(VertxTestContext context) {
 		test( context, openSession()
 				.thenCompose( s -> s.persist( spelt )
 				.thenCompose( v -> s.persist( rye ) )
@@ -54,7 +55,7 @@ public class HQLQueryParameterNamedLimitTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testNoResults(TestContext context) {
+	public void testNoResults(VertxTestContext context) {
 		test(
 				context,
 				openSession()
@@ -62,13 +63,13 @@ public class HQLQueryParameterNamedLimitTest extends BaseReactiveTest {
 								s.createQuery( "from Flour where id = :id" ).setMaxResults( 0 )
 										.setParameter( "id", rye.getId() )
 										.getResultList()
-										.thenAccept( list -> context.assertEquals( 0, list.size() ) )
+										.thenAccept( list -> assertEquals( 0, list.size() ) )
 						)
 		);
 	}
 
 	@Test
-	public void testFirstResultNoResults(TestContext context) {
+	public void testFirstResultNoResults(VertxTestContext context) {
 		test(
 				context,
 				openSession()
@@ -77,7 +78,7 @@ public class HQLQueryParameterNamedLimitTest extends BaseReactiveTest {
 										.setMaxResults( 0 )
 										.setFirstResult( 1 )
 										.getResultList()
-										.thenAccept( list -> context.assertEquals( 0, list.size() ) )
+										.thenAccept( list -> assertEquals( 0, list.size() ) )
 						)
 		);
 	}
@@ -86,7 +87,7 @@ public class HQLQueryParameterNamedLimitTest extends BaseReactiveTest {
 	 * The MSSQL dialect generates a different query when there are no order-by clause and no filters
 	 */
 	@Test
-	public void testFirstResultWithoutOrderBy(TestContext context) {
+	public void testFirstResultWithoutOrderBy(VertxTestContext context) {
 		test(
 				context,
 				openSession()
@@ -95,13 +96,13 @@ public class HQLQueryParameterNamedLimitTest extends BaseReactiveTest {
 								.setMaxResults( 1 )
 								.setFirstResult( 1 )
 								.getResultList()
-								.thenAccept( list -> context.assertEquals( 1, list.size() ) )
+								.thenAccept( list -> assertEquals( 1, list.size() ) )
 						)
 		);
 	}
 
 	@Test
-	public void testFirstResultSingleResult(TestContext context) {
+	public void testFirstResultSingleResult(VertxTestContext context) {
 		test(
 				context,
 				openSession()
@@ -110,13 +111,13 @@ public class HQLQueryParameterNamedLimitTest extends BaseReactiveTest {
 										.setParameter( "name", spelt.getName() )
 										.setFirstResult( 1 )
 										.getSingleResult()
-										.thenAccept( result -> context.assertEquals( almond, result ) )
+										.thenAccept( result -> assertEquals( almond, result ) )
 						)
 		);
 	}
 
 	@Test
-	public void testFirstResultMultipleResults(TestContext context) {
+	public void testFirstResultMultipleResults(VertxTestContext context) {
 		test(
 				context,
 				openSession()
@@ -125,16 +126,16 @@ public class HQLQueryParameterNamedLimitTest extends BaseReactiveTest {
 										.setFirstResult( 1 )
 										.getResultList()
 										.thenAccept( results -> {
-											context.assertEquals( 2, results.size() );
-											context.assertEquals( rye, results.get( 0 ) );
-											context.assertEquals( almond, results.get( 1 ) );
+											assertEquals( 2, results.size() );
+											assertEquals( rye, results.get( 0 ) );
+											assertEquals( almond, results.get( 1 ) );
 										} )
 						)
 		);
 	}
 
 	@Test
-	public void testFirstResultMaxResultsSingleResult(TestContext context) {
+	public void testFirstResultMaxResultsSingleResult(VertxTestContext context) {
 		test(
 				context,
 				openSession()
@@ -144,7 +145,7 @@ public class HQLQueryParameterNamedLimitTest extends BaseReactiveTest {
 										.setMaxResults( 1 )
 										.getSingleResult()
 										.thenAccept( result -> {
-											context.assertEquals( rye, result );
+											assertEquals( rye, result );
 										} )
 						)
 		);
@@ -154,7 +155,7 @@ public class HQLQueryParameterNamedLimitTest extends BaseReactiveTest {
 	 * Some databases (see MSSQL) generate a different SQL query when the first result is set to 0
 	 */
 	@Test
-	public void testFirstResultZeroAndMaxResults(TestContext context) {
+	public void testFirstResultZeroAndMaxResults(VertxTestContext context) {
 		test(
 				context,
 				openSession()
@@ -165,8 +166,8 @@ public class HQLQueryParameterNamedLimitTest extends BaseReactiveTest {
 													  .setMaxResults( 10 )
 													  .getResultList()
 													  .thenAccept( results -> {
-														  context.assertEquals( 1, results.size() );
-														  context.assertEquals( almond, results.get( 0 ) );
+														  assertEquals( 1, results.size() );
+														  assertEquals( almond, results.get( 0 ) );
 													  } )
 						)
 		);
@@ -177,7 +178,7 @@ public class HQLQueryParameterNamedLimitTest extends BaseReactiveTest {
 	 * the HQL query has no order by clause
 	 */
 	@Test
-	public void testFirstResultZeroAndMaxResultsWithoutOrder(TestContext context) {
+	public void testFirstResultZeroAndMaxResultsWithoutOrder(VertxTestContext context) {
 		test(
 				context,
 				openSession()
@@ -188,15 +189,15 @@ public class HQLQueryParameterNamedLimitTest extends BaseReactiveTest {
 													  .setMaxResults( 10 )
 													  .getResultList()
 													  .thenAccept( results -> {
-														  context.assertEquals( 1, results.size() );
-														  context.assertEquals( almond, results.get( 0 ) );
+														  assertEquals( 1, results.size() );
+														  assertEquals( almond, results.get( 0 ) );
 													  } )
 						)
 		);
 	}
 
 	@Test
-	public void testFirstResultMaxResultsMultipleResults(TestContext context) {
+	public void testFirstResultMaxResultsMultipleResults(VertxTestContext context) {
 		test(
 				context,
 				openSession()
@@ -206,16 +207,16 @@ public class HQLQueryParameterNamedLimitTest extends BaseReactiveTest {
 										.setMaxResults( 2 )
 										.getResultList()
 										.thenAccept( results -> {
-											context.assertEquals( 2, results.size() );
-											context.assertEquals( rye, results.get( 0 ) );
-											context.assertEquals( almond, results.get( 1 ) );
+											assertEquals( 2, results.size() );
+											assertEquals( rye, results.get( 0 ) );
+											assertEquals( almond, results.get( 1 ) );
 										} )
 						)
 		);
 	}
 
 	@Test
-	public void testFirstResultMaxResultsExtra(TestContext context) {
+	public void testFirstResultMaxResultsExtra(VertxTestContext context) {
 		test(
 				context,
 				openSession()
@@ -225,9 +226,9 @@ public class HQLQueryParameterNamedLimitTest extends BaseReactiveTest {
 										.setMaxResults( 3 )
 										.getResultList()
 										.thenAccept( results -> {
-											context.assertEquals( 2, results.size() );
-											context.assertEquals( rye, results.get( 0 ) );
-											context.assertEquals( almond, results.get( 1 ) );
+											assertEquals( 2, results.size() );
+											assertEquals( rye, results.get( 0 ) );
+											assertEquals( almond, results.get( 1 ) );
 										} )
 						)
 		);

@@ -13,12 +13,12 @@ import org.hibernate.reactive.provider.Settings;
 import org.hibernate.reactive.stage.Stage;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
-import io.vertx.ext.unit.TestContext;
+import io.vertx.junit5.VertxTestContext;
 
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.SQLSERVER;
@@ -52,7 +52,7 @@ public abstract class SchemaUpdateTestBase extends BaseReactiveTest {
 		}
 	}
 
-	@Rule
+	@RegisterExtension
 	public DatabaseSelectionRule dbRule = DatabaseSelectionRule.skipTestsFor( DB2 );
 
 	protected Configuration constructConfiguration(String action) {
@@ -62,15 +62,16 @@ public abstract class SchemaUpdateTestBase extends BaseReactiveTest {
 		return configuration;
 	}
 
-	@Before
+	@BeforeAll
 	@Override
-	public void before(TestContext context) {
+	public void before(VertxTestContext context) {
 		// For these tests we create the factory when we need it
+		super.before( context );
 	}
 
-	@After
+	@AfterEach
 	@Override
-	public void after(TestContext context) {
+	public void after(VertxTestContext context) {
 		super.after( context );
 		closeFactory( context );
 	}
@@ -79,7 +80,7 @@ public abstract class SchemaUpdateTestBase extends BaseReactiveTest {
 	 * Test missing columns creation during schema update
 	 */
 	@Test
-	public void testMissingColumnsCreation(TestContext context) {
+	public void testMissingColumnsCreation(VertxTestContext context) {
 		test( context,
 			  setupSessionFactory( constructConfiguration( "drop" ) )
 					  .thenCompose( v -> getSessionFactory().withTransaction( SchemaUpdateTestBase::createTable ) )
@@ -93,7 +94,7 @@ public abstract class SchemaUpdateTestBase extends BaseReactiveTest {
 	 * Test table creation during schema update
 	 */
 	@Test
-	public void testWholeTableCreation(TestContext context) {
+	public void testWholeTableCreation(VertxTestContext context) {
 		test( context,
 			setupSessionFactory( constructConfiguration( "drop" ) )
 				.whenComplete( (u, throwable) -> factoryManager.stop() )

@@ -12,10 +12,10 @@ import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
-import io.vertx.ext.unit.TestContext;
+import io.vertx.junit5.VertxTestContext;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -24,6 +24,8 @@ import jakarta.persistence.Table;
 
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.COCKROACHDB;
 import static org.hibernate.reactive.testing.DatabaseSelectionRule.skipTestsFor;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 
 /**
@@ -36,7 +38,7 @@ import static org.hibernate.reactive.testing.DatabaseSelectionRule.skipTestsFor;
 public class IdentityGeneratorTypeTest extends BaseReactiveTest {
 
 	// CockroachDB ids cannot be cast to short or int (they are too big)
-	@Rule
+	@RegisterExtension
 	public DatabaseSelectionRule skip = skipTestsFor( COCKROACHDB );
 
 	@Override
@@ -67,32 +69,32 @@ public class IdentityGeneratorTypeTest extends BaseReactiveTest {
 	}
 
 	private <U extends Number, T extends TypeIdentity<U>> void assertType(
-			TestContext context,
+			VertxTestContext context,
 			Class<T> entityClass,
 			T entity,
 			U expectedId) {
 		test( context, getMutinySessionFactory()
 				.withSession( s -> s.persist( entity ).call( s::flush )
 						.invoke( () -> {
-							context.assertNotNull( entity.getId() );
-							context.assertEquals( entity.getId(), expectedId );
+							assertNotNull( entity.getId() );
+							assertEquals( entity.getId(), expectedId );
 						} ) )
 				.chain( () -> getMutinySessionFactory()
 						.withSession( s -> s.find( entityClass, entity.getId() )
 								.invoke( result -> {
-									context.assertNotNull( result );
-									context.assertEquals( result.getId(), entity.getId() );
+									assertNotNull( result );
+									assertEquals( result.getId(), entity.getId() );
 								} ) ) )
 		);
 	}
 
 	@Test
-	public void longIdentityType(TestContext context) {
+	public void longIdentityType(VertxTestContext context) {
 		assertType( context, LongTypeEntity.class, new LongTypeEntity(), 1L );
 	}
 
 	@Test
-	public void integerIdentityType(TestContext context) {
+	public void integerIdentityType(VertxTestContext context) {
 		assertType( context, IntegerTypeEntity.class, new IntegerTypeEntity(), 1 );
 	}
 

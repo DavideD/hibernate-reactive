@@ -16,13 +16,14 @@ import org.hibernate.reactive.stage.impl.StageSessionImpl;
 import org.hibernate.reactive.stage.impl.StageStatelessSessionImpl;
 import org.hibernate.reactive.testing.SqlStatementTracker;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import io.vertx.ext.unit.TestContext;
+import io.vertx.junit5.VertxTestContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.reactive.util.impl.CompletionStages.loop;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class BatchingConnectionTest extends ReactiveSessionTest {
 
@@ -54,7 +55,7 @@ public class BatchingConnectionTest extends ReactiveSessionTest {
 	}
 
 	@Test
-	public void testBatchingWithPersistAll(TestContext context) {
+	public void testBatchingWithPersistAll(VertxTestContext context) {
 		test( context, openSession()
 				.thenCompose( s -> s
 						.persist(
@@ -80,7 +81,7 @@ public class BatchingConnectionTest extends ReactiveSessionTest {
 	}
 
 	@Test
-	public void testBatching(TestContext context) {
+	public void testBatching(VertxTestContext context) {
 		test(
 				context,
 				openSession()
@@ -108,7 +109,7 @@ public class BatchingConnectionTest extends ReactiveSessionTest {
 								.thenCompose( v -> s.<Long>createQuery("select count(*) from GuineaPig where name='Zero'")
 										.getSingleResult()
 										.thenAccept( count -> {
-											context.assertEquals( 3L, count);
+											assertEquals( 3L, count);
 											assertThat( sqlTracker.getLoggedQueries() ).hasSize( 1 );
 											assertThat( sqlTracker.getLoggedQueries().get( 0 ) )
 													.matches(
@@ -124,7 +125,7 @@ public class BatchingConnectionTest extends ReactiveSessionTest {
 								.thenCompose( v -> s.<Long>createQuery("select count(*) from GuineaPig")
 										.getSingleResult()
 										.thenAccept( count -> {
-											context.assertEquals( 0L, count);
+											assertEquals( 0L, count);
 											assertThat( sqlTracker.getLoggedQueries() ).hasSize( 1 );
 											assertThat( sqlTracker.getLoggedQueries().get( 0 ) )
 													.matches( "delete from pig where id=.+ and version=.+" );
@@ -136,7 +137,7 @@ public class BatchingConnectionTest extends ReactiveSessionTest {
 	}
 
 	@Test
-	public void testBatchingConnection(TestContext context) {
+	public void testBatchingConnection(VertxTestContext context) {
 		test( context, openSession()
 				.thenAccept( session -> assertThat( ( (StageSessionImpl) session ).getReactiveConnection() )
 						.isInstanceOf( BatchingConnection.class ) )
@@ -144,7 +145,7 @@ public class BatchingConnectionTest extends ReactiveSessionTest {
 	}
 
 	@Test
-	public void testBatchingConnectionWithStateless(TestContext context) {
+	public void testBatchingConnectionWithStateless(VertxTestContext context) {
 		test( context, openStatelessSession()
 				.thenAccept( session -> assertThat( ( (StageStatelessSessionImpl) session ).getReactiveConnection() )
 						// Stateless session is not affected by the STATEMENT_BATCH_SIZE property
@@ -153,7 +154,7 @@ public class BatchingConnectionTest extends ReactiveSessionTest {
 	}
 
 	@Test
-	public void testBatchingConnectionMutiny(TestContext context) {
+	public void testBatchingConnectionMutiny(VertxTestContext context) {
 		test( context, openMutinySession()
 				.invoke( session -> assertThat( ( (MutinySessionImpl) session ).getReactiveConnection() )
 						.isInstanceOf( BatchingConnection.class ) )
@@ -161,7 +162,7 @@ public class BatchingConnectionTest extends ReactiveSessionTest {
 	}
 
 	@Test
-	public void testBatchingConnectionWithMutinyStateless(TestContext context) {
+	public void testBatchingConnectionWithMutinyStateless(VertxTestContext context) {
 		test( context, openMutinyStatelessSession()
 				.invoke( session -> assertThat( ( (MutinyStatelessSessionImpl) session ).getReactiveConnection() )
 						// Stateless session is not affected by the STATEMENT_BATCH_SIZE property

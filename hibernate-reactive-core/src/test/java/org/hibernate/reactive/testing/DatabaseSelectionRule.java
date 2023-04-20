@@ -11,7 +11,9 @@ import java.util.stream.Collectors;
 import org.hibernate.reactive.containers.DatabaseConfiguration;
 
 import org.junit.Assume;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.extension.ConditionEvaluationResult;
+import org.junit.jupiter.api.extension.ExecutionCondition;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 
@@ -23,19 +25,19 @@ import org.hibernate.reactive.containers.DatabaseConfiguration.DBType;
  *     Examples of use:
  *
  * {@code
- *     @Rule
+ *     @RegisterExtension
  *     public DatabaseSelectionRule rule = DatabaseSelectionRule.skipTestsFor( DBType.POSTGRESQL );
  * }
  *
  * {@code
- *     @Rule
+ *     @RegisterExtension
  *     public DatabaseSelectionRule rule = DatabaseSelectionRule.runOnlyFor( DBType.POSTGRESQL );
  * }
  * </p>
  *
  * @see DBType
  */
-public class DatabaseSelectionRule implements TestRule {
+public class DatabaseSelectionRule implements ExecutionCondition {
 
     /**
      * The selected db for running the tests
@@ -79,14 +81,6 @@ public class DatabaseSelectionRule implements TestRule {
         return new DatabaseSelectionRule( skippable, "Run only for " + Arrays.toString( dbTypes ) );
     }
 
-    @Override
-    public Statement apply(Statement base, Description description) {
-        if ( isSkippable( selectedDb ) ) {
-            return new SkipDB( selectedDb, description );
-        }
-        return base;
-    }
-
     private boolean isSkippable(DBType dbType) {
         for ( DBType db : skippable ) {
             if ( db == selectedDb ) {
@@ -94,6 +88,15 @@ public class DatabaseSelectionRule implements TestRule {
             }
         }
         return false;
+    }
+
+    @Override
+    public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
+        if( isSkippable( DatabaseConfiguration.dbType() ) ) {
+            return ConditionEvaluationResult.disabled("Test is not applicable for " + DatabaseConfiguration.dbType().toString());
+        } else {
+            return ConditionEvaluationResult.enabled( "" );
+        }
     }
 
     private static class SkipDB extends Statement {

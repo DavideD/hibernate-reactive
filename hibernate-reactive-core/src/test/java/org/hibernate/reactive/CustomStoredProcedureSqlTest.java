@@ -14,11 +14,12 @@ import org.hibernate.annotations.SQLInsert;
 import org.hibernate.annotations.SQLUpdate;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
-import io.vertx.ext.unit.TestContext;
+import io.vertx.junit5.VertxTestContext;
 import jakarta.persistence.Basic;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -27,10 +28,14 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.POSTGRESQL;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
 
 public class CustomStoredProcedureSqlTest extends BaseReactiveTest {
 
-	@Rule
+	@RegisterExtension
 	public DatabaseSelectionRule rule = DatabaseSelectionRule.runOnlyFor( POSTGRESQL );
 
 	private SimpleRecord theRecord;
@@ -77,8 +82,8 @@ public class CustomStoredProcedureSqlTest extends BaseReactiveTest {
 		return List.of( SimpleRecord.class );
 	}
 
-	@Before
-	public void populateDb(TestContext context) {
+	@BeforeEach
+	public void populateDb(VertxTestContext context) {
 		theRecord = new SimpleRecord();
 		theRecord.text = INITIAL_TEXT;
 
@@ -94,15 +99,15 @@ public class CustomStoredProcedureSqlTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testInsertStoredProcedure(TestContext context) {
+	public void testInsertStoredProcedure(VertxTestContext context) {
 		test( context, openSession().thenCompose( session -> session
 				.find( SimpleRecord.class, theRecord.id )
-				.thenAccept( context::assertNotNull ) )
+				.thenAccept( Assertions::assertNotNull ) )
 		);
 	}
 
 	@Test
-	public void testUpdateStoredProcedure(TestContext context) {
+	public void testUpdateStoredProcedure(VertxTestContext context) {
 		test( context, openSession()
 				.thenCompose( session -> session
 						.find( SimpleRecord.class, theRecord.id )
@@ -111,15 +116,15 @@ public class CustomStoredProcedureSqlTest extends BaseReactiveTest {
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( SimpleRecord.class, theRecord.id ) )
 				.thenAccept( foundRecord -> {
-					context.assertEquals( UPDATED_TEXT, foundRecord.text );
-					context.assertNotNull( foundRecord.updated );
-					context.assertNull( foundRecord.deleted );
+					assertEquals( UPDATED_TEXT, foundRecord.text );
+					assertNotNull( foundRecord.updated );
+					assertNull( foundRecord.deleted );
 				} )
 		);
 	}
 
 	@Test
-	public void testDeleteStoredProcedure(TestContext context) {
+	public void testDeleteStoredProcedure(VertxTestContext context) {
 		test( context, openSession()
 				.thenCompose( session -> session
 						.find( SimpleRecord.class, theRecord.id )
@@ -128,9 +133,9 @@ public class CustomStoredProcedureSqlTest extends BaseReactiveTest {
 				.thenCompose( v -> openSession() )
 				.thenCompose( session -> session.find( SimpleRecord.class, theRecord.id ) )
 				.thenAccept( foundRecord -> {
-					context.assertEquals( INITIAL_TEXT, foundRecord.text );
-					context.assertNotNull( foundRecord.updated );
-					context.assertNotNull( foundRecord.deleted );
+					assertEquals( INITIAL_TEXT, foundRecord.text );
+					assertNotNull( foundRecord.updated );
+					assertNotNull( foundRecord.deleted );
 				} )
 		);
 	}
