@@ -16,6 +16,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,6 +42,10 @@ public class CompletionStagesTest {
 	private final Object[] entries = { "a", "b", "c", "d", "e" };
 	private final List<Object> looped = new ArrayList<>();
 
+	@BeforeEach
+	private void clearLooped() {
+		looped.clear();
+	}
 	@Test
 	public void testTotalWithIntegers(VertxTestContext context) {
 		int startInt = 0;
@@ -86,15 +91,13 @@ public class CompletionStagesTest {
 	@Test
 	public void testLoopOnArrayIndex(VertxTestContext context) {
 		test( context, loop( 0, entries.length, index -> completedFuture( looped.add( entries[index] ) ) )
-				.thenAccept( v -> assertThat( looped ).containsExactly( entries )
-				) );
+				.thenAccept( v -> assertThat( looped ).containsExactly( entries ) ) );
 	}
 
 	@Test
 	public void testLoopOnArray(VertxTestContext context) {
 		test( context, loop( entries, entry -> completedFuture( looped.add( entry ) ) )
-				.thenAccept( v -> assertThat( looped ).containsExactly( entries )
-				) );
+				.thenAccept( v -> assertThat( looped ).containsExactly( entries ) ) );
 	}
 
 	@Test

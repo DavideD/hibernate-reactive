@@ -331,6 +331,7 @@ public abstract class BaseReactiveTest {
 	@AfterAll
 	public static void closeFactory(VertxTestContext context) {
 		test( context, factoryManager.stop() );
+		context.completeNow();
 	}
 
 	protected static Stage.SessionFactory getSessionFactory() {

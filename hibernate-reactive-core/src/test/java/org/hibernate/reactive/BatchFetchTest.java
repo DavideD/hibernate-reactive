@@ -108,6 +108,12 @@ public class BatchFetchTest extends BaseReactiveTest {
 		);
 	}
 
+	// TODO: FIXME
+	// ERROR:  org.hibernate.HibernateException: java.util.concurrent.CompletionException:
+	// 			   org.hibernate.HibernateException: java.util.concurrent.CompletionException:
+	// 	  		       java.lang.IllegalArgumentException: unmanaged instance passed to remove()
+	//   Occurs due to BaseReactiveTest.cleanDb() being called within the BaseReactiveTest.after(...)
+
 	@Test
 	public void testBatchLoad(VertxTestContext context) {
 		Node basik = new Node( "Child" );
