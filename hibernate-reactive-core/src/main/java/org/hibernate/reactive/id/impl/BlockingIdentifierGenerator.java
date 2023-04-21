@@ -6,6 +6,7 @@
 package org.hibernate.reactive.id.impl;
 
 import io.vertx.core.Context;
+import io.vertx.core.Vertx;
 import io.vertx.core.net.impl.pool.CombinerExecutor;
 import io.vertx.core.net.impl.pool.Executor;
 import io.vertx.core.net.impl.pool.Task;
@@ -64,9 +65,21 @@ public abstract class BlockingIdentifierGenerator implements ReactiveIdentifierG
 	@Override
 	public CompletionStage<Long> generate(ReactiveConnectionSupplier session, Object entity) {
 		Objects.requireNonNull(session);
+		CompletableFuture<Long> resultForThisEventLoop = new CompletableFuture<>();
 		CompletableFuture<Long> result = new CompletableFuture<>();
 		executor.submit(new GenerateIdAction(session, result));
-		return result;
+		final Context context = Vertx.currentContext();
+		result.whenComplete( (id,t) -> {
+			if (t != null) {
+				resultForThisEventLoop.completeExceptionally(t);
+			} else {
+				prettyOut("got " + id);
+				context.runOnContext( (v) -> {
+					resultForThisEventLoop.complete(id);
+				});
+			}
+		});
+		return resultForThisEventLoop;
 	}
 
 	private final class GenerateIdAction implements Executor.Action<GeneratorState> {
@@ -92,6 +105,7 @@ public abstract class BlockingIdentifierGenerator implements ReactiveIdentifierG
 				// We don't need to update or initialize the hi
 				// value in the table, so just increment the lo
 				// value and return the next id in the block
+				prettyOut("simple case");
 				completedFuture( local )
 						.whenComplete(this::acceptAsReturnValue);
 				return null;
@@ -100,8 +114,7 @@ public abstract class BlockingIdentifierGenerator implements ReactiveIdentifierG
 						.whenComplete( (id, throwable) -> {
 							if ( throwable != null ) {
 								result.completeExceptionally( throwable );
-							}
-							else {
+							} else {
 								executor.submit( new Executor.Action() {
 									@Override
 									public Task execute(Object state) {
@@ -150,8 +163,7 @@ public abstract class BlockingIdentifierGenerator implements ReactiveIdentifierG
 								result.complete(r);
 							}
 						}));
-			}
-			catch (RuntimeException e) {
+			} catch (RuntimeException e) {
 				result.completeExceptionally(e);
 			}
 		}
@@ -167,5 +179,6 @@ public abstract class BlockingIdentifierGenerator implements ReactiveIdentifierG
 		//divide between some operations (when a starvation or timeout happens it takes some seconds).
 		System.out.println( seconds + " - " + threadName + ": " + message );
 	}
+
 	private static final long initialSecond = ( System.currentTimeMillis() / 1000 );
 }

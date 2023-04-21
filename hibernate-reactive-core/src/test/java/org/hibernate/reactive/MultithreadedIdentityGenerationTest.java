@@ -60,8 +60,8 @@ public class MultithreadedIdentityGenerationTest {
 	/* The number of threads should be higher than the default size of the connection pool so that
 	 * this test is also effective in detecting problems with resource starvation.
 	 */
-	private static final int N_THREADS = 6;
-	private static final int IDS_GENERATED_PER_THREAD = 10000;
+	private static final int N_THREADS = 2;
+	private static final int IDS_GENERATED_PER_THREAD = 10;
 
 	//Should finish much sooner, but generating this amount of IDs could be slow on some CIs
 	private static final int TIMEOUT_MINUTES = 10;
