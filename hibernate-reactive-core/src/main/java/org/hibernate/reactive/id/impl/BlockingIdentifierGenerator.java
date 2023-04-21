@@ -129,10 +129,11 @@ public abstract class BlockingIdentifierGenerator implements ReactiveIdentifierG
 		}
 
 		private void acceptAsReturnValue(Long aLong, Throwable throwable) {
-			if (throwable != null) {
-				result.complete(aLong);
-			} else {
-				result.completeExceptionally(throwable);
+			if ( throwable != null ) {
+				result.completeExceptionally( throwable );
+			}
+			else {
+				result.complete( aLong );
 			}
 		}
 	}
