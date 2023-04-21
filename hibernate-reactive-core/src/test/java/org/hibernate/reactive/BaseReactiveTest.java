@@ -32,7 +32,7 @@ import org.hibernate.tool.schema.spi.SchemaManagementTool;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -65,7 +65,8 @@ import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
  * </p>
  */
 @ExtendWith(VertxExtension.class)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@TestInstance(TestInstance.Lifecycle.PER_METHOD)
+@Timeout(value = 600, timeUnit = TimeUnit.SECONDS)
 public abstract class BaseReactiveTest {
 	/**
 	 * Configure Vertx JUnit5 test context
@@ -123,7 +124,6 @@ public abstract class BaseReactiveTest {
 		return List.of();
 	}
 
-	@Timeout( value = 600, timeUnit = TimeUnit.SECONDS)
 	protected static void test(VertxTestContext context, CompletionStage<?> work) {
 		work.whenComplete( (res, err) -> {
 			if ( err != null ) {
@@ -135,7 +135,6 @@ public abstract class BaseReactiveTest {
 		} );
 	}
 
-	@Timeout(value = 600, timeUnit = TimeUnit.SECONDS)
 	public static void test(VertxTestContext context, Uni<?> uni) {
 		uni.subscribe().with( res -> context.completeNow(), context::failNow );
 	}
@@ -180,7 +179,7 @@ public abstract class BaseReactiveTest {
 		return annotation == null ? entityClass.getSimpleName() : annotation.name();
 	}
 
-	@BeforeAll
+	@BeforeEach
 	public void before(VertxTestContext context) {
 		test( context, setupSessionFactory( this::constructConfiguration ) );
 	}
@@ -331,7 +330,6 @@ public abstract class BaseReactiveTest {
 	@AfterAll
 	public static void closeFactory(VertxTestContext context) {
 		test( context, factoryManager.stop() );
-		context.completeNow();
 	}
 
 	protected static Stage.SessionFactory getSessionFactory() {
