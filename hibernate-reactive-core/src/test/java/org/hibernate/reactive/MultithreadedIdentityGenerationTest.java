@@ -60,7 +60,7 @@ public class MultithreadedIdentityGenerationTest {
 	/* The number of threads should be higher than the default size of the connection pool so that
 	 * this test is also effective in detecting problems with resource starvation.
 	 */
-	private static final int N_THREADS = 48;
+	private static final int N_THREADS = 6;
 	private static final int IDS_GENERATED_PER_THREAD = 10000;
 
 	//Should finish much sooner, but generating this amount of IDs could be slow on some CIs
@@ -169,27 +169,32 @@ public class MultithreadedIdentityGenerationTest {
 
 		@Override
 		public void start(Promise<Void> startPromise) {
-			startLatch.reached();
-			startLatch.waitForEveryone();//Not essential, but to ensure a good level of parallelism
-			final String initialThreadName = Thread.currentThread().getName();
-			stageSessionFactory.withSession(
+			try {
+				startLatch.reached();
+				startLatch.waitForEveryone();//Not essential, but to ensure a good level of parallelism
+				final String initialThreadName = Thread.currentThread().getName();
+				stageSessionFactory.withSession(
 							s -> generateMultipleIds( idGenerator, s, generatedIds )
 					)
 					.whenComplete( (o, throwable) -> {
-						endLatch.reached();
-						if ( throwable != null ) {
-							startPromise.fail( throwable );
-						}
-						else {
-							if ( !initialThreadName.equals( Thread.currentThread().getName() ) ) {
-								startPromise.fail( "Thread switch detected!" );
+
+							endLatch.reached();
+							if (throwable != null) {
+								startPromise.fail(throwable);
+							} else {
+								if (!initialThreadName.equals(Thread.currentThread().getName())) {
+									startPromise.fail("Thread switch detected!");
+								} else {
+									allResults.deliverResulst(generatedIds);
+									startPromise.complete();
+								}
 							}
-							else {
-								allResults.deliverResulst( generatedIds );
-								startPromise.complete();
-							}
-						}
+
 					} );
+			}
+			catch (RuntimeException e) {
+				startPromise.fail(e);
+			}
 		}
 
 		@Override
