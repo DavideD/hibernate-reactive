@@ -8,8 +8,10 @@ package org.hibernate.reactive;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
-import org.junit.jupiter.api.AfterAll;
+import org.hibernate.reactive.util.impl.CompletionStages;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -46,12 +48,13 @@ public class NonNullableManyToOneTest extends BaseReactiveTest {
 				.withTransaction( s -> s.persistAll( painting, artist, dealer ) ) );
 	}
 
-	@AfterAll
-	public void cleanDb(VertxTestContext context) {
-		test( context, getSessionFactory()
+	@Override
+	public CompletionStage<Void> cleanDb() {
+		return getSessionFactory()
 				.withTransaction( s -> s.createQuery( "delete from Painting" ).executeUpdate()
 						.thenCompose( v -> s.createQuery( "delete from Artist" ).executeUpdate() )
-						.thenCompose( v -> s.createQuery( "delete from Dealer" ).executeUpdate())) );
+						.thenCompose( v -> s.createQuery( "delete from Dealer" ).executeUpdate() ) )
+				.thenCompose( CompletionStages::voidFuture );
 	}
 
 	@Test

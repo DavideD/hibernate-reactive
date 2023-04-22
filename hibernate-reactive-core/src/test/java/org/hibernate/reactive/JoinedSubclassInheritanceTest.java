@@ -10,7 +10,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -34,19 +33,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
 public class JoinedSubclassInheritanceTest extends BaseReactiveTest {
+
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
-		return List.of( Book.class, Author.class, SpellBook.class );
+		return List.of( Author.class, SpellBook.class, Book.class );
 	}
-
-	@AfterAll
-	public void cleanDb(VertxTestContext context) {
-		test( context, getSessionFactory()
-				.withTransaction( s -> s.createQuery( "delete from Author" ).executeUpdate()
-						.thenCompose( v -> s.createQuery( "delete from SpellBook" ).executeUpdate() )
-						.thenCompose( v -> s.createQuery("delete from Book ").executeUpdate())) );
-	}
-
 
 	@Test
 	public void testRootClassViaAssociation(VertxTestContext context) {

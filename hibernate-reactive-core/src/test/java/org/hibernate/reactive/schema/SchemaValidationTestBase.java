@@ -13,8 +13,6 @@ import org.hibernate.reactive.provider.Settings;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 import org.hibernate.tool.schema.spi.SchemaManagementException;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -69,7 +67,6 @@ public abstract class SchemaValidationTestBase extends BaseReactiveTest {
 		return configuration;
 	}
 
-	@BeforeAll
 	@Override
 	public void before(VertxTestContext context) {
 		Configuration createConf = constructConfiguration( "create" );
@@ -86,7 +83,6 @@ public abstract class SchemaValidationTestBase extends BaseReactiveTest {
 		);
 	}
 
-	@AfterAll
 	@Override
 	public void after(VertxTestContext context) {
 		super.after( context );

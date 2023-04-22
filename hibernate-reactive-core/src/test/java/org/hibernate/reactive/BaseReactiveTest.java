@@ -44,7 +44,6 @@ import io.vertx.junit5.RunTestOnContext;
 import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
-import jakarta.persistence.Table;
 import jakarta.persistence.criteria.CriteriaQuery;
 
 import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
@@ -72,8 +71,13 @@ public abstract class BaseReactiveTest {
 	 * Configure Vertx JUnit5 test context
 	 */
 	@RegisterExtension
-	static RunTestOnContext testOnContext = new RunTestOnContext( new VertxOptions().setBlockedThreadCheckInterval( 5 )
-																		  .setBlockedThreadCheckIntervalUnit( TimeUnit.MINUTES ) );
+	static RunTestOnContext testOnContext = new RunTestOnContext( vertxOptions() );
+
+	private static VertxOptions vertxOptions() {
+		return new VertxOptions()
+				.setBlockedThreadCheckInterval( 5 )
+				.setBlockedThreadCheckIntervalUnit( TimeUnit.MINUTES );
+	}
 
 	/**
 	 * Configure properties defined in {@link Settings}.
@@ -99,7 +103,7 @@ public abstract class BaseReactiveTest {
 		configuration.setProperty( Settings.HIGHLIGHT_SQL, System.getProperty( Settings.HIGHLIGHT_SQL, "true" ) );
 	}
 
-	public static SessionFactoryManager factoryManager = new SessionFactoryManager();
+	public static final SessionFactoryManager factoryManager = new SessionFactoryManager();
 
 	private Object session;
 	private Object statelessSession;
@@ -124,7 +128,7 @@ public abstract class BaseReactiveTest {
 		return List.of();
 	}
 
-	protected static void test(VertxTestContext context, CompletionStage<?> work) {
+	public static void test(VertxTestContext context, CompletionStage<?> work) {
 		work.whenComplete( (res, err) -> {
 			if ( err != null ) {
 				context.failNow( err );
@@ -149,10 +153,10 @@ public abstract class BaseReactiveTest {
 	}
 
 	protected void addEntities(Configuration configuration) {
-		for ( Class<?> entity: annotatedEntities() ) {
+		for ( Class<?> entity : annotatedEntities() ) {
 			configuration.addAnnotatedClass( entity );
 		}
-		for ( String mapping: mappings() ) {
+		for ( String mapping : mappings() ) {
 			configuration.addResource( mapping );
 		}
 	}
@@ -174,11 +178,6 @@ public abstract class BaseReactiveTest {
 		return query;
 	}
 
-	protected String entityTable(Class<?> entityClass) {
-		Table annotation = entityClass.getAnnotation( Table.class );
-		return annotation == null ? entityClass.getSimpleName() : annotation.name();
-	}
-
 	@BeforeEach
 	public void before(VertxTestContext context) {
 		test( context, setupSessionFactory( this::constructConfiguration ) );
@@ -195,6 +194,7 @@ public abstract class BaseReactiveTest {
 	 * Set up the session factory but create the configuration only if necessary.
 	 *
 	 * @param confSupplier supplies the configuration for the factory
+	 *
 	 * @return a {@link CompletionStage} void that succeeds when the factory is ready.
 	 */
 	protected CompletionStage<Void> setupSessionFactory(Supplier<Configuration> confSupplier) {
@@ -217,7 +217,7 @@ public abstract class BaseReactiveTest {
 		return future;
 	}
 
-	private void startFactoryManager(Promise<Object> p, Supplier<Configuration> confSupplier ) {
+	private void startFactoryManager(Promise<Object> p, Supplier<Configuration> confSupplier) {
 		try {
 			factoryManager.start( () -> createHibernateSessionFactory( confSupplier.get() ) );
 			p.complete();
@@ -236,7 +236,8 @@ public abstract class BaseReactiveTest {
 		return configuration.buildSessionFactory( registry );
 	}
 
-	protected void addServices(StandardServiceRegistryBuilder builder) {}
+	protected void addServices(StandardServiceRegistryBuilder builder) {
+	}
 
 	/*
 	 * MySQL doesn't implement 'drop table cascade constraints'.

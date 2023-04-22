@@ -14,7 +14,6 @@ import org.hibernate.reactive.mutiny.Mutiny;
 import org.hibernate.reactive.stage.Stage.Session;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -49,11 +48,6 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
 		return List.of( Competition.class );
-	}
-
-	@AfterAll
-	public void closeEverything(VertxTestContext context) {
-		test( context, closeSession( currentSession ) );
 	}
 
 	@Test

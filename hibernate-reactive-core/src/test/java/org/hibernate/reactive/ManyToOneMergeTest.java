@@ -46,9 +46,10 @@ public class ManyToOneMergeTest extends BaseReactiveTest {
 		academicYearDetailsDBO.setCreatedUsersId( 12 );
 		academicYearDetailsDBO.setRecordStatus( 'F' );
 		academicYearDetailsDBO.setModifiedUsersId( 66 );
-		test( context, getMutinySessionFactory().withTransaction( session -> session.persistAll(
-				campusDBO, campusDBO2, academicYearDetailsDBO
-		) ) );
+		test( context, getMutinySessionFactory()
+				.withTransaction( session -> session.persistAll(
+						campusDBO, campusDBO2, academicYearDetailsDBO
+				) ) );
 	}
 
 	@Test

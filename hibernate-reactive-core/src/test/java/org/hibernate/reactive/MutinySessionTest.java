@@ -79,7 +79,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 						.chain( () -> session.createQuery( "FROM GuineaPig", GuineaPig.class )
 								// By not using .find() we check that there is only one entity in the db with getSingleResult()
 								.getSingleResult() )
-						.invoke( result -> assertThatPigsAreEqual( context, guineaPig, result ) )
+						.invoke( result -> assertThatPigsAreEqual( guineaPig, result ) )
 				)
 		);
 	}
@@ -91,7 +91,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 				.withStatelessTransaction( s -> s.insert( guineaPig ) )
 				.chain( () -> getMutinySessionFactory()
 						.withSession( s -> s.find( GuineaPig.class, guineaPig.getId() ) ) )
-				.invoke( result -> assertThatPigsAreEqual( context, guineaPig, result ) )
+				.invoke( result -> assertThatPigsAreEqual(  guineaPig, result ) )
 		);
 	}
 
@@ -102,7 +102,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 				.withTransaction( s -> s.persist( guineaPig ) )
 				.chain( () -> getMutinySessionFactory()
 						.withSession( s -> s.find( GuineaPig.class, guineaPig.getId() ) ) )
-				.invoke( result -> assertThatPigsAreEqual( context, guineaPig, result ) )
+				.invoke( result -> assertThatPigsAreEqual(  guineaPig, result ) )
 		);
 	}
 
@@ -115,7 +115,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 						.call( () -> getMutinySessionFactory().withSession(
 								session -> session.find( GuineaPig.class, expectedPig.getId() )
 										.onItem().invoke( actualPig -> {
-											assertThatPigsAreEqual( context, expectedPig, actualPig );
+											assertThatPigsAreEqual(  expectedPig, actualPig );
 											assertTrue( session.contains( actualPig ) );
 											assertFalse( session.contains( expectedPig ) );
 											assertEquals( LockMode.READ, session.getLockMode( actualPig ) );
@@ -136,7 +136,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 						.call( () -> getMutinySessionFactory().withSession(
 								session -> session.find( GuineaPig.class, expectedPig.getId() )
 										.invoke( actualPig -> {
-											assertThatPigsAreEqual( context, expectedPig, actualPig );
+											assertThatPigsAreEqual(  expectedPig, actualPig );
 											assertTrue( session.contains( actualPig ) );
 											assertFalse( session.contains( expectedPig ) );
 											assertEquals( LockMode.READ, session.getLockMode( actualPig ) );
@@ -156,7 +156,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 						.call( () -> getMutinySessionFactory().withSession(
 								session -> session.find( GuineaPig.class, expectedPig.getId(), LockMode.PESSIMISTIC_WRITE )
 										.invoke( actualPig -> {
-											assertThatPigsAreEqual( context, expectedPig, actualPig );
+											assertThatPigsAreEqual(  expectedPig, actualPig );
 											assertEquals( session.getLockMode( actualPig ), LockMode.PESSIMISTIC_WRITE );
 										} )
 						) )
@@ -173,7 +173,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 								session -> session.find( GuineaPig.class, expectedPig.getId() )
 										.call( pig -> session.refresh(pig, LockMode.PESSIMISTIC_WRITE) )
 										.invoke( actualPig -> {
-											assertThatPigsAreEqual( context, expectedPig, actualPig );
+											assertThatPigsAreEqual(  expectedPig, actualPig );
 											assertEquals( session.getLockMode( actualPig ), LockMode.PESSIMISTIC_WRITE );
 										} )
 						) )
@@ -225,7 +225,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 								session -> session.find( GuineaPig.class, expectedPig.getId() )
 										.call( pig -> session.lock(pig, LockMode.PESSIMISTIC_READ) )
 										.invoke( actualPig -> {
-											assertThatPigsAreEqual( context, expectedPig, actualPig );
+											assertThatPigsAreEqual(  expectedPig, actualPig );
 											assertEquals( session.getLockMode( actualPig ), LockMode.PESSIMISTIC_READ );
 										} )
 						) )
@@ -242,7 +242,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 								session -> session.find( GuineaPig.class, expectedPig.getId() )
 										.call( pig -> session.lock(pig, LockMode.PESSIMISTIC_WRITE) )
 										.invoke( actualPig -> {
-											assertThatPigsAreEqual( context, expectedPig, actualPig );
+											assertThatPigsAreEqual(  expectedPig, actualPig );
 											assertEquals( session.getLockMode( actualPig ), LockMode.PESSIMISTIC_WRITE );
 										} )
 						) )
@@ -457,7 +457,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 										.setLockMode( LockModeType.PESSIMISTIC_WRITE )
 										.getSingleResult()
 										.invoke( actualPig -> {
-											assertThatPigsAreEqual( context, expectedPig, actualPig );
+											assertThatPigsAreEqual(  expectedPig, actualPig );
 											assertEquals( session.getLockMode( actualPig ), LockMode.PESSIMISTIC_WRITE );
 										} )
 						) )
@@ -475,7 +475,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 										.setLockMode("pig", LockMode.PESSIMISTIC_WRITE )
 										.getSingleResult()
 										.invoke( actualPig -> {
-											assertThatPigsAreEqual( context, expectedPig, actualPig );
+											assertThatPigsAreEqual(  expectedPig, actualPig );
 											assertEquals( session.getLockMode( actualPig ), LockMode.PESSIMISTIC_WRITE );
 										} )
 						) )
@@ -518,7 +518,7 @@ public class MutinySessionTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testMetamodel(VertxTestContext context) {
+	public void testMetamodel() {
 		EntityType<GuineaPig> pig = getSessionFactory().getMetamodel().entity(GuineaPig.class);
 		assertNotNull(pig);
 		assertEquals( 2, pig.getAttributes().size() );
@@ -637,11 +637,11 @@ public class MutinySessionTest extends BaseReactiveTest {
 				)
 				.chain( () -> getMutinySessionFactory()
 						.withSession( s -> s.find( GuineaPig.class, pig2.getId() ) ) )
-				.invoke( result -> assertThatPigsAreEqual( context, pig2, result ) )
+				.invoke( result -> assertThatPigsAreEqual( pig2, result ) )
 		);
 	}
 
-	private void assertThatPigsAreEqual(VertxTestContext context, GuineaPig expected, GuineaPig actual) {
+	private void assertThatPigsAreEqual(GuineaPig expected, GuineaPig actual) {
 		assertNotNull( actual );
 		assertEquals( expected.getId(), actual.getId() );
 		assertEquals( expected.getName(), actual.getName() );

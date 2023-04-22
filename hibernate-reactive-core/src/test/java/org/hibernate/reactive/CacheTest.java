@@ -9,7 +9,7 @@ import org.hibernate.annotations.Cache;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.cfg.Environment;
 
-import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import io.vertx.junit5.VertxTestContext;
@@ -37,8 +37,8 @@ public class CacheTest extends BaseReactiveTest {
 		return configuration;
 	}
 
-	@AfterAll
-	public void cleanDB(VertxTestContext context) {
+	@AfterEach
+	public void cleanDB() {
 		getSessionFactory().close();
 	}
 

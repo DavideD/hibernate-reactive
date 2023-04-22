@@ -14,7 +14,6 @@ import org.hibernate.Hibernate;
 import org.hibernate.LockMode;
 import org.hibernate.annotations.BatchSize;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -45,14 +44,7 @@ public class BatchFetchTest extends BaseReactiveTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
-		return List.of( Node.class, Element.class );
-	}
-
-	@AfterAll
-	public void cleanDb(VertxTestContext context) {
-		test( context, getSessionFactory()
-				.withTransaction( s -> s.createQuery( "delete from Element" ).executeUpdate()
-						.thenCompose( v -> s.createQuery( "delete from Node" ).executeUpdate() ) ) );
+		return List.of( Element.class, Node.class );
 	}
 
 	@Test
@@ -107,12 +99,6 @@ public class BatchFetchTest extends BaseReactiveTest {
 				)
 		);
 	}
-
-	// TODO: FIXME
-	// ERROR:  org.hibernate.HibernateException: java.util.concurrent.CompletionException:
-	// 			   org.hibernate.HibernateException: java.util.concurrent.CompletionException:
-	// 	  		       java.lang.IllegalArgumentException: unmanaged instance passed to remove()
-	//   Occurs due to BaseReactiveTest.cleanDb() being called within the BaseReactiveTest.after(...)
 
 	@Test
 	public void testBatchLoad(VertxTestContext context) {

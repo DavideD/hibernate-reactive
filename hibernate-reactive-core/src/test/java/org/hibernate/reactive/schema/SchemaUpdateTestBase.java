@@ -13,8 +13,6 @@ import org.hibernate.reactive.provider.Settings;
 import org.hibernate.reactive.stage.Stage;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -62,14 +60,11 @@ public abstract class SchemaUpdateTestBase extends BaseReactiveTest {
 		return configuration;
 	}
 
-	@BeforeAll
 	@Override
 	public void before(VertxTestContext context) {
 		// For these tests we create the factory when we need it
-		super.before( context );
 	}
 
-	@AfterEach
 	@Override
 	public void after(VertxTestContext context) {
 		super.after( context );

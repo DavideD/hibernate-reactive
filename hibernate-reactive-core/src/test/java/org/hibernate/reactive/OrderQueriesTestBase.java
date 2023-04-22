@@ -16,7 +16,7 @@ import org.hibernate.reactive.provider.Settings;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 import org.hibernate.reactive.testing.SqlStatementTracker;
 
-import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -316,7 +316,7 @@ public abstract class OrderQueriesTestBase extends BaseReactiveTest {
 		}
 	}
 
-	@AfterAll
+	@AfterEach
 	public void clearLogger() {
 		sqlTracker.clear();
 	}

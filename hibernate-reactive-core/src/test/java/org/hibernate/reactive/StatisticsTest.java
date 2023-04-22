@@ -10,7 +10,7 @@ import org.hibernate.stat.EntityStatistics;
 import org.hibernate.stat.QueryStatistics;
 import org.hibernate.stat.Statistics;
 
-import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import io.vertx.junit5.VertxTestContext;
@@ -33,8 +33,8 @@ public class StatisticsTest extends BaseReactiveTest {
 		return configuration;
 	}
 
-	@AfterAll
-	public void cleanDB(VertxTestContext context) {
+	@AfterEach
+	public void cleanDB() {
 		getSessionFactory().close();
 	}
 

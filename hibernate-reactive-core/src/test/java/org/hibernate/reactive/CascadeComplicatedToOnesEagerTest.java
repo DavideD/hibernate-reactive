@@ -13,7 +13,7 @@ import org.hibernate.Hibernate;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.reactive.stage.Stage;
 
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.vertx.junit5.VertxTestContext;
@@ -288,7 +288,7 @@ public class CascadeComplicatedToOnesEagerTest extends BaseReactiveTest {
 	}
 
 	@Override
-	@BeforeAll
+	@BeforeEach
 	public void before(VertxTestContext context) {
 		super.before(context);
 

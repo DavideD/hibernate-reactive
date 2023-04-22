@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
+import org.hibernate.HibernateException;
 import org.hibernate.LockMode;
 import org.hibernate.reactive.common.AffectedEntities;
 import org.hibernate.reactive.stage.Stage;
@@ -19,12 +20,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import io.vertx.junit5.VertxTestContext;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.LockModeType;
@@ -32,6 +27,13 @@ import jakarta.persistence.PersistenceException;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import jakarta.persistence.metamodel.EntityType;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hibernate.reactive.testing.ReactiveAssertions.assertThrown;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ReactiveSessionTest extends BaseReactiveTest {
 
@@ -60,9 +62,7 @@ public class ReactiveSessionTest extends BaseReactiveTest {
 		test(
 				context,
 				populateDB()
-						.thenCompose( v -> {
-							return openSession();
-						} )
+						.thenCompose( v -> openSession() )
 						.thenCompose( session -> session.find( GuineaPig.class, expectedPig.getId() )
 								.thenAccept( actualPig -> {
 									assertThatPigsAreEqual( expectedPig, actualPig );
@@ -157,7 +157,7 @@ public class ReactiveSessionTest extends BaseReactiveTest {
 		);
 	}
 
-	@Test    // TODO: FIXME >> Runs OK individually, but fails if running whole class of tests.
+	@Test
 	public void reactiveFindRefreshWithLock(VertxTestContext context) {
 		final GuineaPig expectedPig = new GuineaPig( 5, "Aloi" );
 		test( context, populateDB()
@@ -175,7 +175,7 @@ public class ReactiveSessionTest extends BaseReactiveTest {
 		);
 	}
 
-	@Test    // TODO: FIXME >> Runs OK individually, but fails if running whole class of tests.
+	@Test
 	public void reactiveFindReadOnlyRefreshWithLock(VertxTestContext context) {
 		final GuineaPig expectedPig = new GuineaPig( 5, "Aloi" );
 		test(
@@ -344,7 +344,7 @@ public class ReactiveSessionTest extends BaseReactiveTest {
 		);
 	}
 
-	@Test    // TODO: FIXME >> Runs OK individually, but fails if running whole class of tests.
+	@Test
 	public void reactiveLockWithOptimisticIncrement(VertxTestContext context) {
 		final GuineaPig expectedPig = new GuineaPig( 5, "Aloi" );
 		test(
@@ -634,21 +634,18 @@ public class ReactiveSessionTest extends BaseReactiveTest {
 		);
 	}
 
-	@Test  // TODO: FIXME
+	@Test
 	public void reactiveRemoveTransientEntity(VertxTestContext context) {
-		test(
-				context,
-				populateDB()
-						.thenCompose( v -> selectNameFromId( 5 ) )
-						.thenAccept( Assertions::assertNotNull )
-						.thenCompose( v -> openSession() )
-						.thenCompose( session -> session.remove( new GuineaPig( 5, "Aloi" ) )
-								.thenCompose( v -> session.flush() )
-								.thenCompose( v -> session.close() )
-						)
-						.thenCompose( v -> selectNameFromId( 5 ) )
-						.thenAccept( result -> assertTrue( result == null ))
-//						.handle( (r, e) -> assertNotNull( r ) )
+		test( context, populateDB()
+				.thenCompose( v -> selectNameFromId( 5 ) )
+				.thenAccept( Assertions::assertNotNull )
+				.thenCompose( v -> openSession() )
+				// We expect this to fail because the entity is an unmanaged instance
+				.thenCompose( session -> assertThrown( HibernateException.class, session
+									  .remove( new GuineaPig( 5, "Aloi" ) )
+									  .thenCompose( v -> session.flush() )
+							  ) )
+				.thenAccept( e -> e.getMessage().contains( "unmanaged instance passed to remove" ) )
 		);
 	}
 
@@ -762,7 +759,7 @@ public class ReactiveSessionTest extends BaseReactiveTest {
 	public void testMetamodel(VertxTestContext context) {
 		test( context, getSessionFactory().withSession( session -> {
 			EntityType<GuineaPig> pig = getSessionFactory().getMetamodel().entity( GuineaPig.class );
-			Assertions.assertNotNull( pig );
+			assertNotNull( pig );
 			assertEquals( 3, pig.getAttributes().size() );
 			assertEquals( "GuineaPig", pig.getName() );
 			return CompletionStages.voidFuture();
@@ -810,7 +807,7 @@ public class ReactiveSessionTest extends BaseReactiveTest {
 						.thenCompose( v -> getSessionFactory()
 								.withTransaction( (s, t) -> s.persist( new GuineaPig( 10, "Tulip" ) ) )
 						).handle( (i, t) -> {
-							Assertions.assertNotNull( t );
+							assertNotNull( t );
 							assertTrue( t instanceof CompletionException );
 							assertTrue( t.getCause() instanceof PersistenceException );
 							return null;

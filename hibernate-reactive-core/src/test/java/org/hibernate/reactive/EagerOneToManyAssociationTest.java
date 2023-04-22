@@ -10,7 +10,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 
 import io.vertx.junit5.VertxTestContext;
@@ -31,13 +30,6 @@ public class EagerOneToManyAssociationTest extends BaseReactiveTest {
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
 		return List.of( Author.class, Book.class );
-	}
-
-	@AfterAll
-	public void cleanDb(VertxTestContext context) {
-		test( context, getSessionFactory()
-				.withTransaction( s -> s.createQuery( "delete from Author" ).executeUpdate()
-						.thenCompose( v -> s.createQuery( "delete from Book" ).executeUpdate() ) ) );
 	}
 
 	@Test

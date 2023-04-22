@@ -9,12 +9,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletionStage;
 
-import org.hibernate.Hibernate;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
+import org.hibernate.reactive.util.impl.CompletionStages;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -37,6 +37,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import jakarta.persistence.Version;
 
+import static org.hibernate.Hibernate.isInitialized;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -49,11 +50,12 @@ public class SubselectFetchTest extends BaseReactiveTest {
 		return List.of( Element.class, Node.class );
 	}
 
-	@AfterAll
-	public void cleanDb(VertxTestContext context) {
-		test( context, getSessionFactory()
+	@Override
+	public CompletionStage<Void> cleanDb() {
+		return getSessionFactory()
 				.withTransaction( s -> s.createQuery( "delete from Element" ).executeUpdate()
-						.thenCompose( v -> s.createQuery( "delete from Node" ).executeUpdate() ) ) );
+						.thenCompose( v -> s.createQuery( "delete from Node" ).executeUpdate() ) )
+				.thenCompose( CompletionStages::voidFuture );
 	}
 
 	@Test
@@ -75,27 +77,12 @@ public class SubselectFetchTest extends BaseReactiveTest {
 							assertEquals( list.size(), 2 );
 							Node n1 = list.get( 0 );
 							Node n2 = list.get( 1 );
-							assertFalse(
-									Hibernate.isInitialized( n1.getElements() ),
-									"'n1.elements' should not be initialized"
-							);
-							assertFalse(
-									Hibernate.isInitialized( n2.getElements() ),
-									"'n2.elements' should not be initialized"
-							);
+							assertFalse( isInitialized( n1.getElements() ), "'n1.elements' should not be initialized" );
+							assertFalse( isInitialized( n2.getElements() ), "'n2.elements' should not be initialized" );
 							return s.fetch( n1.getElements() ).thenAccept( elements -> {
-								assertTrue(
-										Hibernate.isInitialized( elements ),
-										"'elements' - after fetch - should be initialized"
-								);
-								assertTrue(
-										Hibernate.isInitialized( n1.getElements() ),
-										"'n1.elements' - after fetch - should be initialized"
-								);
-								assertTrue(
-										Hibernate.isInitialized( n2.getElements() ),
-										"'n2.elements' - after fetch - should be initialized"
-								);
+								assertTrue( isInitialized( elements ), "'elements' - after fetch - should be initialized" );
+								assertTrue( isInitialized( n1.getElements() ), "'n1.elements' - after fetch - should be initialized" );
+								assertTrue( isInitialized( n2.getElements() ), "'n2.elements' - after fetch - should be initialized" );
 							} );
 						} )
 				)

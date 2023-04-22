@@ -14,8 +14,6 @@ import org.hibernate.reactive.BaseReactiveTest;
 import org.hibernate.reactive.provider.Settings;
 import org.hibernate.reactive.testing.DatabaseSelectionRule;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -120,7 +118,6 @@ public abstract class SchemaUpdateSqlServerTestBase extends BaseReactiveTest {
 		return name;
 	}
 
-	@BeforeEach
 	@Override
 	public void before(VertxTestContext context) {
 		Configuration createHbm2ddlConf = constructConfiguration( "create" );
@@ -148,7 +145,6 @@ public abstract class SchemaUpdateSqlServerTestBase extends BaseReactiveTest {
 				.thenCompose( v -> factoryManager.stop() );
 	}
 
-	@AfterEach
 	@Override
 	public void after(VertxTestContext context) {
 		final Configuration dropHbm2ddlConf = constructConfiguration( "drop" );
