@@ -274,7 +274,7 @@ public class ReactiveUpdateExecutionDelegate extends UpdateExecutionDelegate imp
 		for ( Assignment assignment : assignments ) {
 			targetColumnReferences.addAll( assignment.getAssignable().getColumnReferences() );
 			insertSourceSelectQuerySpec.getSelectClause().addSqlSelection(
-					new SqlSelectionImpl( 0, -1, assignment.getAssignedValue() )
+					new SqlSelectionImpl( assignment.getAssignedValue() )
 			);
 		}
 
