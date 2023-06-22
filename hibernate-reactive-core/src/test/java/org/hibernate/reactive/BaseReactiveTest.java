@@ -65,6 +65,7 @@ import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
  */
 @ExtendWith(VertxExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
+@Timeout(value = 10, timeUnit = MINUTES)
 public abstract class BaseReactiveTest {
 	/**
 	 * Configure Vertx JUnit5 test context

@@ -17,7 +17,6 @@ import org.hibernate.reactive.stage.Stage;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxTestContext;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -27,15 +26,12 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import jakarta.persistence.metamodel.EntityType;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-@Timeout(value = 10, timeUnit = MINUTES)
 
 public class ReactiveSessionTest extends BaseReactiveTest {
 
