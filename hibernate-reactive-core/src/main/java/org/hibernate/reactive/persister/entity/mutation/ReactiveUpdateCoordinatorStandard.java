@@ -9,6 +9,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.hibernate.engine.jdbc.mutation.ParameterUsage;
 import org.hibernate.engine.jdbc.mutation.spi.MutationExecutorService;
@@ -24,7 +25,6 @@ import org.hibernate.persister.entity.mutation.AttributeAnalysis;
 import org.hibernate.persister.entity.mutation.EntityTableMapping;
 import org.hibernate.persister.entity.mutation.UpdateCoordinatorStandard;
 import org.hibernate.reactive.engine.jdbc.env.internal.ReactiveMutationExecutor;
-import org.hibernate.reactive.util.impl.CompletionStages;
 import org.hibernate.sql.model.MutationOperationGroup;
 import org.hibernate.tuple.entity.EntityMetamodel;
 
@@ -38,19 +38,42 @@ import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
 public class ReactiveUpdateCoordinatorStandard extends UpdateCoordinatorStandard implements ReactiveScopedUpdateCoordinator {
 
-	private CompletionStage<Void> stage;
+	private final StageSupplier stageSupplier = new StageSupplier();
+
+	private static class StageSupplier {
+		private final AtomicReference<CompletableFuture<Void>> atomicFuture = new AtomicReference<>();
+
+		void initStage() {
+			boolean wasNotNull = !atomicFuture.compareAndSet( null, new CompletableFuture<>() );
+			if ( wasNotNull ) {
+				throw new IllegalStateException( "This method should only be called once or never" );
+			}
+		}
+
+		public CompletionStage<Void> getStage() {
+			if ( atomicFuture.get() == null ) {
+				return voidFuture();
+			}
+			return atomicFuture.get();
+		}
+
+		public void complete(final Object o, final Throwable throwable) {
+			if ( throwable != null ) {
+				atomicFuture.get().completeExceptionally( throwable );
+			}
+			else {
+				atomicFuture.get().complete( null );
+			}
+		}
+
+		public void fail(Throwable t) {
+			initStage();
+			atomicFuture.get().completeExceptionally( t );
+		}
+	}
 
 	public ReactiveUpdateCoordinatorStandard(AbstractEntityPersister entityPersister, SessionFactoryImplementor factory) {
 		super( entityPersister, factory );
-	}
-
-	private void complete(final Object o, final Throwable throwable) {
-		if ( throwable != null ) {
-			stage.toCompletableFuture().completeExceptionally( throwable );
-		}
-		else {
-			stage.toCompletableFuture().complete( null );
-		}
 	}
 
 	@Override
@@ -85,11 +108,11 @@ public class ReactiveUpdateCoordinatorStandard extends UpdateCoordinatorStandard
 		// Ensure that an immutable or non-modifiable entity is not being updated unless it is
 		// in the process of being deleted.
 		if ( entry == null && !entityPersister().isMutable() ) {
-			return CompletionStages.failedFuture(new IllegalStateException( "Updating immutable entity that is not in session yet" ));
+			stageSupplier.fail( new IllegalStateException( "Updating immutable entity that is not in session yet" ) );
+			return stageSupplier.getStage();
 		}
 
-		CompletionStage<Void> s = voidFuture();
-		return s.thenCompose( v -> reactivePreUpdateInMemoryValueGeneration(entity, values, session) )
+		return reactivePreUpdateInMemoryValueGeneration( entity, values, session )
 				.thenCompose( preUpdateGeneratedAttributeIndexes -> {
 					final int[] dirtyAttributeIndexes = dirtyAttributeIndexes( incomingDirtyAttributeIndexes, preUpdateGeneratedAttributeIndexes );
 
@@ -145,8 +168,8 @@ public class ReactiveUpdateCoordinatorStandard extends UpdateCoordinatorStandard
 					);
 
 					// stage gets updated by doDynamicUpdate and doStaticUpdate which get called by performUpdate
-					return stage != null ? stage : voidFuture();
-				});
+					return stageSupplier.getStage();
+				} );
 	}
 
 	private CompletionStage<int[]> reactivePreUpdateInMemoryValueGeneration(
@@ -202,7 +225,7 @@ public class ReactiveUpdateCoordinatorStandard extends UpdateCoordinatorStandard
 			Object oldVersion,
 			SharedSessionContractImplementor session) {
 		assert getVersionUpdateGroup() != null;
-		this.stage = new CompletableFuture<>();
+		stageSupplier.initStage();
 
 		final EntityTableMapping mutatingTableDetails = (EntityTableMapping) getVersionUpdateGroup()
 				.getSingleOperation().getTableDetails();
@@ -252,7 +275,7 @@ public class ReactiveUpdateCoordinatorStandard extends UpdateCoordinatorStandard
 						session
 				)
 				.whenComplete( (o, t) -> mutationExecutor.release() )
-				.whenComplete( this::complete );
+				.whenComplete( stageSupplier::complete );
 	}
 
 	private ReactiveMutationExecutor mutationExecutor(
@@ -274,7 +297,8 @@ public class ReactiveUpdateCoordinatorStandard extends UpdateCoordinatorStandard
 			UpdateCoordinatorStandard.InclusionChecker dirtinessChecker,
 			UpdateCoordinatorStandard.UpdateValuesAnalysisImpl valuesAnalysis,
 			SharedSessionContractImplementor session) {
-		this.stage = new CompletableFuture<>();
+		stageSupplier.initStage();
+
 		// Create the JDBC operation descriptors
 		final MutationOperationGroup dynamicUpdateGroup = generateDynamicUpdateGroup(
 				id,
@@ -330,7 +354,7 @@ public class ReactiveUpdateCoordinatorStandard extends UpdateCoordinatorStandard
 						session
 				)
 				.whenComplete( (o, throwable) -> mutationExecutor.release() )
-				.whenComplete( this::complete );
+				.whenComplete( stageSupplier::complete );
 	}
 
 	@Override
@@ -342,7 +366,8 @@ public class ReactiveUpdateCoordinatorStandard extends UpdateCoordinatorStandard
 			Object[] oldValues,
 			UpdateValuesAnalysisImpl valuesAnalysis,
 			SharedSessionContractImplementor session) {
-		this.stage = new CompletableFuture<>();
+		stageSupplier.initStage();
+
 		final MutationOperationGroup staticUpdateGroup = getStaticUpdateGroup();
 		final ReactiveMutationExecutor mutationExecutor = mutationExecutor( session, staticUpdateGroup );
 
@@ -367,6 +392,6 @@ public class ReactiveUpdateCoordinatorStandard extends UpdateCoordinatorStandard
 						session
 				)
 				.whenComplete( (o, throwable) -> mutationExecutor.release() )
-				.whenComplete( this::complete );
+				.whenComplete( stageSupplier::complete );
 	}
 }
