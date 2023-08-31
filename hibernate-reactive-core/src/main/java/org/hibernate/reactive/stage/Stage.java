@@ -22,6 +22,7 @@ import org.hibernate.engine.spi.PersistentAttributeInterceptor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.jpa.internal.util.FlushModeTypeHelper;
 import org.hibernate.proxy.HibernateProxy;
+import org.hibernate.query.Order;
 import org.hibernate.query.Page;
 import org.hibernate.reactive.common.AffectedEntities;
 import org.hibernate.reactive.common.Identifier;
@@ -118,6 +119,12 @@ public interface Stage {
 	}
 
 	interface SelectionQuery<R> extends AbstractQuery {
+
+		@Incubating
+		SelectionQuery<R> setOrder(List<Order<? super R>> orderList);
+
+		@Incubating
+		SelectionQuery<R> setOrder(Order<? super R> order);
 
 		/**
 		 * Set the maximum number of results that may be returned by this
@@ -392,6 +399,7 @@ public interface Stage {
 	}
 
 	interface Query<R> extends SelectionQuery<R>, MutationQuery {
+
 		@Override
 		Query<R> setMaxResults(int maxResults);
 
