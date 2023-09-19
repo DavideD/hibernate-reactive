@@ -86,6 +86,7 @@ import org.hibernate.reactive.common.InternalStateAssertions;
 import org.hibernate.reactive.common.ResultSetMapping;
 import org.hibernate.reactive.engine.ReactiveActionQueue;
 import org.hibernate.reactive.engine.impl.ReactivePersistenceContextAdapter;
+import org.hibernate.reactive.engine.opq.OperationQueue;
 import org.hibernate.reactive.event.ReactiveDeleteEventListener;
 import org.hibernate.reactive.event.ReactiveFlushEventListener;
 import org.hibernate.reactive.event.ReactiveLoadEventListener;
@@ -149,6 +150,9 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 	private static final Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
 	private transient final ReactiveActionQueue reactiveActionQueue = new ReactiveActionQueue( this );
+
+	private final OperationQueue operationQueue = new OperationQueue();
+
 	private ReactiveConnection reactiveConnection;
 	private final Thread associatedWorkThread;
 
@@ -186,6 +190,11 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 	@Override
 	protected StatefulPersistenceContext createPersistenceContext() {
 		return new ReactivePersistenceContextAdapter( this );
+	}
+
+	@Override
+	public OperationQueue getOperationQueue() {
+		return operationQueue;
 	}
 
 	@Override

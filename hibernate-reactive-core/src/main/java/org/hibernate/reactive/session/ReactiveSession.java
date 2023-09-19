@@ -24,6 +24,7 @@ import org.hibernate.event.spi.MergeContext;
 import org.hibernate.event.spi.PersistContext;
 import org.hibernate.event.spi.RefreshContext;
 import org.hibernate.reactive.engine.ReactiveActionQueue;
+import org.hibernate.reactive.engine.opq.OperationQueue;
 import org.hibernate.reactive.engine.spi.ReactiveSharedSessionContractImplementor;
 
 import jakarta.persistence.EntityGraph;
@@ -43,6 +44,8 @@ import jakarta.persistence.metamodel.Attribute;
 public interface ReactiveSession extends ReactiveQueryProducer, ReactiveSharedSessionContractImplementor {
 
 	ReactiveActionQueue getReactiveActionQueue();
+
+	OperationQueue getOperationQueue();
 
 	SessionImplementor getSharedContract();
 
