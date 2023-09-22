@@ -25,7 +25,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.COCKROACHDB;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.MARIA;
-import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.MYSQL;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.ORACLE;
 import static org.hibernate.reactive.testing.DBSelectionExtension.skipTestsFor;
 
@@ -43,7 +42,7 @@ public class UpsertTest extends BaseReactiveTest {
 	 * Something is missing in HR to make it work for these databases.
  	 */
 	@RegisterExtension
-	public DBSelectionExtension dbSelection = skipTestsFor( COCKROACHDB, DB2, MARIA, MYSQL, ORACLE );
+	public DBSelectionExtension dbSelection = skipTestsFor( COCKROACHDB, DB2, MARIA, ORACLE );
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
