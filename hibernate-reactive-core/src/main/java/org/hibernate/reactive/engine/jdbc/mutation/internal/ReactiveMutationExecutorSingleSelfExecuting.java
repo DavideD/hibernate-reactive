@@ -5,15 +5,40 @@
  */
 package org.hibernate.reactive.engine.jdbc.mutation.internal;
 
+
+import java.util.concurrent.CompletionStage;
+
+import org.hibernate.engine.jdbc.mutation.TableInclusionChecker;
 import org.hibernate.engine.jdbc.mutation.internal.MutationExecutorSingleSelfExecuting;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.reactive.engine.jdbc.env.internal.ReactiveMutationExecutor;
+import org.hibernate.reactive.sql.model.ReactiveSelfExecutingUpdateOperation;
 import org.hibernate.sql.model.SelfExecutingUpdateOperation;
+import org.hibernate.sql.model.ValuesAnalysis;
+
+import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
 public class ReactiveMutationExecutorSingleSelfExecuting extends MutationExecutorSingleSelfExecuting
 		implements ReactiveMutationExecutor {
 
-	public ReactiveMutationExecutorSingleSelfExecuting(SelfExecutingUpdateOperation operation, SharedSessionContractImplementor session) {
+	private final SelfExecutingUpdateOperation operation;
+
+	public ReactiveMutationExecutorSingleSelfExecuting(
+			SelfExecutingUpdateOperation operation,
+			SharedSessionContractImplementor session) {
 		super( operation, session );
+		this.operation = operation;
+	}
+
+	@Override
+	public CompletionStage<Void> performReactiveSelfExecutingOperations(
+			ValuesAnalysis valuesAnalysis,
+			TableInclusionChecker inclusionChecker,
+			SharedSessionContractImplementor session) {
+		if ( inclusionChecker.include( operation.getTableDetails() ) ) {
+			return ( (ReactiveSelfExecutingUpdateOperation) operation )
+					.performReactiveMutation( getJdbcValueBindings(), valuesAnalysis, session );
+		}
+		return voidFuture();
 	}
 }
