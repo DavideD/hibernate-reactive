@@ -25,6 +25,7 @@ import io.vertx.junit5.VertxTestContext;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hibernate.reactive.testing.ReactiveAssertions.assertThrown;
 
 @ExtendWith(VertxExtension.class)
 @Timeout(value = 10, timeUnit = MINUTES)
@@ -64,13 +65,21 @@ public class OperationQueueTest {
 	@Test
 	public void testWhenComplete(VertxTestContext context) {
 		OperationQueue operationQueue = new OperationQueue();
-		test( context, operationQueue
+		test( context, assertThrown( RuntimeException.class, operationQueue
 				.add( "1. create text", v -> "Test" )
 				.add( "2. Throw an exception", text -> {
 					throw new RuntimeException( "Testing exceptions" );
 				} )
-				.whenComplete( (o, throwable) -> context.verify(  ) )
-				.asCompletionStage()
+				.whenComplete( (o, throwable) -> context.verify( () -> {
+					assertThat( o ).isNull();
+					assertThat( throwable ).isInstanceOf( RuntimeException.class )
+							.hasMessage( "Testing exceptions" );
+				} ) )
+				.asCompletionStage() )
+				.thenAccept( e -> {
+					assertThat( e ).isInstanceOf( RuntimeException.class )
+							.hasMessage( "Testing exceptions" );
+				} )
 		);
 	}
 

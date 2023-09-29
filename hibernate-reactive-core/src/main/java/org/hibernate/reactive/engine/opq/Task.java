@@ -10,5 +10,5 @@ public interface Task {
 
 	Object apply(Object obj);
 
-	Object failed(Throwable t);
+	<E extends Throwable> Object failed(E t);
 }

@@ -12,14 +12,14 @@ import static java.util.Objects.requireNonNull;
 
 public class WhenCompleteTask implements Task {
 
-	private final BiConsumer<Object, ? extends Throwable> consumer;
+	private final BiConsumer<Object, Throwable> consumer;
 	private final String description;
 
-	public WhenCompleteTask(BiConsumer<Object, ? extends Throwable> consumer) {
+	public WhenCompleteTask(BiConsumer<Object, Throwable> consumer) {
 		this( valueOf( consumer ), consumer );
 	}
 
-	public WhenCompleteTask(String description, BiConsumer<Object, ? extends Throwable> consumer) {
+	public <E extends Throwable> WhenCompleteTask(String description, BiConsumer<Object, Throwable> consumer) {
 		requireNonNull( consumer );
 		this.description = description;
 		this.consumer = consumer;

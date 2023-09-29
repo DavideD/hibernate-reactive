@@ -40,7 +40,7 @@ public class OperationQueue {
 		this.subQueue = new ArrayList<>();
 	}
 
-	public OperationQueue whenComplete(BiConsumer<Object, ? extends Throwable> consumer) {
+	public OperationQueue whenComplete(BiConsumer<Object, Throwable> consumer) {
 		Task task = new WhenCompleteTask( consumer );
 		add( task );
 		return this;
@@ -161,7 +161,12 @@ public class OperationQueue {
 			}
 		}
 		if ( failure != null ) {
-			throw new RuntimeException( failure );
+			if ( failure instanceof RuntimeException ) {
+				throw (RuntimeException) failure;
+			}
+			else {
+				throw new RuntimeException( failure );
+			}
 		}
 		return (T) result;
 	}
