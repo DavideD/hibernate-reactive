@@ -44,6 +44,7 @@ import org.hibernate.reactive.loader.entity.ReactiveCacheEntityLoaderHelper;
 import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.logging.impl.LoggerFactory;
 import org.hibernate.reactive.persister.entity.impl.ReactiveEntityPersister;
+import org.hibernate.reactive.session.ReactiveSession;
 import org.hibernate.reactive.session.impl.ReactiveQueryExecutorLookup;
 import org.hibernate.stat.spi.StatisticsImplementor;
 
@@ -87,43 +88,8 @@ public class DefaultReactiveLoadEventListener implements LoadEventListener, Reac
 	 */
 	@Override
 	public void onLoad(LoadEvent event, LoadType loadType) throws HibernateException {
-		final EntityPersister persister = getPersister( event );
-
-		if ( persister == null ) {
-			throw LOG.unableToLocatePersister( event.getEntityClassName() );
-		}
-
-		// Since this method is not reactive, we're not expecting to hit the
-		// database here (if we do, it's a bug) and so we can assume the
-		// returned CompletionStage is already completed
-		final CompletionStage<Void> checkId = checkId( event, loadType, persister );
-		if ( !checkId.toCompletableFuture().isDone() ) {
-			// This only happens if the object is loaded from the db
-			throw new UnexpectedAccessToTheDatabase();
-		}
-
-		try {
-			// Since this method is not reactive, we're not expecting to hit the
-			// database here (if we do, it's a bug) and so we can assume the
-			// returned CompletionStage is already completed (a proxy, perhaps)
-			final CompletionStage<Object> loaded = doOnLoad( persister, event, loadType );
-			if ( !loaded.toCompletableFuture().isDone() ) {
-				// This only happens if the object is loaded from the db
-				throw new UnexpectedAccessToTheDatabase();
-			}
-			else {
-				// Proxy
-				event.setResult( loaded.toCompletableFuture().getNow( null ) );
-			}
-		}
-		catch (HibernateException e) {
-			LOG.unableToLoadCommand( e );
-			throw e;
-		}
-
-		if ( event.getResult() instanceof CompletionStage ) {
-			throw new AssertionFailure( "Unexpected CompletionStage" );
-		}
+		((ReactiveSession)event.getSession()).getOperationQueue()
+				.chainStage( () -> this.reactiveOnLoad( event, loadType ) );
 	}
 
 	/**

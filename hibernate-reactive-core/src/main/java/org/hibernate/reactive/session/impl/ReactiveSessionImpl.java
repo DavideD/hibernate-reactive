@@ -1188,11 +1188,11 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 				.whenComplete( (v, e) -> delayedAfterCompletion() );
 	}
 
-	private CompletionStage<Void> fireLoadNoChecks(LoadEvent event, LoadEventListener.LoadType loadType) {
+	private void  fireLoadNoChecks(LoadEvent event, LoadEventListener.LoadType loadType) {
 		pulseTransactionCoordinator();
 
 		return fastSessionServices.eventListenerGroup_LOAD
-				.fireEventOnEachListener( event, loadType,(ReactiveLoadEventListener l) -> l::reactiveOnLoad
+				.fireEventOnEachListener( event, loadType, o ->
 		);
 	}
 
