@@ -5,7 +5,6 @@
  */
 package org.hibernate.reactive.sql.model;
 
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.concurrent.CompletionStage;
@@ -14,22 +13,27 @@ import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
 import org.hibernate.engine.jdbc.mutation.group.PreparedStatementDetails;
 import org.hibernate.engine.jdbc.mutation.internal.MutationQueryOptions;
 import org.hibernate.engine.jdbc.mutation.internal.PreparedStatementGroupSingleTable;
-import org.hibernate.engine.jdbc.mutation.spi.BindingGroup;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.persister.entity.mutation.UpdateValuesAnalysis;
+import org.hibernate.reactive.adaptor.impl.PrepareStatementDetailsAdaptor;
+import org.hibernate.reactive.adaptor.impl.PreparedStatementAdaptor;
 import org.hibernate.reactive.logging.impl.Log;
-import org.hibernate.reactive.util.impl.CompletionStages;
+import org.hibernate.reactive.pool.ReactiveConnection;
+import org.hibernate.reactive.session.ReactiveConnectionSupplier;
 import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
 import org.hibernate.sql.model.MutationTarget;
 import org.hibernate.sql.model.TableMapping;
 import org.hibernate.sql.model.ValuesAnalysis;
 import org.hibernate.sql.model.ast.MutatingTableReference;
+import org.hibernate.sql.model.ast.TableDelete;
 import org.hibernate.sql.model.ast.TableInsert;
 import org.hibernate.sql.model.ast.TableUpdate;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
+import org.hibernate.sql.model.internal.TableDeleteCustomSql;
+import org.hibernate.sql.model.internal.TableDeleteStandard;
 import org.hibernate.sql.model.internal.TableInsertCustomSql;
 import org.hibernate.sql.model.internal.TableInsertStandard;
 import org.hibernate.sql.model.internal.TableUpdateCustomSql;
@@ -42,16 +46,19 @@ import org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation;
 import static java.lang.invoke.MethodHandles.lookup;
 import static org.hibernate.reactive.logging.impl.LoggerFactory.make;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
+import static org.hibernate.sql.model.ModelMutationLogging.MODEL_MUTATION_LOGGER;
 
 public class ReactiveOptionalTableUpdateOperation extends OptionalTableUpdateOperation
 		implements ReactiveSelfExecutingUpdateOperation {
 	private static final Log LOG = make( Log.class, lookup() );
+	private final OptionalTableUpdate upsert;
 
 	public ReactiveOptionalTableUpdateOperation(
 			MutationTarget<?> mutationTarget,
 			OptionalTableUpdate upsert,
 			SessionFactoryImplementor factory) {
 		super( mutationTarget, upsert, factory );
+		this.upsert = upsert;
 	}
 
 	@Override
@@ -62,16 +69,17 @@ public class ReactiveOptionalTableUpdateOperation extends OptionalTableUpdateOpe
 		throw LOG.nonReactiveMethodCall( "performReactiveMutation" );
 	}
 
+	@Override
 	public CompletionStage<Void> performReactiveMutation(
 			JdbcValueBindings jdbcValueBindings,
 			ValuesAnalysis incomingValuesAnalysis,
 			SharedSessionContractImplementor session) {
-		final TableMapping tableMapping = getTableDetails();
 		final UpdateValuesAnalysis valuesAnalysis = (UpdateValuesAnalysis) incomingValuesAnalysis;
+		if ( !valuesAnalysis.getTablesNeedingUpdate().contains( getTableDetails() ) ) {
+			return voidFuture();
+		}
 
-		return voidFuture().thenCompose( v -> !valuesAnalysis.getTablesNeedingUpdate().contains( getTableDetails() )
-				? voidFuture()
-				: doReactiveMutation( tableMapping, jdbcValueBindings, valuesAnalysis, session ) );
+		return doReactiveMutation( getTableDetails(), jdbcValueBindings, valuesAnalysis, session );
 	}
 
 	/**
@@ -89,36 +97,62 @@ public class ReactiveOptionalTableUpdateOperation extends OptionalTableUpdateOpe
 			UpdateValuesAnalysis valuesAnalysis,
 			SharedSessionContractImplementor session) {
 
-		return voidFuture().thenCompose( v -> {
-			// Check if should delete
-			if ( shouldDelete( valuesAnalysis, tableMapping ) ) {
-				// all the new values for this table were null - possibly delete the row
-				return performReactiveDelete( jdbcValueBindings, session );
-			} else {
-				CompletionStage<Boolean> didUpdate = CompletionStages.falseFuture(); //performReactiveUpdate( tableMapping, jdbcValueBindings, valuesAnalysis, session );
-//				if( !didUpdate ) {
-					return performReactiveInsert( jdbcValueBindings, session );
-//				}
-			}
-		} );
+		return voidFuture()
+				.thenCompose( v -> {
+					if ( shouldDelete( valuesAnalysis, tableMapping ) ) {
+						return performReactiveDelete( jdbcValueBindings, session );
+					}
+					else {
+						return performReactiveUpdate( tableMapping, jdbcValueBindings, valuesAnalysis, session )
+								.thenCompose( wasUpdated -> {
+									if ( !wasUpdated ) {
+										MODEL_MUTATION_LOGGER.debugf( "Upsert update altered no rows - inserting : %s", tableMapping.getTableName() );
+										return performReactiveInsert( jdbcValueBindings, session );
+									}
+									return voidFuture();
+								} );
+					}
+				} )
+				.whenComplete( (o, throwable) -> jdbcValueBindings.afterStatement( tableMapping ) );
 	}
 
 	private boolean shouldDelete(UpdateValuesAnalysis valuesAnalysis, TableMapping tableMapping) {
-		return !valuesAnalysis.getTablesWithNonNullValues().contains( tableMapping ) && valuesAnalysis.getTablesWithPreviousNonNullValues().contains( tableMapping );
+		return !valuesAnalysis.getTablesWithNonNullValues().contains( tableMapping )
+				// all the new values for this table were null - possibly delete the row
+				&& valuesAnalysis.getTablesWithPreviousNonNullValues().contains( tableMapping );
 	}
 
-	protected CompletionStage<Void> performReactiveDelete(
+	/**
+	 * @See org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation.performDelete()
+	 * @param jdbcValueBindings
+	 * @param session
+	 * @return
+	 */
+	private CompletionStage<Void> performReactiveDelete(
 			JdbcValueBindings jdbcValueBindings,
 			SharedSessionContractImplementor session) {
 		final JdbcDeleteMutation jdbcDelete = createJdbcDelete( session );
 
-		final PreparedStatement deleteStatement = createStatementDetails( jdbcDelete, session );
+		final PreparedStatementGroupSingleTable statementGroup = new PreparedStatementGroupSingleTable(
+				jdbcDelete,
+				session
+		);
+		final PreparedStatementDetails statementDetails = statementGroup.resolvePreparedStatementDetails(
+				getTableDetails().getTableName() );
+
 		session.getJdbcServices().getSqlStatementLogger().logStatement( jdbcDelete.getSqlString() );
 
-		bindKeyValues( jdbcValueBindings, deleteStatement, jdbcDelete, session );
-		String deleteSQL = jdbcDelete.getSqlString();
-		CompletionStage<Integer> result = CompletionStages.completedFuture( session.getSessionFactory().fromSession( s -> s.createMutationQuery( deleteSQL ).executeUpdate() ) );
-		return voidFuture();
+		Object[] params = PreparedStatementAdaptor.bind( statement -> {
+			PreparedStatementDetails details = new PrepareStatementDetailsAdaptor(
+					statementDetails,
+					statement,
+					session.getJdbcServices()
+			);
+			jdbcValueBindings.beforeStatement( details );
+		} );
+
+		ReactiveConnection reactiveConnection = ( (ReactiveConnectionSupplier) session ).getReactiveConnection();
+		return reactiveConnection.update( statementDetails.getSqlString(), params ).thenAccept( v -> voidFuture() );
 	}
 
 	/**
@@ -129,163 +163,135 @@ public class ReactiveOptionalTableUpdateOperation extends OptionalTableUpdateOpe
 	 * @param session
 	 * @return
 	 */
-	protected CompletionStage<Boolean> performReactiveUpdate(
+	private CompletionStage<Boolean> performReactiveUpdate(
 			TableMapping tableMapping,
 			JdbcValueBindings jdbcValueBindings,
 			UpdateValuesAnalysis valuesAnalysis,
 			SharedSessionContractImplementor session) {
-		if ( valuesAnalysis.getTablesWithPreviousNonNullValues().contains( tableMapping ) ) {
-			return CompletionStages.completedFuture( Boolean.FALSE );
-		}
+		MODEL_MUTATION_LOGGER.tracef( "#performUpdate(%s)", getTableDetails().getTableName() );
 
-		return doReactiveUpdate( tableMapping, jdbcValueBindings, valuesAnalysis, session);
+		final TableUpdate<JdbcMutationOperation> tableUpdate = createJdbcUpdate();
+
+		final SqlAstTranslator<JdbcMutationOperation> translator = session
+				.getJdbcServices()
+				.getJdbcEnvironment()
+				.getSqlAstTranslatorFactory()
+				.buildModelMutationTranslator( tableUpdate, session.getFactory() );
+
+		final JdbcMutationOperation jdbcUpdate = translator.translate( null, MutationQueryOptions.INSTANCE );
+		final PreparedStatementGroupSingleTable statementGroup = new PreparedStatementGroupSingleTable(
+				jdbcUpdate,
+				session
+		);
+
+		final PreparedStatementDetails statementDetails = statementGroup.resolvePreparedStatementDetails(
+				getTableDetails().getTableName() );
+		// If we get here the statement is needed - make sure it is resolved
+		Object[] params = PreparedStatementAdaptor.bind( statement -> {
+			PreparedStatementDetails details = new PrepareStatementDetailsAdaptor(
+					statementDetails,
+					statement,
+					session.getJdbcServices()
+			);
+			jdbcValueBindings.beforeStatement( details );
+		} );
+
+		session.getJdbcServices().getSqlStatementLogger().logStatement( statementDetails.getSqlString() );
+
+		ReactiveConnection reactiveConnection = ( (ReactiveConnectionSupplier) session ).getReactiveConnection();
+		String sqlString = statementDetails.getSqlString();
+		return reactiveConnection
+				.update( sqlString, params )
+				.thenApply( rowCount -> {
+					if ( rowCount == 0 ) {
+						return false;
+					}
+					try {
+						upsert.getExpectation()
+								.verifyOutcome(
+										rowCount,
+										statementDetails.getStatement(),
+										-1,
+										statementDetails.getSqlString()
+								);
+						return true;
+					}
+					catch (SQLException e) {
+						throw session.getJdbcServices().getSqlExceptionHelper().convert(
+								e,
+								"Unable to execute mutation PreparedStatement against table `" + getTableDetails().getTableName() + "`",
+								statementDetails.getSqlString()
+						);
+					}
+				} );
 	}
 
-	private CompletionStage<Boolean> doReactiveUpdate(TableMapping tableMapping,
-													  JdbcValueBindings jdbcValueBindings,
-													  UpdateValuesAnalysis valuesAnalysis,
-													  SharedSessionContractImplementor session) {
-		return voidFuture().thenCompose( v -> {
-			MutationTarget mutationTarget = getMutationTarget();
-			final TableUpdate<JdbcMutationOperation> tableUpdate;
-			if ( tableMapping.getUpdateDetails() != null && tableMapping.getUpdateDetails().getCustomSql() != null ) {
-				tableUpdate = new TableUpdateCustomSql(
-						new MutatingTableReference( tableMapping ),
-						mutationTarget,
-						"upsert update for " + mutationTarget.getRolePath(),
-						getValueBindings(),
-						getKeyBindings(),
-						getOptimisticLockBindings(),
-						getParameters()
-				);
-			}
-			else {
-				tableUpdate = new TableUpdateStandard(
-						new MutatingTableReference( tableMapping ),
-						mutationTarget,
-						"upsert update for " + mutationTarget.getRolePath(),
-						getValueBindings(),
-						getKeyBindings(),
-						getOptimisticLockBindings(),
-						getParameters()
-				);
-			}
-
-			final SqlAstTranslator<JdbcMutationOperation> translator = session
-					.getJdbcServices()
-					.getJdbcEnvironment()
-					.getSqlAstTranslatorFactory()
-					.buildModelMutationTranslator( tableUpdate, session.getFactory() );
-
-			final JdbcMutationOperation jdbcUpdate = translator.translate( null, MutationQueryOptions.INSTANCE );
-
-			final PreparedStatementGroupSingleTable statementGroup = new PreparedStatementGroupSingleTable(
-					jdbcUpdate,
-					session
+	private TableUpdate<JdbcMutationOperation> createJdbcUpdate() {
+		MutationTarget<?> mutationTarget = super.getMutationTarget();
+		if ( getTableDetails().getUpdateDetails() != null
+				&& getTableDetails().getUpdateDetails().getCustomSql() != null ) {
+			return new TableUpdateCustomSql(
+					new MutatingTableReference( getTableDetails() ),
+					mutationTarget,
+					"upsert update for " + mutationTarget.getRolePath(),
+					upsert.getValueBindings(),
+					upsert.getKeyBindings(),
+					upsert.getOptimisticLockBindings(),
+					upsert.getParameters()
 			);
+		}
 
-			final PreparedStatementDetails statementDetails = statementGroup.resolvePreparedStatementDetails(
-					tableMapping.getTableName() );
-
-			final PreparedStatement updateStatement = statementDetails.resolveStatement();
-
-			session.getJdbcServices().getSqlStatementLogger().logStatement( statementDetails.getSqlString() );
-
-			jdbcValueBindings.beforeStatement( statementDetails );
-
-			final int rowCount = session.getJdbcCoordinator().getResultSetReturn()
-					.executeUpdate( updateStatement, statementDetails.getSqlString() );
-
-			if ( rowCount == 0 ) {
-				return CompletionStages.completedFuture( Boolean.FALSE );
-			}
-
-//			getExpectation().verifyOutcome( rowCount, updateStatement, -1, statementDetails.getSqlString() );
-
-			return CompletionStages.completedFuture( Boolean.TRUE );
-		} );
+		return new TableUpdateStandard(
+				new MutatingTableReference( getTableDetails() ),
+				mutationTarget,
+				"upsert update for " + mutationTarget.getRolePath(),
+				upsert.getValueBindings(),
+				upsert.getKeyBindings(),
+				upsert.getOptimisticLockBindings(),
+				upsert.getParameters()
+		);
 	}
 
 	private CompletionStage<Void> performReactiveInsert(
 			JdbcValueBindings jdbcValueBindings,
 			SharedSessionContractImplementor session) {
-		return doPerformReactiveInsert( jdbcValueBindings, session ).thenCompose( s -> CompletionStages.voidFuture() );
-	}
+		final JdbcInsertMutation jdbcInsert = createJdbcInsert( session );
 
-	/**
-	 * @See org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation.performInsert()
-	 *
-	 * @param jdbcValueBindings
-	 * @param session
-	 * @return
-	 */
-	private CompletionStage<Void> doPerformReactiveInsert(
-			JdbcValueBindings jdbcValueBindings,
-			SharedSessionContractImplementor session) {
-		// TODO:  Currently Fails
-		return voidFuture().thenCompose( v -> {
-
-			final JdbcInsertMutation jdbcInsert = reactiveCreateJdbcInsert( session );
-
-			final PreparedStatement insertStatement = session.getJdbcCoordinator()
-					.getStatementPreparer()
-					.prepareStatement(
-							jdbcInsert.getSqlString() );
-
-
-			session.getJdbcServices().getSqlStatementLogger().logStatement( jdbcInsert.getSqlString() );
-
-			final BindingGroup bindingGroup = jdbcValueBindings.getBindingGroup( getTableDetails().getTableName() );
-			if ( bindingGroup != null ) {
-				bindingGroup.forEachBinding( (binding) -> {
-					try {
-						binding.getValueBinder().bind(
-								insertStatement,
-								binding.getValue(),
-								binding.getPosition(),
-								session
-						);
-					}
-					catch (SQLException e) {
-						throw session.getJdbcServices().getSqlExceptionHelper().convert(
-								e,
-								"Unable to bind parameter for upsert insert",
-								jdbcInsert.getSqlString()
-						);
-					}
-				} );
-			}
-
-			session.getJdbcCoordinator().getResultSetReturn()
-					.executeUpdate( insertStatement, jdbcInsert.getSqlString() );
-
-			return voidFuture();
+		final PreparedStatementGroupSingleTable statementGroup = new PreparedStatementGroupSingleTable( jdbcInsert, session );
+		final PreparedStatementDetails statementDetails = statementGroup.resolvePreparedStatementDetails( getTableDetails().getTableName() );
+		// If we get here the statement is needed - make sure it is resolved
+		Object[] params = PreparedStatementAdaptor.bind( statement -> {
+			PreparedStatementDetails details = new PrepareStatementDetailsAdaptor( statementDetails, statement, session.getJdbcServices() );
+			jdbcValueBindings.beforeStatement( details );
 		} );
+
+		ReactiveConnection reactiveConnection = ( (ReactiveConnectionSupplier) session ).getReactiveConnection();
+		return reactiveConnection.update( statementDetails.getSqlString(), params ).thenAccept( v -> voidFuture() );
 	}
 
-	/**
-	 * @See org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation.createJdbcInsert()
-	 * @param session
-	 * @return
-	 */
-	private JdbcInsertMutation reactiveCreateJdbcInsert(SharedSessionContractImplementor session) {
+//	/**
+//	 * @see org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation.createJdbcInsert()
+//	 */
+	// Temporary copy of the createJdbcInsert() in ORM
+	// FIXME: change visibility to protected in ORM and remove this method
+	private JdbcInsertMutation createJdbcInsert(SharedSessionContractImplementor session) {
 		final TableInsert tableInsert;
 		if ( getTableDetails().getInsertDetails() != null
 				&& getTableDetails().getInsertDetails().getCustomSql() != null ) {
 			tableInsert = new TableInsertCustomSql(
 					new MutatingTableReference( getTableDetails() ),
 					getMutationTarget(),
-					CollectionHelper.combine( getValueBindings(), getKeyBindings() ),
-					getParameters()
+					CollectionHelper.combine( upsert.getValueBindings(), upsert.getKeyBindings() ),
+					upsert.getParameters()
 			);
 		}
 		else {
 			tableInsert = new TableInsertStandard(
 					new MutatingTableReference( getTableDetails() ),
 					getMutationTarget(),
-					CollectionHelper.combine( getValueBindings(), getKeyBindings() ),
+					CollectionHelper.combine( upsert.getValueBindings(), upsert.getKeyBindings() ),
 					Collections.emptyList(),
-					getParameters()
+					upsert.getParameters()
 			);
 		}
 
@@ -297,6 +303,49 @@ public class ReactiveOptionalTableUpdateOperation extends OptionalTableUpdateOpe
 
 		final SqlAstTranslator<JdbcInsertMutation> translator = sqlAstTranslatorFactory.buildModelMutationTranslator(
 				tableInsert,
+				factory
+		);
+
+		return translator.translate( null, MutationQueryOptions.INSTANCE );
+	}
+
+//	/**
+//	 * @see org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation.createJdbcInsert()
+//	 */
+	// Temporary copy of the createJdbcInsert() in ORM
+	// FIXME: change visibility to protected in ORM and remove this method
+	private JdbcDeleteMutation createJdbcDelete(SharedSessionContractImplementor session) {
+		final TableDelete tableDelete;
+		if ( getTableDetails().getDeleteDetails() != null
+				&& getTableDetails().getDeleteDetails().getCustomSql() != null ) {
+			tableDelete = new TableDeleteCustomSql(
+					new MutatingTableReference( getTableDetails() ),
+					getMutationTarget(),
+					"upsert delete for " + upsert.getMutationTarget().getRolePath(),
+					upsert.getKeyBindings(),
+					upsert.getOptimisticLockBindings(),
+					upsert.getParameters()
+			);
+		}
+		else {
+			tableDelete = new TableDeleteStandard(
+					new MutatingTableReference( getTableDetails() ),
+					getMutationTarget(),
+					"upsert delete for " + getMutationTarget().getRolePath(),
+					upsert.getKeyBindings(),
+					upsert.getOptimisticLockBindings(),
+					upsert.getParameters()
+			);
+		}
+
+		final SessionFactoryImplementor factory = session.getSessionFactory();
+		final SqlAstTranslatorFactory sqlAstTranslatorFactory = factory
+				.getJdbcServices()
+				.getJdbcEnvironment()
+				.getSqlAstTranslatorFactory();
+
+		final SqlAstTranslator<JdbcDeleteMutation> translator = sqlAstTranslatorFactory.buildModelMutationTranslator(
+				tableDelete,
 				factory
 		);
 
