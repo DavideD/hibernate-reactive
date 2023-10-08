@@ -22,9 +22,6 @@ import jakarta.persistence.Table;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.COCKROACHDB;
-import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2;
-import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.MARIA;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.ORACLE;
 import static org.hibernate.reactive.testing.DBSelectionExtension.skipTestsFor;
 
@@ -42,7 +39,7 @@ public class UpsertTest extends BaseReactiveTest {
 	 * Something is missing in HR to make it work for these databases.
  	 */
 	@RegisterExtension
-	public DBSelectionExtension dbSelection = skipTestsFor( COCKROACHDB, DB2, MARIA, ORACLE );
+	public DBSelectionExtension dbSelection = skipTestsFor( ORACLE );
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
@@ -149,6 +146,27 @@ public class UpsertTest extends BaseReactiveTest {
 									  new Record( 123L, "goodbye earth" ),
 									  new Record( 456L, "hello mars" )
 							  ) )
+					  )
+		);
+	}
+
+//  TODO: Fix for upsert delete use case
+//  Currently fails with this exception:
+//	The number of parameters to execute should be consistent with the expected number of parameters = [1] but the actual number is [2].
+//	io.vertx.core.impl.NoStackTraceThrowable: The number of parameters to execute should be consistent with the expected number of parameters = [1] but the actual number is [2].
+//	@Test
+	public void testStageUpsertWithDelete(VertxTestContext context) {
+		final Record record = new Record( 123L, "hello earth" );
+		test( context, getSessionFactory().withStatelessTransaction( ss -> ss
+							  .upsert( record )
+							  .thenCompose( v -> {
+								  record.message = null;
+								  return ss.upsert( record );
+							  } )
+					  )
+					  .thenCompose( v -> getSessionFactory().withStatelessTransaction( ss -> ss
+									  .createQuery( "from Record order by id", Record.class ).getResultList() )
+							  .thenAccept( results -> assertThat( results ).isNull() )
 					  )
 		);
 	}
