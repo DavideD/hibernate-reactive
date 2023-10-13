@@ -9,10 +9,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-import org.hibernate.reactive.testing.DBSelectionExtension;
-
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxTestContext;
@@ -22,8 +19,6 @@ import jakarta.persistence.Table;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.ORACLE;
-import static org.hibernate.reactive.testing.DBSelectionExtension.skipTestsFor;
 
 /**
  * Same as Hibernate ORM org.hibernate.orm.test.stateless.UpsertTest
@@ -34,12 +29,6 @@ import static org.hibernate.reactive.testing.DBSelectionExtension.skipTestsFor;
  */
 @Timeout(value = 10, timeUnit = MINUTES)
 public class UpsertTest extends BaseReactiveTest {
-
-	/**
-	 * Something is missing in HR to make it work for these databases.
- 	 */
-	@RegisterExtension
-	public DBSelectionExtension dbSelection = skipTestsFor( ORACLE );
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
