@@ -124,10 +124,9 @@ public class ReactiveOptionalTableUpdateOperation extends OptionalTableUpdateOpe
 	}
 
 	/**
-	 * @See org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation.performDelete()
+	 * @see org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation#performDelete(JdbcValueBindings, SharedSessionContractImplementor)
 	 * @param jdbcValueBindings
 	 * @param session
-	 * @return
 	 */
 	private CompletionStage<Void> performReactiveDelete(
 			JdbcValueBindings jdbcValueBindings,
@@ -157,7 +156,7 @@ public class ReactiveOptionalTableUpdateOperation extends OptionalTableUpdateOpe
 	}
 
 	/**
-	 *  @See org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation.performUpdate()
+	 * @see org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation#performUpdate(JdbcValueBindings, SharedSessionContractImplementor)
 	 * @param tableMapping
 	 * @param jdbcValueBindings
 	 * @param valuesAnalysis
@@ -270,10 +269,9 @@ public class ReactiveOptionalTableUpdateOperation extends OptionalTableUpdateOpe
 		return reactiveConnection.update( statementDetails.getSqlString(), params ).thenCompose(CompletionStages::voidFuture);
 	}
 
-//	/**
-//	 * @see org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation.createJdbcInsert()
-//	 */
-	// Temporary copy of the createJdbcInsert() in ORM
+	/**
+	 * @see org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation#createJdbcInsert(SharedSessionContractImplementor) 
+	 */
 	// FIXME: change visibility to protected in ORM and remove this method
 	private JdbcInsertMutation createJdbcInsert(SharedSessionContractImplementor session) {
 		final TableInsert tableInsert;

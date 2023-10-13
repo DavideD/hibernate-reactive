@@ -14,7 +14,7 @@ import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolver;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.persister.entity.mutation.EntityMutationTarget;
-import org.hibernate.reactive.dialect.OracleSqlAstTranslator;
+import org.hibernate.reactive.dialect.ReactiveOracleSqlAstTranslator;
 import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
 
@@ -38,7 +38,7 @@ public class ReactiveStandardDialectResolver implements DialectResolver {
 					return new DialectDelegateWrapper( dialect ) {
 						@Override
 						public MutationOperation createOptionalTableUpdateOperation(EntityMutationTarget mutationTarget, OptionalTableUpdate optionalTableUpdate, SessionFactoryImplementor factory) {
-							final OracleSqlAstTranslator translator = new OracleSqlAstTranslator( factory, optionalTableUpdate );
+							final ReactiveOracleSqlAstTranslator<?> translator = new ReactiveOracleSqlAstTranslator<>( factory, optionalTableUpdate );
 							return translator.createMergeOperation( optionalTableUpdate );
 						}
 					};

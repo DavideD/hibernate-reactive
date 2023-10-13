@@ -5,6 +5,7 @@
  */
 package org.hibernate.reactive.dialect;
 
+import org.hibernate.dialect.OracleSqlAstTranslator;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.persister.entity.mutation.EntityTableMapping;
 import org.hibernate.reactive.sql.model.ReactiveDeleteOrUpsertOperation;
@@ -14,8 +15,8 @@ import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
 import org.hibernate.sql.model.jdbc.UpsertOperation;
 
-public class OracleSqlAstTranslator<T extends JdbcOperation> extends org.hibernate.dialect.OracleSqlAstTranslator<T> {
-	public OracleSqlAstTranslator(
+public class ReactiveOracleSqlAstTranslator<T extends JdbcOperation> extends OracleSqlAstTranslator<T> {
+	public ReactiveOracleSqlAstTranslator(
 			SessionFactoryImplementor sessionFactory,
 			Statement statement) {
 		super( sessionFactory, statement );

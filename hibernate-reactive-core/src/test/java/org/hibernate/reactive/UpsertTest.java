@@ -143,20 +143,21 @@ public class UpsertTest extends BaseReactiveTest {
 //  Currently fails with this exception:
 //	The number of parameters to execute should be consistent with the expected number of parameters = [1] but the actual number is [2].
 //	io.vertx.core.impl.NoStackTraceThrowable: The number of parameters to execute should be consistent with the expected number of parameters = [1] but the actual number is [2].
-//	@Test
+	@Test
 	public void testStageUpsertWithDelete(VertxTestContext context) {
 		final Record record = new Record( 123L, "hello earth" );
-		test( context, getSessionFactory().withStatelessTransaction( ss -> ss
-							  .upsert( record )
-							  .thenCompose( v -> {
-								  record.message = null;
-								  return ss.upsert( record );
-							  } )
-					  )
-					  .thenCompose( v -> getSessionFactory().withStatelessTransaction( ss -> ss
-									  .createQuery( "from Record order by id", Record.class ).getResultList() )
-							  .thenAccept( results -> assertThat( results ).isNull() )
-					  )
+		test( context, getSessionFactory()
+				.withStatelessTransaction( ss -> ss
+						.upsert( record )
+						.thenCompose( v -> {
+							record.message = null;
+							return ss.upsert( record );
+						} )
+				)
+				.thenCompose( v -> getSessionFactory().withStatelessTransaction( ss -> ss
+								.createQuery( "from Record order by id", Record.class ).getResultList() )
+						.thenAccept( results -> assertThat( results ).isNull() )
+				)
 		);
 	}
 
