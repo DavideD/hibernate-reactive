@@ -22,6 +22,7 @@ import org.hibernate.reactive.adaptor.impl.PreparedStatementAdaptor;
 import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.pool.ReactiveConnection;
 import org.hibernate.reactive.session.ReactiveConnectionSupplier;
+import org.hibernate.reactive.util.impl.CompletionStages;
 import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
 import org.hibernate.sql.model.MutationTarget;
@@ -152,7 +153,7 @@ public class ReactiveOptionalTableUpdateOperation extends OptionalTableUpdateOpe
 		} );
 
 		ReactiveConnection reactiveConnection = ( (ReactiveConnectionSupplier) session ).getReactiveConnection();
-		return reactiveConnection.update( statementDetails.getSqlString(), params ).thenAccept( v -> voidFuture() );
+		return reactiveConnection.update( statementDetails.getSqlString(), params ).thenCompose( CompletionStages::voidFuture);
 	}
 
 	/**
@@ -266,7 +267,7 @@ public class ReactiveOptionalTableUpdateOperation extends OptionalTableUpdateOpe
 		} );
 
 		ReactiveConnection reactiveConnection = ( (ReactiveConnectionSupplier) session ).getReactiveConnection();
-		return reactiveConnection.update( statementDetails.getSqlString(), params ).thenAccept( v -> voidFuture() );
+		return reactiveConnection.update( statementDetails.getSqlString(), params ).thenCompose(CompletionStages::voidFuture);
 	}
 
 //	/**
