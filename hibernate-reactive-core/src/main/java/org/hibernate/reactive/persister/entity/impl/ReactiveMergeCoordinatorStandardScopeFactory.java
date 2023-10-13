@@ -6,11 +6,9 @@
 package org.hibernate.reactive.persister.entity.impl;
 
 
-import org.hibernate.dialect.OracleDialect;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.persister.entity.mutation.MergeCoordinator;
-import org.hibernate.reactive.dialect.ReactiveSqlAstTranslatorWithUpsert;
 import org.hibernate.reactive.persister.entity.mutation.ReactiveMergeCoordinator;
 import org.hibernate.reactive.persister.entity.mutation.ReactiveScopedUpdateCoordinator;
 import org.hibernate.reactive.persister.entity.mutation.ReactiveUpdateCoordinator;
@@ -23,7 +21,6 @@ import org.hibernate.sql.model.ast.MutationGroup;
 import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.internal.MutationOperationGroupFactory;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
-import org.hibernate.sql.model.jdbc.DeleteOrUpsertOperation;
 import org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation;
 
 public class ReactiveMergeCoordinatorStandardScopeFactory extends MergeCoordinator
@@ -90,16 +87,7 @@ public class ReactiveMergeCoordinatorStandardScopeFactory extends MergeCoordinat
 		MutationOperation operation = singleTableMutation.createMutationOperation( valuesAnalysis, factory() );
 		if ( operation instanceof OptionalTableUpdateOperation ) {
 			// We need to plug in our own reactive operation
-			return new ReactiveOptionalTableUpdateOperation(
-					operation.getMutationTarget(),
-					(OptionalTableUpdate) singleTableMutation,
-					factory()
-			);
-		}
-		else if ( operation instanceof DeleteOrUpsertOperation &&
-				factory().getJdbcServices().getDialect() instanceof OracleDialect ) {
-			final ReactiveSqlAstTranslatorWithUpsert translator = new ReactiveSqlAstTranslatorWithUpsert( factory, singleTableMutation );
-			return translator.createReactiveMergeOperation( (OptionalTableUpdate) singleTableMutation );
+			return new ReactiveOptionalTableUpdateOperation( operation.getMutationTarget(), (OptionalTableUpdate) singleTableMutation, factory() );
 		}
 		return operation;
 	}

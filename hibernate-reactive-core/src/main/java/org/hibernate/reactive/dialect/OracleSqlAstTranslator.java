@@ -5,17 +5,17 @@
  */
 package org.hibernate.reactive.dialect;
 
-import org.hibernate.dialect.SqlAstTranslatorWithUpsert;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.persister.entity.mutation.EntityTableMapping;
 import org.hibernate.reactive.sql.model.ReactiveDeleteOrUpsertOperation;
 import org.hibernate.sql.ast.tree.Statement;
+import org.hibernate.sql.exec.spi.JdbcOperation;
 import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
 import org.hibernate.sql.model.jdbc.UpsertOperation;
 
-public class ReactiveSqlAstTranslatorWithUpsert extends SqlAstTranslatorWithUpsert {
-	public ReactiveSqlAstTranslatorWithUpsert(
+public class OracleSqlAstTranslator<T extends JdbcOperation> extends org.hibernate.dialect.OracleSqlAstTranslator<T> {
+	public OracleSqlAstTranslator(
 			SessionFactoryImplementor sessionFactory,
 			Statement statement) {
 		super( sessionFactory, statement );
@@ -23,24 +23,6 @@ public class ReactiveSqlAstTranslatorWithUpsert extends SqlAstTranslatorWithUpse
 
 	@Override
 	public MutationOperation createMergeOperation(OptionalTableUpdate optionalTableUpdate) {
-		renderUpsertStatement( optionalTableUpdate );
-
-		final UpsertOperation upsertOperation = new UpsertOperation(
-				optionalTableUpdate.getMutatingTable().getTableMapping(),
-				optionalTableUpdate.getMutationTarget(),
-				getSql(),
-				getParameterBinders()
-		);
-
-		return new ReactiveDeleteOrUpsertOperation(
-				optionalTableUpdate.getMutationTarget(),
-				(EntityTableMapping) optionalTableUpdate.getMutatingTable().getTableMapping(),
-				upsertOperation,
-				optionalTableUpdate
-		);
-	}
-
-	public MutationOperation createReactiveMergeOperation(OptionalTableUpdate optionalTableUpdate) {
 		renderUpsertStatement( optionalTableUpdate );
 
 		final UpsertOperation upsertOperation = new UpsertOperation(
