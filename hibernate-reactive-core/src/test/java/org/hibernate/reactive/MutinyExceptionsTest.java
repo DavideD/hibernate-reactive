@@ -14,6 +14,7 @@ import org.hibernate.reactive.mutiny.Mutiny;
 
 import org.junit.jupiter.api.Test;
 
+import io.smallrye.mutiny.Uni;
 import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxTestContext;
 import jakarta.persistence.Column;
@@ -70,6 +71,21 @@ public class MutinyExceptionsTest extends BaseReactiveTest {
 					.as( "Failed constraint name should not be null" )
 					.isNotNull();
 		}
+	}
+
+	@Test
+	public void testExceptionPropagation(VertxTestContext context) {
+		test( context, getMutinySessionFactory()
+				.withTransaction( session -> {
+					int loop = 3000;
+					Uni<?> uni = Uni.createFrom().voidItem();
+					for ( int i = 0; i < loop; i++ ) {
+						final int idx = i;
+						uni = uni.map( v -> idx );
+					}
+					return uni;
+				} )
+		);
 	}
 
 	@Entity(name = "Person")
