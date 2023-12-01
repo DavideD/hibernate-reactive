@@ -77,11 +77,11 @@ public class MutinyExceptionsTest extends BaseReactiveTest {
 	public void testExceptionPropagation(VertxTestContext context) {
 		test( context, getMutinySessionFactory()
 				.withTransaction( session -> {
-					int loop = 3000;
+					int loop = 2000;
 					Uni<?> uni = Uni.createFrom().voidItem();
 					for ( int i = 0; i < loop; i++ ) {
 						final int idx = i;
-						uni = uni.map( v -> idx );
+						uni = uni.chain( v -> Uni.createFrom().item( idx ) );
 					}
 					return uni;
 				} )

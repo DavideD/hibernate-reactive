@@ -83,11 +83,15 @@ public class VertxContext implements Context, ServiceRegistryAwareService {
 			// that could lead to unintentionally share the same session with other streams.
 			ContextInternal newContextInternal = (ContextInternal) newContext;
 			final ContextInternal duplicate = newContextInternal.duplicate();
-			if ( trace ) LOG.tracef( "Using duplicated context from VertxInstance: %s", duplicate );
+			if ( trace ) {
+				LOG.tracef( "Using duplicated context from VertxInstance: %s", duplicate );
+			}
 			duplicate.runOnContext( x -> runnable.run() );
 		}
 		else {
-			if ( trace ) LOG.tracef( "Running in the current Vert.x context %s", currentContext );
+			if ( trace ) {
+				LOG.tracef( "Running in the current Vert.x context %s", currentContext );
+			}
 			runnable.run();
 		}
 	}
