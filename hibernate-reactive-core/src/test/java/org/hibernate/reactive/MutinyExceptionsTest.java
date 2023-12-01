@@ -15,21 +15,18 @@ import org.hibernate.reactive.mutiny.Mutiny;
 import org.junit.jupiter.api.Test;
 
 import io.smallrye.mutiny.Uni;
-import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxTestContext;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.SQLSERVER;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
 import static org.hibernate.reactive.testing.ReactiveAssertions.assertThrown;
 
-@Timeout(value = 10, timeUnit = MINUTES)
 
 public class MutinyExceptionsTest extends BaseReactiveTest {
 
@@ -77,11 +74,10 @@ public class MutinyExceptionsTest extends BaseReactiveTest {
 	public void testExceptionPropagation(VertxTestContext context) {
 		test( context, getMutinySessionFactory()
 				.withTransaction( session -> {
-					int loop = 2000;
+					int loop = 5000;
 					Uni<?> uni = Uni.createFrom().voidItem();
 					for ( int i = 0; i < loop; i++ ) {
-						final int idx = i;
-						uni = uni.chain( v -> Uni.createFrom().item( idx ) );
+						uni = uni.map( v -> 1 );
 					}
 					return uni;
 				} )
