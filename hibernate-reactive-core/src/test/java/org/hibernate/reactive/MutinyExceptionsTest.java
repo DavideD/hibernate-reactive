@@ -76,7 +76,7 @@ public class MutinyExceptionsTest extends BaseReactiveTest {
 	@Test
 	public void testExceptionPropagation(VertxTestContext context) {
 		test( context, getMutinySessionFactory()
-				.withTransaction( session -> {
+				.withSession( session -> {
 					int loop = 3000;
 					Uni<?> uni = Uni.createFrom().voidItem();
 					for ( int i = 0; i < loop; i++ ) {
