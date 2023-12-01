@@ -7,6 +7,7 @@ package org.hibernate.reactive.adaptor.impl;
 
 import java.io.InputStream;
 import java.io.Reader;
+import java.lang.invoke.MethodHandles;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.sql.Array;
@@ -18,6 +19,7 @@ import java.sql.Ref;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.RowId;
+import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.SQLXML;
 import java.sql.Statement;
@@ -35,6 +37,9 @@ import java.util.function.Function;
 
 import org.hibernate.engine.jdbc.BlobProxy;
 import org.hibernate.engine.jdbc.ClobProxy;
+import org.hibernate.reactive.logging.impl.Log;
+import org.hibernate.reactive.logging.impl.LoggerFactory;
+import org.hibernate.type.descriptor.jdbc.JdbcType;
 
 import io.vertx.core.buffer.Buffer;
 import io.vertx.sqlclient.Row;
@@ -50,7 +55,7 @@ import static java.util.Objects.requireNonNull;
  * {@code ResultSet} to read values from Vert.x's {@code RowSet}.
  */
 public class ResultSetAdaptor implements ResultSet {
-
+	Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 	private final RowIterator<Row> iterator;
 	private final RowSet<Row> rows;
 	private Row row;
@@ -746,6 +751,70 @@ public class ResultSetAdaptor implements ResultSet {
 	@Override
 	public Array getArray(int columnIndex) {
 		throw new UnsupportedOperationException();
+	}
+
+	public Array getArray(int columnIndex, JdbcType elementJdbcType) {
+		Object[] objects = (Object[]) row.getValue( columnIndex - 1 );
+		wasNull = objects == null;
+		if ( objects == null ) {
+			return null;
+		}
+		return new Array() {
+			@Override
+			public String getBaseTypeName() throws SQLException {
+				return elementJdbcType.getFriendlyName();
+			}
+
+			@Override
+			public int getBaseType() throws SQLException {
+				return elementJdbcType.getJdbcTypeCode();
+			}
+
+			@Override
+			public Object getArray() throws SQLException {
+				return objects;
+			}
+
+			@Override
+			public Object getArray(Map<String, Class<?>> map) throws SQLException {
+				throw LOG.notYetImplemented();
+			}
+
+			@Override
+			public Object getArray(long l, int i) throws SQLException {
+				return null;
+			}
+
+			@Override
+			public Object getArray(long l, int i, Map<String, Class<?>> map) throws SQLException {
+				throw new UnsupportedOperationException( "array of maps is not yet supported" );
+			}
+
+			@Override
+			public ResultSet getResultSet() throws SQLException {
+				return null;
+			}
+
+			@Override
+			public ResultSet getResultSet(Map<String, Class<?>> map) throws SQLException {
+				return null;
+			}
+
+			@Override
+			public ResultSet getResultSet(long l, int i) throws SQLException {
+				return null;
+			}
+
+			@Override
+			public ResultSet getResultSet(long l, int i, Map<String, Class<?>> map) throws SQLException {
+				return null;
+			}
+
+			@Override
+			public void free() throws SQLException {
+
+			}
+		};
 	}
 
 	@Override
