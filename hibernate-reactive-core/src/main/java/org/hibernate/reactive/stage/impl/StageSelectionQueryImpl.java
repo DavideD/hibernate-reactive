@@ -5,6 +5,7 @@
  */
 package org.hibernate.reactive.stage.impl;
 
+import java.lang.invoke.MethodHandles;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 
@@ -13,7 +14,10 @@ import org.hibernate.FlushMode;
 import org.hibernate.LockMode;
 import org.hibernate.graph.GraphSemantic;
 import org.hibernate.graph.spi.RootGraphImplementor;
+import org.hibernate.query.Order;
 import org.hibernate.query.Page;
+import org.hibernate.reactive.logging.impl.Log;
+import org.hibernate.reactive.logging.impl.LoggerFactory;
 import org.hibernate.reactive.query.ReactiveSelectionQuery;
 import org.hibernate.reactive.stage.Stage.SelectionQuery;
 
@@ -24,7 +28,9 @@ import jakarta.persistence.FlushModeType;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.Parameter;
 
+
 public class StageSelectionQueryImpl<T> implements SelectionQuery<T> {
+	private static final Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 	private final ReactiveSelectionQuery<T> delegate;
 
 	public StageSelectionQueryImpl(ReactiveSelectionQuery<T> delegate) {
@@ -186,6 +192,29 @@ public class StageSelectionQueryImpl<T> implements SelectionQuery<T> {
 	public SelectionQuery<T> setLockMode(String alias, LockMode lockMode) {
 		delegate.setLockMode( alias, lockMode );
 		return this;
+	}
+
+	@Override
+	public SelectionQuery<T> setOrder(List<Order<? super T>> orders) {
+		throw LOG.notYetImplemented();
+		// TODO:  see  org.hibernate.query.sqm.internal.SqmSelectQueryImpl#setOrder()
+//		sqm = sqm.copy( SqmCopyContext.noParamCopyContext() );
+//		sqm.orderBy( orderList.stream().map( order -> sortSpecification( sqm, order ) )
+//							 .collect( toList() ) );
+//		// TODO: when the QueryInterpretationCache can handle caching criteria queries,
+//		//       simply cache the new SQM as if it were a criteria query, and remove this:
+//		getQueryOptions().setQueryPlanCachingEnabled( false );
+//		return this;
+	}
+
+	@Override
+	public SelectionQuery<T> setOrder(Order<? super T> order) {
+		throw LOG.notYetImplemented();
+		// TODO:  see  org.hibernate.query.sqm.internal.SqmSelectQueryImpl#setOrder()
+//		SqmSelectStatement sqm = (SqmSelectStatement) (( SqmSelectionQuery )this).getSqmStatement().copy( SqmCopyContext.noParamCopyContext() );
+//		sqm.orderBy( (( SqmSelectionQuery )this).sortSpecification( sqm, order ) );
+//		getQueryOptions().setQueryPlanCachingEnabled( false );
+//		return this;
 	}
 
 	@Override
