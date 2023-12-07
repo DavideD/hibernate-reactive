@@ -196,25 +196,14 @@ public class StageSelectionQueryImpl<T> implements SelectionQuery<T> {
 
 	@Override
 	public SelectionQuery<T> setOrder(List<Order<? super T>> orders) {
-		throw LOG.notYetImplemented();
-		// TODO:  see  org.hibernate.query.sqm.internal.SqmSelectQueryImpl#setOrder()
-//		sqm = sqm.copy( SqmCopyContext.noParamCopyContext() );
-//		sqm.orderBy( orderList.stream().map( order -> sortSpecification( sqm, order ) )
-//							 .collect( toList() ) );
-//		// TODO: when the QueryInterpretationCache can handle caching criteria queries,
-//		//       simply cache the new SQM as if it were a criteria query, and remove this:
-//		getQueryOptions().setQueryPlanCachingEnabled( false );
-//		return this;
+		delegate.setOrder( orders );
+		return this;
 	}
 
 	@Override
 	public SelectionQuery<T> setOrder(Order<? super T> order) {
-		throw LOG.notYetImplemented();
-		// TODO:  see  org.hibernate.query.sqm.internal.SqmSelectQueryImpl#setOrder()
-//		SqmSelectStatement sqm = (SqmSelectStatement) (( SqmSelectionQuery )this).getSqmStatement().copy( SqmCopyContext.noParamCopyContext() );
-//		sqm.orderBy( (( SqmSelectionQuery )this).sortSpecification( sqm, order ) );
-//		getQueryOptions().setQueryPlanCachingEnabled( false );
-//		return this;
+		delegate.setOrder( order );
+		return this;
 	}
 
 	@Override

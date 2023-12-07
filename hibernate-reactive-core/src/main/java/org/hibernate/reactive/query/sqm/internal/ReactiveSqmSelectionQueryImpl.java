@@ -252,6 +252,7 @@ public class ReactiveSqmSelectionQueryImpl<R> extends SqmSelectionQueryImpl<R> i
 		return this;
 	}
 
+	@Override
 	public ReactiveSqmSelectionQueryImpl<R> setOrder(List<Order<? super R>> orders) {
 		super.setOrder( orders );
 		return this;
