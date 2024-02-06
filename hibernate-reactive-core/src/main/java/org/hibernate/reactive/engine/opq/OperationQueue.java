@@ -18,6 +18,7 @@ import org.hibernate.reactive.logging.impl.Log;
 
 import static java.lang.invoke.MethodHandles.lookup;
 import static org.hibernate.reactive.logging.impl.LoggerFactory.make;
+import static org.hibernate.reactive.util.impl.CompletionStages.completedFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.failedFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
@@ -133,7 +134,10 @@ public class OperationQueue {
 		while ( !queues.isEmpty() ) {
 			taskInExecution = queues.remove( 0 );
 			try {
-				result = result.thenCompose( obj -> taskInExecution.apply( obj ) );
+				result = result.thenCompose( obj -> taskInExecution == null
+						? completedFuture( obj )
+						: taskInExecution.apply( obj )
+				);
 			}
 			finally {
 				queues.addAll( 0, executionQueue );
