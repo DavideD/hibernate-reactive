@@ -43,4 +43,9 @@ public class WhenCompleteTask implements Task {
 		consumer.accept( null, t );
 		return null;
 	}
+
+	@Override
+	public String toString() {
+		return WhenCompleteTask.class.getSimpleName() + ":" + getDescription();
+	}
 }

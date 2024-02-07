@@ -7,9 +7,10 @@ package org.hibernate.reactive.engine.opq;
 
 import java.util.concurrent.CompletionStage;
 
+
 public interface Task<T, R> {
 //
-//	default <V> Function<?, V> andThen(Function<? super R, ? extends V> after) {
+//	default <V> Function<?, V> andThen(Function<R, V> after) {
 //		requireNonNull( after );
 //		return (T t) -> apply( t ).thenCompose( obj -> after.apply( obj ) );
 //	}

@@ -49,6 +49,6 @@ public class RegularTask implements Task {
 
 	@Override
 	public String toString() {
-		return "RegularTask: " + description;
+		return RegularTask.class.getSimpleName() + ": " + description;
 	}
 }

@@ -39,4 +39,9 @@ public class StageTask<T, R> implements Task<T, R> {
 	public <E extends Throwable> Object failed(E t) {
 		return null;
 	}
+
+	@Override
+	public String toString() {
+		return StageTask.class.getSimpleName() + ":" + getDescription();
+	}
 }
