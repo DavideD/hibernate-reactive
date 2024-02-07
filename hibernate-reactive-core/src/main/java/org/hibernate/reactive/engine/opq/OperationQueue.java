@@ -143,23 +143,20 @@ public class OperationQueue {
 
 	private CompletionStage subscribe() {
 		LOG.debugf( "Subscribing the queue" );
-		CompletionStage<?> resultStage = voidFuture();
+		CompletionStage<?> result = voidFuture();
 		while ( !queues.isEmpty() ) {
-			taskInExecution = queues.remove( 0 );
-			final Task task = taskInExecution;
-			try {
-				// Is this really correct? No
-				resultStage = resultStage
-						.thenCompose( result -> task
-								.apply( result )
-								.whenComplete( (o, o2) -> taskInExecution = null ) );
-			}
-			finally {
-				queues.addAll( 0, executionQueue );
-				executionQueue.clear();
-			}
+			final Task task = queues.remove( 0 );
+			result = result.thenCompose( obj -> {
+				taskInExecution = task;
+				return taskInExecution.apply( obj )
+						.whenComplete( (o, o2) -> {
+							queues.addAll( 0, executionQueue );
+							executionQueue.clear();
+							taskInExecution = null;
+						} );
+			} );
 		}
-		return resultStage;
+		return result;
 	}
 
 	public <T> CompletionStage<T> asCompletionStage() {

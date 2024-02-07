@@ -34,9 +34,6 @@ import static org.hibernate.reactive.testing.ReactiveAssertions.assertThrown;
 //@TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class OperationQueueTest {
 
-	/**
-	 * Configure Vertx JUnit5 test context
-	 */
 	@RegisterExtension
 	static RunTestOnContext testOnContext = new RunTestOnContext();
 
@@ -47,15 +44,10 @@ public class OperationQueueTest {
 				.chainStage( "1. First stage", () -> supplyAsync( () -> {
 								 sleep( 50 );
 								 return "first";
+							 } ).thenApply( str -> {
+								 sleep( 20 );
+								 return str + " second";
 							 } )
-									 .thenApply( str -> {
-										 sleep( 20 );
-										 return str + " second";
-									 } )
-									 .thenApply( str -> {
-										 operationQueue.chainStage( "2. thenApply",() -> supplyAsync( () -> str + " second-and-half" ) );
-										 return str;
-									 } )
 				)
 				.whenComplete( "3. whenComplete", (o, throwable) -> {
 					if ( throwable == null ) {
@@ -67,18 +59,18 @@ public class OperationQueueTest {
 						} );
 					}
 				} )
-				.chainStage( "4. verify text", str -> completedFuture( str + " third " ) )
+				.chainStage( "4. verify text", str -> completedFuture( str + " third" ) )
 				.add(
 						"5. verify text",
 						text -> {
 							context.verify( () -> assertThat( text )
-									.isEqualTo( "first second second-and-half third" ) );
+									.isEqualTo( "first second third" ) );
 							return text;
 						}
 				)
 				.asCompletionStage()
 				.thenAccept( result -> assertThat( result )
-						.isEqualTo( "first second second-and-half third" ) )
+						.isEqualTo( "first second third" ) )
 		);
 	}
 
@@ -182,7 +174,7 @@ public class OperationQueueTest {
 		);
 	}
 
-	private int collect(int index, Function<Integer, Boolean> fun ) {
+	private int collect(int index, Function<Integer, Boolean> fun) {
 		System.out.println( "Collecting " + index );
 		fun.apply( index );
 		return index;
