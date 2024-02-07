@@ -8,6 +8,7 @@ package org.hibernate.reactive.opq;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 import org.hibernate.reactive.engine.opq.OperationQueue;
@@ -43,7 +44,7 @@ public class OperationQueueTest {
 	public void testChainCompletionStage(VertxTestContext context) {
 		OperationQueue operationQueue = new OperationQueue();
 		test( context, operationQueue
-				.chainStage( () -> supplyAsync( () -> {
+				.chainStage( "1. First stage", () -> supplyAsync( () -> {
 								 sleep( 50 );
 								 return "first";
 							 } )
@@ -51,8 +52,12 @@ public class OperationQueueTest {
 										 sleep( 20 );
 										 return str + " second";
 									 } )
+									 .thenApply( str -> {
+										 operationQueue.chainStage( "2. thenApply",() -> supplyAsync( () -> str + " second-and-half" ) );
+										 return null;
+									 } )
 				)
-				.whenComplete( (o, throwable) -> {
+				.whenComplete( "3. whenComplete", (o, throwable) -> {
 					if ( throwable == null ) {
 						operationQueue.add( () -> o );
 					}
@@ -62,14 +67,18 @@ public class OperationQueueTest {
 						} );
 					}
 				} )
-				.chainStage( str -> completedFuture( str + " third " ) )
+				.chainStage( "4. verify text", str -> completedFuture( str + " third " ) )
 				.add(
-						"3. verify text",
-						text -> context.verify( () -> assertThat( text ).isEqualTo( "first second third" ) )
+						"5. verify text",
+						text -> {
+							context.verify( () -> assertThat( text )
+									.isEqualTo( "first second second-and-half third" ) );
+							return text;
+						}
 				)
-				.ignoreResult()
-				.add( "4. ignoring result", obj -> context.verify( assertThat( obj )::isNull ) )
 				.asCompletionStage()
+				.thenAccept( result -> assertThat( result )
+						.isEqualTo( "first second second-and-half third" ) )
 		);
 	}
 
@@ -87,10 +96,13 @@ public class OperationQueueTest {
 		OperationQueue operationQueue = new OperationQueue();
 		test( context, operationQueue
 				.chain( () -> new RegularTask( "1. create Text", o -> "Text" ) )
-				.chain( str -> new RegularTask( "2. verify text", text -> context.verify( () -> assertThat( str ).isEqualTo( "Text" ) ) ) )
-				.ignoreResult()
-				.add( "3. ignoring result", obj -> context.verify( assertThat( obj )::isNull ) )
+				.chain( str -> new RegularTask( "2. verify text", text -> {
+					context.verify( () -> assertThat( str ).isEqualTo( "Text" ) );
+					return str;
+				} ) )
 				.asCompletionStage()
+				.thenAccept( result -> assertThat( result ).isEqualTo( "Text" ) )
+
 		);
 	}
 
@@ -118,12 +130,16 @@ public class OperationQueueTest {
 	@Test
 	public void testMapSequenceExecution(VertxTestContext context) {
 		OperationQueue operationQueue = new OperationQueue();
+		final AtomicBoolean called = new AtomicBoolean( false );
 		test( context, operationQueue
 				.add( "1. create text", v -> "Test" )
-				.add( "2. verify text", text -> context.verify( () -> assertThat( text ).isEqualTo( "Test" ) ) )
-				.ignoreResult()
-				.add( "3. ignoring result", obj -> context.verify( assertThat( obj )::isNull ) )
+				.add( "2. verify text", text -> {
+					called.set( true );
+					context.verify( () -> assertThat( text ).isEqualTo( "Test" ) );
+					return text;
+				} )
 				.asCompletionStage()
+				.thenAccept( result -> assertThat( called ).isTrue() )
 		);
 	}
 
