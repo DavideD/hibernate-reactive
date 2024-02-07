@@ -18,7 +18,6 @@ import org.hibernate.reactive.logging.impl.Log;
 
 import static java.lang.invoke.MethodHandles.lookup;
 import static org.hibernate.reactive.logging.impl.LoggerFactory.make;
-import static org.hibernate.reactive.util.impl.CompletionStages.completedFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.failedFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
@@ -40,16 +39,30 @@ public class OperationQueue {
 	}
 
 	public OperationQueue whenComplete(BiConsumer<Object, Throwable> consumer) {
-		add( new WhenCompleteTask( consumer ) );
+		whenComplete( null, consumer );
+		return this;
+	}
+
+	public OperationQueue whenComplete(String description, BiConsumer<Object, Throwable> consumer) {
+		add( new WhenCompleteTask( description, consumer ) );
 		return this;
 	}
 
 	public OperationQueue chainStage(Supplier<CompletionStage<Object>> stageSupplier) {
-		return add( new StageTask<>( obj -> stageSupplier.get() ) );
+		return chainStage( null, stageSupplier );
+	}
+
+	public OperationQueue chainStage(String description, Supplier<CompletionStage<Object>> stageSupplier) {
+		return chainStage( description, obj -> stageSupplier.get() );
 	}
 
 	public OperationQueue chainStage(Function<Object, CompletionStage<Object>> stageFunction) {
-		add( new StageTask<>( stageFunction ) );
+		chainStage( null, stageFunction );
+		return this;
+	}
+
+	public OperationQueue chainStage(String description, Function<Object, CompletionStage<Object>> stageFunction) {
+		add( new StageTask<>( description, stageFunction ) );
 		return this;
 	}
 
@@ -130,22 +143,23 @@ public class OperationQueue {
 
 	private CompletionStage subscribe() {
 		LOG.debugf( "Subscribing the queue" );
-		CompletionStage<?> result = voidFuture();
+		CompletionStage<?> resultStage = voidFuture();
 		while ( !queues.isEmpty() ) {
 			taskInExecution = queues.remove( 0 );
+			final Task task = taskInExecution;
 			try {
-				result = result.thenCompose( obj -> taskInExecution == null
-						? completedFuture( obj )
-						: taskInExecution.apply( obj )
-				);
+				// Is this really correct? No
+				resultStage = resultStage
+						.thenCompose( result -> task
+								.apply( result )
+								.whenComplete( (o, o2) -> taskInExecution = null ) );
 			}
 			finally {
 				queues.addAll( 0, executionQueue );
 				executionQueue.clear();
-				taskInExecution = null;
 			}
 		}
-		return result;
+		return resultStage;
 	}
 
 	public <T> CompletionStage<T> asCompletionStage() {

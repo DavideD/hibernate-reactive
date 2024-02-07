@@ -54,7 +54,7 @@ public class OperationQueueTest {
 									 } )
 									 .thenApply( str -> {
 										 operationQueue.chainStage( "2. thenApply",() -> supplyAsync( () -> str + " second-and-half" ) );
-										 return null;
+										 return str;
 									 } )
 				)
 				.whenComplete( "3. whenComplete", (o, throwable) -> {
