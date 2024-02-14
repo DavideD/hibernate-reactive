@@ -32,7 +32,7 @@ dependencies {
     testImplementation "io.vertx:vertx-mysql-client:${vertxSqlClientVersion}"
     testImplementation "io.vertx:vertx-db2-client:${vertxSqlClientVersion}"
     testImplementation "io.vertx:vertx-mssql-client:${vertxSqlClientVersion}"
-    testImplementation "io.vertx:vertx-oracle-client:${vertxSqlClientVersion}"
+    implementation "io.vertx:vertx-oracle-client:${vertxSqlClientVersion}"
 
     // Metrics
     testImplementation "io.vertx:vertx-micrometer-metrics:${vertxMicrometerMetricsVersion}"

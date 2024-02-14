@@ -253,6 +253,10 @@ public class PreparedStatementAdaptor implements PreparedStatement {
 		}
 	}
 
+	public void setArrayRaw(int parameterIndex, Array x) {
+		put( parameterIndex, x );
+	}
+
 	@Override
 	public ResultSetMetaData getMetaData() {
 		throw new UnsupportedOperationException();

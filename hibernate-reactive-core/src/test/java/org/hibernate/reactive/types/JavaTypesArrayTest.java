@@ -23,7 +23,6 @@ import org.hibernate.annotations.Array;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.reactive.BaseReactiveTest;
-import org.hibernate.reactive.annotations.DisabledFor;
 import org.hibernate.reactive.testing.SqlStatementTracker;
 
 import org.junit.jupiter.api.Test;
@@ -40,7 +39,6 @@ import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.ORACLE;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -54,7 +52,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * All the other dbs will save the array as a `varbinary` column and length is set using @{@link Column}
  */
 @Timeout(value = 10, timeUnit = MINUTES)
-@DisabledFor(value = ORACLE, reason = "Vert.x does not support arrays for Oracle")
 public class JavaTypesArrayTest extends BaseReactiveTest {
 
 	private static SqlStatementTracker sqlTracker;

@@ -14,13 +14,18 @@ import java.util.Locale;
 import org.hibernate.HibernateException;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.OracleArrayJdbcType;
-import org.hibernate.reactive.adaptor.impl.ArrayAdaptor;
+import org.hibernate.reactive.adaptor.impl.PreparedStatementAdaptor;
+import org.hibernate.reactive.pool.ReactiveConnection;
+import org.hibernate.reactive.session.ReactiveSession;
 import org.hibernate.type.descriptor.ValueBinder;
 import org.hibernate.type.descriptor.WrapperOptions;
 import org.hibernate.type.descriptor.java.BasicPluralJavaType;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.jdbc.BasicBinder;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
+
+import io.vertx.oracleclient.OracleConnection;
+import oracle.jdbc.internal.OracleArray;
 
 import static java.sql.Types.ARRAY;
 
@@ -69,7 +74,7 @@ public class ReactiveOracleArrayJdbcType extends OracleArrayJdbcType {
 			@Override
 			protected void doBind(PreparedStatement st, X value, int index, WrapperOptions options)
 					throws SQLException {
-				st.setArray( index, getArray( value, containerJavaType, options ) );
+				(( PreparedStatementAdaptor)st).setArrayRaw( index, getArray( value, containerJavaType, options ) );
 			}
 
 			@Override
@@ -83,13 +88,18 @@ public class ReactiveOracleArrayJdbcType extends OracleArrayJdbcType {
 				}
 			}
 
-			private ArrayAdaptor getArray(X value, BasicPluralJavaType<X> containerJavaType, WrapperOptions options) {
+			private OracleArray getArray(X value, BasicPluralJavaType<X> containerJavaType, WrapperOptions options) {
 				//noinspection unchecked
 				final Class<Object[]> arrayClass = (Class<Object[]>) Array
 						.newInstance( getElementJdbcType().getPreferredJavaTypeClass( options ), 0 ).getClass();
+
+				ReactiveConnection reactiveConnection = ( (ReactiveSession) options.getSession() ).getReactiveConnection();
+				OracleConnection vertxConnection = reactiveConnection.unwrap( OracleConnection.class );
+
 				final Object[] objects = javaTypeDescriptor.unwrap( value, arrayClass, options );
 				final String arrayTypeName = typeName( options ).toUpperCase( Locale.ROOT );
-				return new ArrayAdaptor( arrayTypeName, objects );
+				OracleArray array = (OracleArray) vertxConnection.createArray( arrayTypeName, objects );
+				return array;
 			}
 		};
 	}

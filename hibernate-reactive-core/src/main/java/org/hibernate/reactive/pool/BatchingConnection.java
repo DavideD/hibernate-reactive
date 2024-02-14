@@ -51,6 +51,11 @@ public class BatchingConnection implements ReactiveConnection {
 	}
 
 	@Override
+	public <T> T unwrap(Class<T> type) {
+		return delegate.unwrap( type );
+	}
+
+	@Override
 	public ReactiveConnection withBatchSize(int batchSize) {
 		if ( batchSize <= 1 ) {
 			return delegate;

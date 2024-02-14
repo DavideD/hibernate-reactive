@@ -37,6 +37,8 @@ public interface ReactiveConnection {
 		void verifyOutcome(int rowCount, int batchPosition, String sql);
 	}
 
+	<T> T unwrap(Class<T> type);
+
 	DatabaseMetadata getDatabaseMetadata();
 
 	CompletionStage<Void> execute(String sql);

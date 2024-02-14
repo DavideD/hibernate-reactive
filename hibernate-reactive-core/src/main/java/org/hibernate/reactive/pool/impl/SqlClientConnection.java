@@ -10,7 +10,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.CompletionStage;
 
 import org.hibernate.engine.jdbc.internal.FormatStyle;
@@ -39,6 +38,7 @@ import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
 import io.vertx.sqlclient.spi.DatabaseMetadata;
 
+import static java.util.Objects.requireNonNull;
 import static org.hibernate.reactive.util.impl.CompletionStages.rethrow;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
@@ -71,6 +71,18 @@ public class SqlClientConnection implements ReactiveConnection {
 
 	public DatabaseMetadata getDatabaseMetadata() {
 		return client().databaseMetadata();
+	}
+
+	@Override
+	public <T> T unwrap(Class<T> type) {
+		requireNonNull( type );
+		if ( type.isInstance( this ) ) {
+			return type.cast( this );
+		}
+		if ( type.isInstance( connection ) ) {
+			return type.cast( connection );
+		}
+		throw new IllegalArgumentException( "Can't unwrap to type: " + type );
 	}
 
 	@Override
@@ -265,7 +277,7 @@ public class SqlClientConnection implements ReactiveConnection {
 	}
 
 	private void feedback(String sql) {
-		Objects.requireNonNull( sql, "SQL query cannot be null" );
+		requireNonNull( sql, "SQL query cannot be null" );
 		// DDL already gets formatted by the client, so don't reformat it
 		FormatStyle formatStyle = sqlStatementLogger.isFormat() && !sql.contains( System.lineSeparator() )
 				? FormatStyle.BASIC
