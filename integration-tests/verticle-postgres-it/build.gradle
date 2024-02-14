@@ -41,7 +41,7 @@ dependencies {
 
     // Testing
     testImplementation "org.assertj:assertj-core:${assertjVersion}"
-    testImplementation "io.vertx:vertx-junit5:${vertxSqlClientVersion}"
+    testImplementation "io.vertx:vertx-junit5:${vertxJUnit5Version}"
 }
 
 // Configuration for the tests
@@ -59,7 +59,7 @@ tasks.withType( Test ).configureEach {
     systemProperty 'org.hibernate.reactive.common.InternalStateAssertions.ENFORCE', 'true'
 
     if ( project.hasProperty( 'includeTests' ) ) {
-        // Example: ./gradlew testAll -PincludeTests=DefaultPortTest
+        // Example: ./gradlew testAll -PincludeTests=DfaultPortTest
         filter {
             includeTestsMatching project.getProperty( 'includeTests' ) ?: '*'
         }

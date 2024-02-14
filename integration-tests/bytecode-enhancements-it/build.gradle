@@ -40,7 +40,7 @@ dependencies {
 
     // Testing
     testImplementation "org.assertj:assertj-core:${assertjVersion}"
-    testImplementation "io.vertx:vertx-junit5:${vertxSqlClientVersion}"
+    testImplementation "io.vertx:vertx-junit5:${vertxJUnit5Version}"
 }
 
 // Optional: enable the bytecode enhancements

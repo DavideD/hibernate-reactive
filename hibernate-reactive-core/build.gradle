@@ -25,7 +25,7 @@ dependencies {
 
     // Testing
     testImplementation 'org.assertj:assertj-core:3.24.2'
-    testImplementation "io.vertx:vertx-junit5:${vertxSqlClientVersion}"
+    testImplementation "io.vertx:vertx-junit5:${vertxJUnit5Version}"
 
     // Drivers
     testImplementation "io.vertx:vertx-pg-client:${vertxSqlClientVersion}"
@@ -35,7 +35,7 @@ dependencies {
     testImplementation "io.vertx:vertx-oracle-client:${vertxSqlClientVersion}"
 
     // Metrics
-    testImplementation "io.vertx:vertx-micrometer-metrics:${vertxSqlClientVersion}"
+    testImplementation "io.vertx:vertx-micrometer-metrics:${vertxMicrometerMetricsVersion}"
 
     // Optional dependency of vertx-pg-client, essential when connecting via SASL SCRAM
     testImplementation 'com.ongres.scram:client:2.1'
