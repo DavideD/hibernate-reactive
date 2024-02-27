@@ -5,6 +5,7 @@
  */
 package org.hibernate.reactive;
 
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -12,18 +13,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hibernate.boot.registry.StandardServiceRegistry;
-import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.cfg.Configuration;
-import org.hibernate.reactive.annotations.DisabledFor;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import io.vertx.junit5.Timeout;
+import io.vertx.junit5.VertxTestContext;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -36,47 +28,13 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
-import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.COCKROACHDB;
-import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2;
-import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
-import static org.hibernate.reactive.provider.Settings.DIALECT;
-import static org.hibernate.reactive.provider.Settings.DRIVER;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
-@Timeout(value = 10, timeUnit = MINUTES)
-
-/**
- * This test class verifies that data can be persisted and queried on the same database
- * using both JPA/hibernate and reactive session factories.
- */
-@DisabledFor(value = DB2, reason = "Exception: IllegalStateException: Needed to have 6 in buffer but only had 0")
-@DisabledFor(value = COCKROACHDB, reason = "We need to change the URL schema we normally use for testing")
-public class ORMReactivePersistenceTest extends BaseReactiveTest {
-
-	private SessionFactory ormFactory;
+public class ManyToManyWithCompositeIdTest extends BaseReactiveTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
 		return List.of( CarsClients.class, ClientA.class, Client.class, Car.class );
-	}
-
-	@BeforeEach
-	public void prepareOrmFactory() {
-		Configuration configuration = constructConfiguration();
-		configuration.setProperty( DRIVER, dbType().getJdbcDriver() );
-		configuration.setProperty( DIALECT, dbType().getDialectClass().getName() );
-
-		StandardServiceRegistryBuilder builder = new StandardServiceRegistryBuilder()
-				.applySettings( configuration.getProperties() );
-
-		StandardServiceRegistry registry = builder.build();
-		ormFactory = configuration.buildSessionFactory( registry );
-	}
-
-	@AfterEach
-	public void closeOrmFactory() {
-		ormFactory.close();
 	}
 
 	@Override
@@ -85,45 +43,47 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testORMWithStageSession() {
-		List<ClientA> clients = new ArrayList<>();
+	public void test(VertxTestContext context) {
+		List<Client> clients = new ArrayList<>();
+		for ( int i = 0; i < 5; i++ ) {
+			ClientA client = new ClientA();
+			client.setName( "name" + i );
+			client.setEmail( "email" + i );
+			client.setPhone( "phone" + i );
+			clients.add( client );
+		}
+
 		List<Car> cars = new ArrayList<>();
-		try (Session session = ormFactory.openSession()) {
-			session.beginTransaction();
-			session.setJdbcBatchSize( 5 );
-			for ( int i = 0; i < 5; i++ ) {
-				ClientA client = new ClientA();
-				client.setName( "name" + i );
-				client.setEmail( "email" + i );
-				client.setPhone( "phone" + i );
-				session.persist( client );
-				clients.add( client );
-			}
-
-			for ( int i = 0; i < 2; i++ ) {
-				Car car = new Car();
-				car.setBrand( "brand" + i );
-				car.setModel( "model" + i );
-				session.persist( car );
-				cars.add( car );
-			}
-
-			session.getTransaction().commit();
+		for ( int i = 0; i < 2; i++ ) {
+			Car car = new Car();
+			car.setBrand( "brand" + i );
+			car.setModel( "model" + i );
+			cars.add( car );
 		}
 
-		try (Session session = ormFactory.openSession()) {
-			session.beginTransaction();
-			session.setJdbcBatchSize( 5 );
-			for ( ClientA client : clients ) {
-				for ( Car car : cars ) {
-					CarsClients carsClients = new CarsClients( "location" );
-					carsClients.setCar( session.getReference( car ) );
-					carsClients.setClient( session.getReference( client ) );
-					session.persist( carsClients );
-				}
-			}
-			session.getTransaction().commit();
-		}
+		test( context, getMutinySessionFactory()
+				.withSession( session -> {
+					session.setBatchSize( 5 );
+					return session.persistAll( cars.toArray() )
+							.chain( () -> session
+									.persistAll( clients.toArray() )
+									.chain( session::flush ) )
+							.chain( () -> {
+								List<CarsClients> carsClientsList = new ArrayList<>();
+								for ( Client client : clients ) {
+									for ( Car car : cars ) {
+										CarsClients carsClients = new CarsClients( "location" );
+										carsClientsList.add( carsClients );
+										car.addClient( carsClients );
+										client.addCar( carsClients );
+									}
+								}
+								return session
+										.persistAll( carsClientsList.toArray() )
+										.chain( session::flush );
+							} );
+				} )
+		);
 	}
 
 	@Entity
