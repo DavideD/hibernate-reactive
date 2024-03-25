@@ -136,7 +136,13 @@ abstract class AbstractReactiveSaveEventListener<C> implements CallbackRegistryC
 						.thenCompose( generatedId -> performSaveWithId( entity, context, source, persister, generator, generatedId ) );
 			}
 
-			final Object generatedId = ( (BeforeExecutionGenerator) generator ).generate( source, entity, null, INSERT );
+			final Object generatedId = ( (BeforeExecutionGenerator) generator ) .generate( source, entity, null, INSERT );
+			if ( generatedId instanceof CompletionStage ) {
+				return ( (CompletionStage<Void>) generatedId ).thenCompose( gid -> {
+					final Object id = castToIdentifierType( gid, persister );
+					return performSaveWithId( entity, context, source, persister, generator, id );
+				} );
+			}
 			final Object id =  castToIdentifierType( generatedId, persister );
 			return performSaveWithId( entity, context, source, persister, generator, id );
 		}

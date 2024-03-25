@@ -15,6 +15,7 @@ import org.hibernate.reactive.session.ReactiveConnectionSupplier;
 
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
 
 /**
  * @author Gavin King
@@ -46,13 +47,13 @@ public class ReactiveGeneratorWrapper
 
 	@Override
 	public CompletionStage<Object> generate(ReactiveConnectionSupplier session, Object entity) {
-		return reactiveGenerator.generate( session, entity ).thenApply( id -> id );
+		return reactiveGenerator.generate( session, entity ).thenApply( Function.identity() );
 	}
 
 	@Override
 	public Object generate(SharedSessionContractImplementor session, Object object) {
 		Objects.requireNonNull( generator, "Only a reactive generator is available" );
-		return generator.generate( session, object );
+		return this.generate( (ReactiveConnectionSupplier) session, object );
 	}
 
 	@Override
