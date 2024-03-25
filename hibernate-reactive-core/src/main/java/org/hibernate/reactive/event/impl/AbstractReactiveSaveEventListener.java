@@ -25,6 +25,7 @@ import org.hibernate.event.internal.WrapVisitor;
 import org.hibernate.event.spi.EventSource;
 import org.hibernate.generator.BeforeExecutionGenerator;
 import org.hibernate.generator.Generator;
+import org.hibernate.id.CompositeNestedGeneratedValueGenerator;
 import org.hibernate.id.IdentifierGenerationException;
 import org.hibernate.jpa.event.spi.CallbackRegistry;
 import org.hibernate.jpa.event.spi.CallbackRegistryConsumer;
@@ -35,6 +36,7 @@ import org.hibernate.reactive.engine.impl.CascadingAction;
 import org.hibernate.reactive.engine.impl.ReactiveEntityIdentityInsertAction;
 import org.hibernate.reactive.engine.impl.ReactiveEntityRegularInsertAction;
 import org.hibernate.reactive.id.ReactiveIdentifierGenerator;
+import org.hibernate.reactive.id.impl.ReactiveCompositeNestedGeneratedValue;
 import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.logging.impl.LoggerFactory;
 import org.hibernate.reactive.session.ReactiveConnectionSupplier;
@@ -129,12 +131,16 @@ abstract class AbstractReactiveSaveEventListener<C> implements CallbackRegistryC
 		final EntityPersister persister = source.getEntityPersister( entityName, entity );
 		final Generator generator = persister.getGenerator();
 		if ( !generator.generatedOnExecution() ) {
+			if ( generator instanceof CompositeNestedGeneratedValueGenerator ) {
+				generator = new ReactiveCompositeNestedGeneratedValue(...);
+			}
 			if ( generator instanceof ReactiveIdentifierGenerator ) {
 				return ( (ReactiveIdentifierGenerator<?>) generator )
 						.generate( ( ReactiveConnectionSupplier ) source, entity )
 						.thenApply( id -> castToIdentifierType( id, persister ) )
 						.thenCompose( generatedId -> performSaveWithId( entity, context, source, persister, generator, generatedId ) );
 			}
+
 
 			final Object generatedId = ( (BeforeExecutionGenerator) generator ) .generate( source, entity, null, INSERT );
 			if ( generatedId instanceof CompletionStage ) {
