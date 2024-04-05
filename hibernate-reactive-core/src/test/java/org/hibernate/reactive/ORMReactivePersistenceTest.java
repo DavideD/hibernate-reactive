@@ -5,15 +5,27 @@
  */
 package org.hibernate.reactive;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.Collection;
+import java.util.Date;
+import java.util.EnumSet;
 import java.util.List;
-import java.util.Objects;
 
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.Generated;
+import org.hibernate.annotations.GenerationTime;
+import org.hibernate.annotations.ValueGenerationType;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.Configuration;
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.generator.BeforeExecutionGenerator;
+import org.hibernate.generator.EventType;
+import org.hibernate.generator.EventTypeSets;
 import org.hibernate.reactive.annotations.DisabledFor;
 
 import org.junit.jupiter.api.AfterEach;
@@ -21,18 +33,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.vertx.junit5.Timeout;
-import io.vertx.junit5.VertxTestContext;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.COCKROACHDB;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
-import static org.hibernate.reactive.provider.Settings.DIALECT;
 import static org.hibernate.reactive.provider.Settings.DRIVER;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Timeout(value = 10, timeUnit = MINUTES)
 
@@ -48,14 +62,15 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
-		return List.of( Flour.class );
+		return List.of( GeneratedWithIdentity.class );
 	}
 
 	@BeforeEach
 	public void prepareOrmFactory() {
 		Configuration configuration = constructConfiguration();
 		configuration.setProperty( DRIVER, dbType().getJdbcDriver() );
-		configuration.setProperty( DIALECT, dbType().getDialectClass().getName() );
+		configuration.setProperty( AvailableSettings.HBM2DDL_CREATE_SOURCE, "script-then-metadata");
+		configuration.setProperty(AvailableSettings.HBM2DDL_CREATE_SCRIPT_SOURCE, "/mysql-pipe.sql");
 
 		StandardServiceRegistryBuilder builder = new StandardServiceRegistryBuilder()
 				.applySettings( configuration.getProperties() );
@@ -70,112 +85,109 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testORMWithStageSession(VertxTestContext context) {
-		final Flour almond = new Flour( 1, "Almond", "made from ground almonds.", "Gluten free" );
+	public void testORMWitMutinySession() {
+		final GeneratedWithIdentity davide = new GeneratedWithIdentity( "Davide", "D'Alto" );
 
-		try (Session session = ormFactory.openSession()) {
-			session.beginTransaction();
-			session.persist( almond );
-			session.getTransaction().commit();
-		}
-
-		// Check database with Stage session and verify 'almond' flour exists
-		test( context, openSession()
-				.thenCompose( stageSession -> stageSession.find( Flour.class, almond.id ) )
-				.thenAccept( entityFound -> assertEquals( almond, entityFound ) )
-		);
-	}
-
-	@Test
-	public void testORMWitMutinySession(VertxTestContext context) {
-		final Flour rose = new Flour( 2, "Rose", "made from ground rose pedals.", "Full fragrance" );
-
+		CurrentUser.INSTANCE.logIn( "dd-insert" );
 		try (Session ormSession = ormFactory.openSession()) {
 			ormSession.beginTransaction();
-			ormSession.persist( rose );
+			ormSession.persist( davide );
 			ormSession.getTransaction().commit();
 		}
-
-		// Check database with Mutiny session and verify 'rose' flour exists
-		test( context, openMutinySession()
-				.chain( session -> session.find( Flour.class, rose.id ) )
-				.invoke( foundRose -> assertEquals( rose, foundRose ) )
-		);
+		org.hibernate.reactive.CurrentUser.INSTANCE.logOut();
 	}
 
-	@Entity(name = "Flour")
-	@Table(name = "Flour")
-	public static class Flour {
+	public static class CurrentUser {
+
+		public static final CurrentUser INSTANCE = new CurrentUser();
+
+		private static final ThreadLocal<String> storage = new ThreadLocal<>();
+
+		public void logIn(String user) {
+			storage.set( user );
+		}
+
+		public void logOut() {
+			storage.remove();
+		}
+
+		public String get() {
+			return storage.get();
+		}
+
+
+		@ValueGenerationType(generatedBy = InsertLoggedUserGenerator.class)
+		@Retention(RetentionPolicy.RUNTIME)
+		public @interface LoggedUserInsert {}
+
+		@ValueGenerationType(generatedBy = AlwaysLoggedUserGenerator.class)
+		@Retention(RetentionPolicy.RUNTIME)
+		public @interface LoggedUserAlways {}
+
+		public static abstract class AbstractLoggedUserGenerator implements BeforeExecutionGenerator {
+			@Override
+			public Object generate(
+					SharedSessionContractImplementor session,
+					Object owner,
+					Object currentValue,
+					EventType eventType) {
+				return CurrentUser.INSTANCE.get();
+			}
+		}
+
+		public static class InsertLoggedUserGenerator extends AbstractLoggedUserGenerator {
+
+			@Override
+			public EnumSet<EventType> getEventTypes() {
+				return EventTypeSets.INSERT_ONLY;
+			}
+		}
+
+		public static class AlwaysLoggedUserGenerator extends AbstractLoggedUserGenerator {
+
+			@Override
+			public EnumSet<EventType> getEventTypes() {
+				return EventTypeSets.ALL;
+			}
+		}
+	}
+
+	@Entity(name = "GeneratedWithIdentity")
+	@Table(name = "GeneratedWithIdentitySingleTable")
+	static class GeneratedWithIdentity {
 		@Id
-		private Integer id;
-		private String name;
-		private String description;
-		private String type;
+		@GeneratedValue(strategy = GenerationType.IDENTITY)
+		public Long id;
 
-		public Flour() {
+		public String firstname;
+
+		public String lastname;
+
+		@Generated(GenerationTime.ALWAYS)
+		@Column(columnDefinition = "varchar(600) generated always as (firstname || ' ' || lastname) stored")
+		private String fullName;
+
+		@Temporal(value = TemporalType.TIMESTAMP)
+		@Generated(GenerationTime.INSERT)
+		@Column(columnDefinition = "timestamp")
+		@ColumnDefault("current_timestamp")
+		public Date createdAt;
+
+		@CurrentUser.LoggedUserInsert
+		public String createdBy;
+
+		@CurrentUser.LoggedUserAlways
+		public String updatedBy;
+
+		@Generated(GenerationTime.NEVER)
+		public String never;
+
+		public GeneratedWithIdentity() {
 		}
 
-		public Flour(Integer id, String name, String description, String type) {
-			this.id = id;
-			this.name = name;
-			this.description = description;
-			this.type = type;
-		}
-
-		public Integer getId() {
-			return id;
-		}
-
-		public void setId(Integer id) {
-			this.id = id;
-		}
-
-		public String getName() {
-			return name;
-		}
-
-		public void setName(String name) {
-			this.name = name;
-		}
-
-		public String getDescription() {
-			return description;
-		}
-
-		public void setDescription(String description) {
-			this.description = description;
-		}
-
-		public String getType() {
-			return type;
-		}
-
-		public void setType(String type) {
-			this.type = type;
-		}
-
-		@Override
-		public String toString() {
-			return name;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if ( this == o ) {
-				return true;
-			}
-			if ( o == null || getClass() != o.getClass() ) {
-				return false;
-			}
-			Flour flour = (Flour) o;
-			return Objects.equals( name, flour.name ) &&
-					Objects.equals( description, flour.description ) &&
-					Objects.equals( type, flour.type );
-		}
-
-		@Override
-		public int hashCode() {
-			return Objects.hash( name, description, type );
+		public GeneratedWithIdentity(String firstname, String lastname) {
+			this.firstname = firstname;
+			this.lastname = lastname;
 		}
 	}
 }
