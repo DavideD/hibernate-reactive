@@ -47,7 +47,7 @@ import static org.hibernate.cfg.JdbcSettings.DRIVER;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
 
 @Timeout(value = 10, timeUnit = MINUTES)
-public class ManyToOneIdClassTest extends BaseReactiveTest {
+public class GeneratedValueWithCompositeIdAndManyToOneTest extends BaseReactiveTest {
 
 	private SessionFactory ormFactory;
 
