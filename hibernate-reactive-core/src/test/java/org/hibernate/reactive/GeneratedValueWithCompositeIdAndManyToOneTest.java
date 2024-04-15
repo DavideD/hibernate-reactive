@@ -13,15 +13,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.hibernate.SessionFactory;
-import org.hibernate.boot.registry.StandardServiceRegistry;
-import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.cfg.AvailableSettings;
-import org.hibernate.cfg.Configuration;
 import org.hibernate.reactive.mutiny.Mutiny;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -42,32 +35,13 @@ import jakarta.persistence.Table;
 import org.assertj.core.api.Assertions;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
-import static org.hibernate.cfg.JdbcSettings.DIALECT;
-import static org.hibernate.cfg.JdbcSettings.DRIVER;
-import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
 
 @Timeout(value = 10, timeUnit = MINUTES)
 public class GeneratedValueWithCompositeIdAndManyToOneTest extends BaseReactiveTest {
 
-	private SessionFactory ormFactory;
-
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
 		return List.of( Fruit.class, FruitBasket.class );
-	}
-
-	@BeforeEach
-	public void prepareOrmFactory() {
-		Configuration configuration = constructConfiguration();
-		configuration.setProperty( AvailableSettings.HBM2DDL_IMPORT_FILES, "/import-for-generatedcompositeidtest.sql" );
-		configuration.setProperty( DRIVER, dbType().getJdbcDriver() );
-		configuration.setProperty( DIALECT, dbType().getDialectClass().getName() );
-
-		StandardServiceRegistryBuilder builder = new StandardServiceRegistryBuilder()
-				.applySettings( configuration.getProperties() );
-
-		StandardServiceRegistry registry = builder.build();
-		ormFactory = configuration.buildSessionFactory( registry );
 	}
 
 	public Uni<Void> populateDb() {
@@ -78,7 +52,7 @@ public class GeneratedValueWithCompositeIdAndManyToOneTest extends BaseReactiveT
 				new Fruit( "Apple" ),
 				new Fruit( "Banana" )
 		};
-		AtomicLong id = new AtomicLong(1);
+		AtomicLong id = new AtomicLong( 1 );
 		Arrays.stream( fruits ).forEach( fruit -> {
 			fruit.id = id.getAndIncrement();
 			fruit.basket = fruitBasket;
@@ -91,26 +65,23 @@ public class GeneratedValueWithCompositeIdAndManyToOneTest extends BaseReactiveT
 				);
 	}
 
-	@AfterEach
-	public void closeOrmFactory() {
-		ormFactory.close();
-	}
-
 	@Test
 	public void testFetchAll(VertxTestContext context) {
-		test( context, getMutinySessionFactory()
-//		test( context, populateDb()
-//				.call( () -> getMutinySessionFactory()
-					  .withTransaction( session -> session
-							  .createSelectionQuery( "from Fruit f left join fetch f.basket order by f.id", Fruit.class )
-							  .getResultList()
-							  .call( list -> {
-								  Assertions.assertThat( list ).isNotNull();
-								  return Mutiny.fetch( list.get( 0 ).basket.fruits );
-							  } )
-							  .invoke( fruits -> fruits.stream().forEach( System.out::println ) )
-					  )
-//				)
+		test( context, populateDb()
+				.call( () -> getMutinySessionFactory()
+						.withTransaction( session -> session
+								.createSelectionQuery(
+										"from Fruit f left join fetch f.basket order by f.id",
+										Fruit.class
+								)
+								.getResultList()
+								.call( list -> {
+									Assertions.assertThat( list ).isNotNull();
+									return Mutiny.fetch( list.get( 0 ).basket.fruits );
+								} )
+								.invoke( fruits -> fruits.stream().forEach( System.out::println ) )
+						)
+				)
 		);
 	}
 
@@ -181,19 +152,19 @@ public class GeneratedValueWithCompositeIdAndManyToOneTest extends BaseReactiveT
 
 		@Override
 		public boolean equals(Object o) {
-			if (this == o) {
+			if ( this == o ) {
 				return true;
 			}
-			if (o == null || getClass() != o.getClass()) {
+			if ( o == null || getClass() != o.getClass() ) {
 				return false;
 			}
 			FruitId fruitId = (FruitId) o;
-			return Objects.equals( id, fruitId.id) && Objects.equals( basket, fruitId.basket);
+			return Objects.equals( id, fruitId.id ) && Objects.equals( basket, fruitId.basket );
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(id, basket);
+			return Objects.hash( id, basket );
 		}
 	}
 }

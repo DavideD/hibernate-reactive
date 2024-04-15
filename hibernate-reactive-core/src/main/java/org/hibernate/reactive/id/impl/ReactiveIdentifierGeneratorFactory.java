@@ -131,8 +131,7 @@ public class ReactiveIdentifierGeneratorFactory extends StandardIdentifierGenera
 			return generator;
 		}
 
-		//this is not the way ORM does this: instead it passes a
-		//SqlStringGenerationContext to IdentifierGenerator.initialize()
+		// ORM does it differently: it passes a SqlStringGenerationContext to IdentifierGenerator.initialize()
 		final ConfigurationService cs = serviceRegistry.getService( ConfigurationService.class );
 		if ( !params.containsKey( PersistentIdentifierGenerator.SCHEMA ) ) {
 			final String schema = cs.getSetting( Settings.DEFAULT_SCHEMA, StandardConverters.STRING );

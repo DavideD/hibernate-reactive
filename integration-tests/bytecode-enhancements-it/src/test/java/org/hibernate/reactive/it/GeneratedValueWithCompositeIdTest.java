@@ -10,8 +10,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.hibernate.cfg.AvailableSettings;
-import org.hibernate.cfg.Configuration;
 import org.hibernate.reactive.it.generatedvalue.Fruit;
 import org.hibernate.reactive.it.generatedvalue.FruitBasket;
 import org.hibernate.reactive.mutiny.Mutiny;
