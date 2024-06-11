@@ -27,6 +27,7 @@ import org.hibernate.reactive.query.internal.ReactiveResultSetMappingProcessor;
 import org.hibernate.reactive.query.spi.ReactiveNativeSelectQueryPlan;
 import org.hibernate.reactive.sql.exec.internal.StandardReactiveSelectExecutor;
 import org.hibernate.reactive.sql.results.spi.ReactiveListResultsConsumer;
+import org.hibernate.reactive.sql.results.spi.ReactiveResultsConsumer;
 import org.hibernate.sql.exec.internal.JdbcParameterBindingsImpl;
 import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
@@ -63,6 +64,55 @@ public class ReactiveNativeSelectQueryPlanImpl<R> extends NativeSelectQueryPlanI
 		this.sql = parser.process();
 		this.parameterList = parameterList;
 
+	}
+
+	@Override
+	public <T> CompletionStage<T> reactiveExecuteQuery(DomainQueryExecutionContext executionContext, ReactiveResultsConsumer<T, R> resultsConsumer) {
+		final List<JdbcParameterBinder> jdbcParameterBinders;
+		final JdbcParameterBindings jdbcParameterBindings;
+
+		final QueryParameterBindings queryParameterBindings = executionContext.getQueryParameterBindings();
+		if ( parameterList == null || parameterList.isEmpty() ) {
+			jdbcParameterBinders = emptyList();
+			jdbcParameterBindings = JdbcParameterBindings.NO_BINDINGS;
+		}
+		else {
+			jdbcParameterBinders = new ArrayList<>( parameterList.size() );
+			jdbcParameterBindings = new JdbcParameterBindingsImpl(
+					queryParameterBindings,
+					parameterList,
+					jdbcParameterBinders,
+					executionContext.getSession().getFactory()
+			);
+		}
+
+		final ReactiveSharedSessionContractImplementor reactiveSession = (ReactiveSharedSessionContractImplementor) executionContext.getSession();
+		return reactiveSession
+				.reactiveAutoFlushIfRequired( affectedTableNames )
+				.thenCompose( aBoolean -> {
+					final JdbcOperationQuerySelect jdbcSelect = new JdbcOperationQuerySelect(
+							sql,
+							jdbcParameterBinders,
+							resultSetMapping,
+							affectedTableNames,
+							Collections.emptySet()
+					);
+
+					return StandardReactiveSelectExecutor.INSTANCE
+							.executeQuery(
+									jdbcSelect,
+									jdbcParameterBindings,
+									SqmJdbcExecutionContextAdapter.usingLockingAndPaging( executionContext ),
+									null,
+									null,
+									sqlString -> executionContext.getSession()
+											.getJdbcCoordinator()
+											.getStatementPreparer()
+											.prepareQueryStatement( sqlString, false, null ),
+									resultsConsumer
+							);
+
+				} );
 	}
 
 	@Override

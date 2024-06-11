@@ -33,18 +33,22 @@ import org.hibernate.query.Order;
 import org.hibernate.query.QueryParameter;
 import org.hibernate.query.ResultListTransformer;
 import org.hibernate.query.TupleTransformer;
+import org.hibernate.query.internal.DelegatingDomainQueryExecutionContext;
 import org.hibernate.query.named.NamedResultSetMappingMemento;
 import org.hibernate.query.spi.AbstractSelectionQuery;
 import org.hibernate.query.spi.NonSelectQueryPlan;
 import org.hibernate.query.spi.QueryInterpretationCache;
+import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.query.sql.internal.NativeQueryImpl;
 import org.hibernate.query.sql.spi.NamedNativeQueryMemento;
 import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.logging.impl.LoggerFactory;
 import org.hibernate.reactive.query.spi.ReactiveAbstractSelectionQuery;
+import org.hibernate.reactive.query.spi.ReactiveNativeSelectQueryPlan;
 import org.hibernate.reactive.query.sql.spi.ReactiveNativeQueryImplementor;
 import org.hibernate.reactive.query.sql.spi.ReactiveNonSelectQueryPlan;
 import org.hibernate.reactive.query.sqm.spi.ReactiveSelectQueryPlan;
+import org.hibernate.reactive.sql.results.spi.ReactiveSingleResultConsumer;
 import org.hibernate.type.BasicTypeReference;
 
 import jakarta.persistence.AttributeConverter;
@@ -195,6 +199,23 @@ public class ReactiveNativeQueryImpl<R> extends NativeQueryImpl<R>
 	@Override
 	public List<R> list() {
 		return selectionQueryDelegate.list();
+	}
+
+	@Override
+	public CompletionStage<Long> getReactiveResultsCount() {
+		final DelegatingDomainQueryExecutionContext context = new DelegatingDomainQueryExecutionContext( this ) {
+			@Override
+			public QueryOptions getQueryOptions() {
+				return QueryOptions.NONE;
+			}
+		};
+
+		return createCountQueryPlan().reactiveExecuteQuery( context, new ReactiveSingleResultConsumer<>() );
+	}
+
+	@Override
+	protected ReactiveNativeSelectQueryPlan<Long> createCountQueryPlan() {
+		return (ReactiveNativeSelectQueryPlan<Long>) super.createCountQueryPlan();
 	}
 
 	@Override
