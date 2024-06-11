@@ -670,6 +670,70 @@ public class QueryTest extends BaseReactiveTest {
 		);
 	}
 
+	@Test
+	public void testNativeSelectionQueryGetResultCountWithStage(VertxTestContext context) {
+		Author author1 = new Author( "Iain M. Banks" );
+		Author author2 = new Author( "Neal Stephenson" );
+		test( context, getSessionFactory()
+				.withTransaction( s -> s.persist( author1, author2 ) )
+				.thenCompose( v -> getSessionFactory().withSession( s -> s
+						.createNativeQuery( "select * from " + AUTHOR_TABLE, Author.class )
+						.getResultCount() ) )
+				.thenAccept( count -> assertEquals( 2L, count ) )
+		);
+	}
+
+	@Test
+	public void testNativeQueryGetResultCountWithStage(VertxTestContext context) {
+		Author author1 = new Author( "Iain M. Banks" );
+		Author author2 = new Author( "Neal Stephenson" );
+		test( context, getSessionFactory()
+				.withTransaction( s -> s.persist( author1, author2 ) )
+				.thenCompose( v -> getSessionFactory().withSession( s -> s
+						.createNativeQuery( "select * from " + AUTHOR_TABLE, Author.class )
+						.getResultCount() ) )
+				.thenAccept( count -> assertEquals( 2L, count ) )
+				.thenCompose( v -> getSessionFactory().withSession( s -> s
+						.createNativeQuery( "select * from " + AUTHOR_TABLE, Author.class )
+						.setMaxResults( 1 )
+						.setFirstResult( 1 )
+						.getResultCount() ) )
+				.thenAccept( count -> assertEquals( 2L, count ) )
+		);
+	}
+
+	@Test
+	public void testNativeSelectionQueryGetResultCountWithMutiny(VertxTestContext context) {
+		Author author1 = new Author( "Iain M. Banks" );
+		Author author2 = new Author( "Neal Stephenson" );
+		test( context, getSessionFactory()
+				.withTransaction( s -> s.persist( author1, author2 ) )
+				.thenCompose( v -> getSessionFactory().withSession( s -> s
+						.createNativeQuery( "select * from " + AUTHOR_TABLE, Author.class )
+						.getResultCount() ) )
+				.thenAccept( count -> assertEquals( 2L, count ) )
+		);
+	}
+
+	@Test
+	public void testNativeQueryGetResultCountWithMutiny(VertxTestContext context) {
+		Author author1 = new Author( "Iain M. Banks" );
+		Author author2 = new Author( "Neal Stephenson" );
+		test( context, getMutinySessionFactory()
+				.withTransaction( s -> s.persistAll( author1, author2 ) )
+				.chain( () -> getMutinySessionFactory().withSession( s -> s
+						.createNativeQuery( "select * from " + AUTHOR_TABLE, Author.class )
+						.getResultCount() ) )
+				.invoke( count -> assertEquals( 2L, count ) )
+				.chain( () -> getMutinySessionFactory().withSession( s -> s
+						.createNativeQuery( "select * from " + AUTHOR_TABLE, Author.class )
+						.setMaxResults( 1 )
+						.setFirstResult( 1 )
+						.getResultCount() ) )
+				.invoke( count -> assertEquals( 2L, count ) )
+		);
+	}
+
 	@NamedNativeQuery(
 			name = SQL_NAMED_QUERY,
 			resultClass = Object[].class,
