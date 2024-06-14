@@ -7,7 +7,8 @@ on:
     tags:
       - '2.4.*'
   pull_request:
-    branches: wip/2.4
+    branches:
+      - wip/2.4
 
 # See https://github.com/hibernate/hibernate-orm/pull/4615 for a description of the behavior we're getting.
 concurrency:

@@ -6,7 +6,7 @@
 package org.hibernate.reactive.sql.results.graph.entity.internal;
 
 import org.hibernate.sql.results.graph.AssemblerCreationState;
-import org.hibernate.sql.results.graph.FetchParentAccess;
+import org.hibernate.sql.results.graph.InitializerParent;
 import org.hibernate.sql.results.graph.entity.EntityInitializer;
 import org.hibernate.sql.results.graph.entity.internal.EntityFetchJoinedImpl;
 
@@ -16,18 +16,18 @@ public class ReactiveEntityFetchJoinedImpl extends EntityFetchJoinedImpl {
 	}
 
 	@Override
-	public EntityInitializer createInitializer(FetchParentAccess parentAccess, AssemblerCreationState creationState) {
-		return new ReactiveEntityJoinedFetchInitializer(
-				getEntityResult(),
-				getReferencedModePart(),
-				getNavigablePath(),
-				creationState.determineEffectiveLockMode( getSourceAlias() ),
-				getNotFoundAction(),
-				getKeyResult(),
-				getEntityResult().getRowIdResult(),
+	public EntityInitializer<?> createInitializer(InitializerParent<?> parent, AssemblerCreationState creationState) {
+		return new ReactiveEntityInitializerImpl(
+				this,
+				getSourceAlias(),
 				getEntityResult().getIdentifierFetch(),
 				getEntityResult().getDiscriminatorFetch(),
-				parentAccess,
+				getKeyResult(),
+				getEntityResult().getRowIdResult(),
+				getNotFoundAction(),
+				isAffectedByFilter(),
+				parent,
+				false,
 				creationState
 		);
 	}

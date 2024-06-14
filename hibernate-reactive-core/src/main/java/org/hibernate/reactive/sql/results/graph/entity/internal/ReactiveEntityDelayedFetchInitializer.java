@@ -22,44 +22,42 @@ import org.hibernate.reactive.session.impl.ReactiveQueryExecutorLookup;
 import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
 import org.hibernate.reactive.sql.results.graph.ReactiveInitializer;
 import org.hibernate.spi.NavigablePath;
-import org.hibernate.sql.results.graph.DomainResultAssembler;
-import org.hibernate.sql.results.graph.FetchParentAccess;
-import org.hibernate.sql.results.graph.basic.BasicResultAssembler;
+import org.hibernate.sql.results.graph.AssemblerCreationState;
+import org.hibernate.sql.results.graph.DomainResult;
+import org.hibernate.sql.results.graph.InitializerParent;
+import org.hibernate.sql.results.graph.basic.BasicFetch;
 import org.hibernate.sql.results.graph.entity.internal.EntityDelayedFetchInitializer;
+import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 import org.hibernate.type.Type;
 
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
-public class ReactiveEntityDelayedFetchInitializer extends EntityDelayedFetchInitializer implements ReactiveInitializer {
+public class ReactiveEntityDelayedFetchInitializer extends EntityDelayedFetchInitializer implements ReactiveInitializer<EntityDelayedFetchInitializer.EntityDelayedFetchInitializerData> {
 
 	private final ToOneAttributeMapping referencedModelPart;
 
 	public ReactiveEntityDelayedFetchInitializer(
-			FetchParentAccess parentAccess,
+			InitializerParent<?> parent,
 			NavigablePath fetchedNavigable,
 			ToOneAttributeMapping referencedModelPart,
 			boolean selectByUniqueKey,
-			DomainResultAssembler<?> identifierAssembler,
-			BasicResultAssembler<?> discriminatorAssembler) {
-		super( parentAccess, fetchedNavigable, referencedModelPart, selectByUniqueKey, identifierAssembler, discriminatorAssembler );
+			DomainResult<?> keyResult,
+			BasicFetch<?> discriminatorResult,
+			AssemblerCreationState creationState) {
+		super( parent, fetchedNavigable, referencedModelPart, selectByUniqueKey, keyResult, discriminatorResult, creationState );
 		this.referencedModelPart = referencedModelPart;
 	}
 
 	@Override
-	public CompletionStage<Void> reactiveResolveInstance(ReactiveRowProcessingState rowProcessingState) {
-		if ( isProcessed() ) {
+	public CompletionStage<Void> reactiveResolveInstance(EntityDelayedFetchInitializerData data) {
+		if ( data.getState() != State.KEY_RESOLVED ) {
 			return voidFuture();
 		}
 
-		setProcessed( true );
+		data.setState( State.RESOLVED );
 
-		// We can avoid processing further if the parent is already initialized or missing,
-		// as the value produced by this initializer will never be used anyway.
-		if ( parentShallowCached || shouldSkipInitializer( rowProcessingState ) ) {
-			return voidFuture();
-		}
-
-		setIdentifier( getIdentifierAssembler().assemble( rowProcessingState ) );
+		final RowProcessingState rowProcessingState = data.getRowProcessingState();
+		data.entityIdentifier = identifierAssembler.assemble( rowProcessingState );
 
 		CompletionStage<Void> stage = voidFuture();
 		if ( getIdentifier() == null ) {
@@ -136,6 +134,11 @@ public class ReactiveEntityDelayedFetchInitializer extends EntityDelayedFetchIni
 			}
 		}
 		return stage;
+	}
+
+	@Override
+	public CompletionStage<Void> reactiveInitializeInstance(EntityDelayedFetchInitializerData data) {
+		return null;
 	}
 
 	@Override

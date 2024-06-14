@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import org.hibernate.CacheMode;
-import org.hibernate.LockOptions;
 import org.hibernate.cache.spi.QueryKey;
 import org.hibernate.cache.spi.QueryResultsCache;
 import org.hibernate.engine.spi.PersistenceContext;
@@ -175,17 +174,10 @@ public class StandardReactiveSelectExecutor implements ReactiveSelectExecutor {
 					);
 
 					final ReactiveRowReader<R> rowReader = ReactiveResultsHelper.createRowReader(
-							executionContext,
-							// If follow-on locking is used, we must omit the lock options here,
-							// because these lock options are only for Initializers.
-							// If we wouldn't omit this, the follow-on lock requests would be no-ops,
-							// because the EntityEntries would already have the desired lock mode
-							deferredResultSetAccess.usesFollowOnLocking()
-									? LockOptions.NONE
-									: executionContext.getQueryOptions().getLockOptions(),
+							executionContext.getSession().getSessionFactory(),
 							rowTransformer,
 							domainResultType,
-							jdbcValues.getValuesMapping()
+							jdbcValues
 					);
 
 					final ReactiveRowProcessingState rowProcessingState = new ReactiveRowProcessingState(

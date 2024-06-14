@@ -17,8 +17,9 @@ import org.hibernate.reactive.persister.entity.impl.ReactiveEntityPersister;
 import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
 import org.hibernate.spi.EntityIdentifierNavigablePath;
 import org.hibernate.spi.NavigablePath;
-import org.hibernate.sql.results.graph.DomainResultAssembler;
-import org.hibernate.sql.results.graph.FetchParentAccess;
+import org.hibernate.sql.results.graph.AssemblerCreationState;
+import org.hibernate.sql.results.graph.DomainResult;
+import org.hibernate.sql.results.graph.InitializerParent;
 
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.whileLoop;
@@ -31,12 +32,13 @@ public class ReactiveEntitySelectFetchByUniqueKeyInitializer extends ReactiveEnt
 	private final ToOneAttributeMapping fetchedAttribute;
 
 	public ReactiveEntitySelectFetchByUniqueKeyInitializer(
-			FetchParentAccess parentAccess,
+			InitializerParent<?> parent,
 			ToOneAttributeMapping fetchedAttribute,
 			NavigablePath fetchedNavigable,
 			EntityPersister concreteDescriptor,
-			DomainResultAssembler<?> keyAssembler) {
-		super( parentAccess, fetchedAttribute, fetchedNavigable, concreteDescriptor, keyAssembler );
+			DomainResult<?> keyResult,
+			AssemblerCreationState creationState) {
+		super( parent, fetchedAttribute, fetchedNavigable, concreteDescriptor, creationState );
 		this.fetchedAttribute = fetchedAttribute;
 	}
 

@@ -46,6 +46,8 @@ public class ReactiveValuesResultSet {
 	private final ReactiveResultSetAccess resultSetAccess;
 	private final JdbcValuesMapping valuesMapping;
 	private final ExecutionContext executionContext;
+	private final boolean usesFollowOnLocking;
+
 	private final SqlSelection[] sqlSelections;
 	private final BitSet initializedIndexes;
 	private final Object[] currentRowJdbcValues;
@@ -60,13 +62,21 @@ public class ReactiveValuesResultSet {
 			QueryKey queryCacheKey,
 			String queryIdentifier,
 			QueryOptions queryOptions,
+			boolean usesFollowOnLocking,
 			JdbcValuesMapping valuesMapping,
 			JdbcValuesMetadata metadataForCache,
 			ExecutionContext executionContext) {
-		this.queryCachePutManager = resolveQueryCachePutManager( executionContext, queryOptions, queryCacheKey, queryIdentifier, metadataForCache );
+		this.queryCachePutManager = resolveQueryCachePutManager(
+				executionContext,
+				queryOptions,
+				queryCacheKey,
+				queryIdentifier,
+				metadataForCache
+		);
 		this.resultSetAccess = resultSetAccess;
 		this.valuesMapping = valuesMapping;
 		this.executionContext = executionContext;
+		this.usesFollowOnLocking = usesFollowOnLocking;
 
 		final int rowSize = valuesMapping.getRowSize();
 		this.sqlSelections = new SqlSelection[rowSize];
@@ -185,6 +195,10 @@ public class ReactiveValuesResultSet {
 			queryCachePutManager.finishUp( session );
 		}
 		resultSetAccess.release();
+	}
+
+	public boolean usesFollowOnLocking() {
+		return usesFollowOnLocking;
 	}
 
 	public void finishRowProcessing(RowProcessingState rowProcessingState, boolean wasAdded) {

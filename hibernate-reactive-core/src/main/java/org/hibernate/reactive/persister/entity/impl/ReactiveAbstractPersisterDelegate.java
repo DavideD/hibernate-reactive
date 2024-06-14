@@ -155,7 +155,7 @@ public class ReactiveAbstractPersisterDelegate {
 			}
 		}
 
-		return new ReactiveSingleIdEntityLoaderStandardImpl<>( entityDescriptor, factory );
+		return new ReactiveSingleIdEntityLoaderStandardImpl<>( entityDescriptor, new LoadQueryInfluencers( factory ) );
 	}
 
 	private static ReactiveSingleIdEntityLoader<Object> createBatchingIdEntityLoader(

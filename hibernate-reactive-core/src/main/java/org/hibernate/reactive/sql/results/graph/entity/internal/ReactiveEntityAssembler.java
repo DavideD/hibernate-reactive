@@ -30,16 +30,10 @@ public class ReactiveEntityAssembler extends EntityAssembler implements Reactive
 		super(javaType, initializer);
 	}
 
-	@Override
-	public Object assemble(RowProcessingState rowProcessingState) {
-		throw make( Log.class, lookup() )
-				.nonReactiveMethodCall( "reactiveAssemble" );
-	}
 
 	@Override
-	public Object assemble(RowProcessingState rowProcessingState, JdbcValuesSourceProcessingOptions options) {
-		throw make( Log.class, lookup() )
-				.nonReactiveMethodCall( "reactiveAssemble" );
+	public Object assemble(RowProcessingState rowProcessingState) {
+		throw make( Log.class, lookup() ).nonReactiveMethodCall( "reactiveAssemble" );
 	}
 
 	@Override
@@ -49,7 +43,7 @@ public class ReactiveEntityAssembler extends EntityAssembler implements Reactive
 		// as the instance is needed for resolveKey before initializing the instance in RowReader
 		return ( (ReactiveInitializer) getInitializer() )
 				.reactiveResolveInstance( rowProcessingState )
-				.thenApply( v -> getInitializer().getEntityInstance() );
+				.thenApply( v -> getInitializer().getEntityInstance( rowProcessingState ) );
 
 	}
 }

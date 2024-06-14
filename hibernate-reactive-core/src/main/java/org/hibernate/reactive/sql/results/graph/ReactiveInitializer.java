@@ -9,15 +9,29 @@ import java.util.concurrent.CompletionStage;
 
 import org.hibernate.Incubating;
 import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
+import org.hibernate.sql.results.graph.InitializerData;
+import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 
 /**
  * @see org.hibernate.sql.results.graph.Initializer
  */
 @Incubating
-public interface ReactiveInitializer {
+public interface ReactiveInitializer<Data extends InitializerData> {
 
-	CompletionStage<Void> reactiveResolveInstance(ReactiveRowProcessingState rowProcessingState);
+	/**
+	 * The current data of this initializer.
+	 */
+	Data getData(RowProcessingState rowProcessingState);
 
-	CompletionStage<Void> reactiveInitializeInstance(ReactiveRowProcessingState rowProcessingState);
+	CompletionStage<Void> reactiveResolveInstance(Data data);
 
+	default CompletionStage<Void> reactiveResolveInstance(ReactiveRowProcessingState rowProcessingState) {
+		return reactiveResolveInstance( getData( rowProcessingState ) );
+	}
+
+	CompletionStage<Void> reactiveInitializeInstance(Data data);
+
+	default CompletionStage<Void> reactiveInitializeInstance(ReactiveRowProcessingState rowProcessingState) {
+		return reactiveInitializeInstance( getData( rowProcessingState ) );
+	}
 }

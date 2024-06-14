@@ -28,8 +28,9 @@ import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
 import org.hibernate.reactive.sql.results.graph.ReactiveInitializer;
 import org.hibernate.spi.EntityIdentifierNavigablePath;
 import org.hibernate.spi.NavigablePath;
-import org.hibernate.sql.results.graph.DomainResultAssembler;
-import org.hibernate.sql.results.graph.FetchParentAccess;
+import org.hibernate.sql.results.graph.AssemblerCreationState;
+import org.hibernate.sql.results.graph.DomainResult;
+import org.hibernate.sql.results.graph.InitializerParent;
 import org.hibernate.sql.results.graph.entity.EntityLoadingLogging;
 import org.hibernate.sql.results.graph.entity.internal.EntitySelectFetchInitializer;
 import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
@@ -52,12 +53,13 @@ public class ReactiveEntitySelectFetchInitializer extends EntitySelectFetchIniti
 	private final boolean isEnhancedForLazyLoading;
 
 	public ReactiveEntitySelectFetchInitializer(
-			FetchParentAccess parentAccess,
+			InitializerParent<?> parent,
 			ToOneAttributeMapping toOneMapping,
 			NavigablePath fetchedNavigable,
 			EntityPersister concreteDescriptor,
-			DomainResultAssembler<?> keyAssembler) {
-		super( parentAccess, toOneMapping, fetchedNavigable, concreteDescriptor, keyAssembler );
+			DomainResult<?> keyResult,
+			AssemblerCreationState creationState) {
+		super( parent, toOneMapping, fetchedNavigable, concreteDescriptor, keyResult, creationState );
 		this.isEnhancedForLazyLoading = concreteDescriptor.getBytecodeEnhancementMetadata().isEnhancedForLazyLoading();
 	}
 

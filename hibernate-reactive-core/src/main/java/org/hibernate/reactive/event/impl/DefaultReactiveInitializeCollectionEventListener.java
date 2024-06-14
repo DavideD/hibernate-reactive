@@ -165,7 +165,7 @@ public class DefaultReactiveInitializeCollectionEventListener implements Initial
 
 		final PersistenceContext persistenceContext = source.getPersistenceContextInternal();
 		cacheEntry.assemble( collection, persister, persistenceContext.getCollectionOwner( id, persister ) );
-		persistenceContext.getCollectionEntry( collection ).postInitialize( collection );
+		persistenceContext.getCollectionEntry( collection ).postInitialize( collection, source );
 		return true;
 	}
 }

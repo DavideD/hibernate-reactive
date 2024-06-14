@@ -12,8 +12,7 @@ import org.hibernate.sql.results.graph.AssemblerCreationState;
 import org.hibernate.sql.results.graph.DomainResult;
 import org.hibernate.sql.results.graph.DomainResultCreationState;
 import org.hibernate.sql.results.graph.FetchParent;
-import org.hibernate.sql.results.graph.FetchParentAccess;
-import org.hibernate.sql.results.graph.basic.BasicResultAssembler;
+import org.hibernate.sql.results.graph.InitializerParent;
 import org.hibernate.sql.results.graph.entity.EntityInitializer;
 import org.hibernate.sql.results.graph.entity.internal.EntityDelayedFetchImpl;
 
@@ -29,16 +28,15 @@ public class ReactiveEntityDelayedFetchImpl extends EntityDelayedFetchImpl {
 	}
 
 	@Override
-	public EntityInitializer createInitializer(FetchParentAccess parentAccess, AssemblerCreationState creationState) {
+	public EntityInitializer<?> createInitializer(InitializerParent<?> parent, AssemblerCreationState creationState) {
 		return new ReactiveEntityDelayedFetchInitializer(
-				parentAccess,
+				parent,
 				getNavigablePath(),
 				getEntityValuedModelPart(),
 				isSelectByUniqueKey(),
-				getKeyResult().createResultAssembler( parentAccess, creationState ),
-				getDiscriminatorFetch() != null
-						? (BasicResultAssembler<?>) getDiscriminatorFetch().createResultAssembler( parentAccess, creationState )
-						: null
+				getKeyResult(),
+				getDiscriminatorFetch(),
+				creationState
 		);
 	}
 }

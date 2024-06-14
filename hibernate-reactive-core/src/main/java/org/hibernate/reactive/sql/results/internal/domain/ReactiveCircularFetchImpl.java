@@ -11,7 +11,7 @@ import org.hibernate.reactive.sql.results.graph.entity.internal.ReactiveEntitySe
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
 import org.hibernate.sql.results.graph.DomainResult;
-import org.hibernate.sql.results.graph.FetchParentAccess;
+import org.hibernate.sql.results.graph.InitializerParent;
 import org.hibernate.sql.results.graph.entity.EntityInitializer;
 import org.hibernate.sql.results.internal.domain.CircularFetchImpl;
 
@@ -25,7 +25,7 @@ public class ReactiveCircularFetchImpl extends CircularFetchImpl {
 
 	@Override
 	protected EntityInitializer buildEntitySelectFetchInitializer(
-			FetchParentAccess parentAccess,
+			InitializerParent<?> parent,
 			ToOneAttributeMapping fetchable,
 			EntityPersister entityPersister,
 			DomainResult<?> keyResult,
@@ -33,7 +33,7 @@ public class ReactiveCircularFetchImpl extends CircularFetchImpl {
 			boolean selectByUniqueKey,
 			AssemblerCreationState creationState) {
 		return ReactiveEntitySelectFetchInitializerBuilder.createInitializer(
-				parentAccess,
+				parent,
 				fetchable,
 				entityPersister,
 				keyResult,
