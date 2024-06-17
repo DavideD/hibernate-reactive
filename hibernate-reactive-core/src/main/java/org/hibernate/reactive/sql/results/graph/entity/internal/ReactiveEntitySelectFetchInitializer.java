@@ -54,12 +54,13 @@ public class ReactiveEntitySelectFetchInitializer extends EntitySelectFetchIniti
 
 	public ReactiveEntitySelectFetchInitializer(
 			InitializerParent<?> parent,
-			ToOneAttributeMapping toOneMapping,
+			ToOneAttributeMapping fetchedAttribute,
 			NavigablePath fetchedNavigable,
 			EntityPersister concreteDescriptor,
 			DomainResult<?> keyResult,
+			boolean affectedByFilter,
 			AssemblerCreationState creationState) {
-		super( parent, toOneMapping, fetchedNavigable, concreteDescriptor, keyResult, creationState );
+		super( parent, fetchedAttribute, fetchedNavigable, concreteDescriptor, keyResult, affectedByFilter, creationState );
 		this.isEnhancedForLazyLoading = concreteDescriptor.getBytecodeEnhancementMetadata().isEnhancedForLazyLoading();
 	}
 

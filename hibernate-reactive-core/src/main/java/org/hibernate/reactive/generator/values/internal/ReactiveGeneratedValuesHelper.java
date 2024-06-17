@@ -171,6 +171,7 @@ public class ReactiveGeneratedValuesHelper {
 				null,
 				null,
 				QueryOptions.NONE,
+				true,
 				mappingProducer.resolve(
 						directResultSetAccess,
 						session.getLoadQueryInfluencers(),

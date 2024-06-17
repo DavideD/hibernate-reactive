@@ -6,9 +6,9 @@
 package org.hibernate.reactive.sql.results.internal;
 
 import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.sql.results.jdbc.spi.JdbcValues;
+import org.hibernate.reactive.sql.exec.spi.ReactiveValuesResultSet;
+import org.hibernate.reactive.sql.results.spi.ReactiveRowReader;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingResolution;
-import org.hibernate.sql.results.spi.RowReader;
 import org.hibernate.sql.results.spi.RowTransformer;
 
 /**
@@ -16,12 +16,12 @@ import org.hibernate.sql.results.spi.RowTransformer;
  */
 public class ReactiveResultsHelper {
 
-	public static <R> RowReader<R> createRowReader(
+	public static <R> ReactiveRowReader<R> createRowReader(
 			SessionFactoryImplementor sessionFactory,
 			RowTransformer<R> rowTransformer,
 			Class<R> transformedResultJavaType,
-			JdbcValues jdbcValues) {
-		final JdbcValuesMappingResolution jdbcValuesMappingResolution = jdbcValues
+			ReactiveValuesResultSet resultSet) {
+		final JdbcValuesMappingResolution jdbcValuesMappingResolution = resultSet
 				.getValuesMapping().resolveAssemblers( sessionFactory );
 		return new ReactiveStandardRowReader<>( jdbcValuesMappingResolution, rowTransformer, transformedResultJavaType );
 	}

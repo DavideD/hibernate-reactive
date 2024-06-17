@@ -37,8 +37,9 @@ public class ReactiveEntitySelectFetchByUniqueKeyInitializer extends ReactiveEnt
 			NavigablePath fetchedNavigable,
 			EntityPersister concreteDescriptor,
 			DomainResult<?> keyResult,
+			boolean affectedByFilter,
 			AssemblerCreationState creationState) {
-		super( parent, fetchedAttribute, fetchedNavigable, concreteDescriptor, creationState );
+		super( parent, fetchedAttribute, fetchedNavigable, concreteDescriptor, keyResult, affectedByFilter, creationState );
 		this.fetchedAttribute = fetchedAttribute;
 	}
 

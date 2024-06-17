@@ -33,6 +33,7 @@ public class ReactiveEntitySelectFetchInitializerBuilder {
 			DomainResult<?> keyResult,
 			NavigablePath navigablePath,
 			boolean selectByUniqueKey,
+			boolean affectedByFilter,
 			AssemblerCreationState creationState) {
 		if ( selectByUniqueKey ) {
 			return new ReactiveEntitySelectFetchByUniqueKeyInitializer(
@@ -41,6 +42,7 @@ public class ReactiveEntitySelectFetchInitializerBuilder {
 					navigablePath,
 					entityPersister,
 					keyResult,
+					affectedByFilter,
 					creationState
 			);
 		}
@@ -53,6 +55,7 @@ public class ReactiveEntitySelectFetchInitializerBuilder {
 						navigablePath,
 						entityPersister,
 						keyResult,
+						affectedByFilter,
 						creationState
 				);
 			case BATCH_LOAD:
@@ -63,6 +66,7 @@ public class ReactiveEntitySelectFetchInitializerBuilder {
 							navigablePath,
 							entityPersister,
 							keyResult,
+							affectedByFilter,
 							creationState
 					);
 				}
@@ -73,6 +77,7 @@ public class ReactiveEntitySelectFetchInitializerBuilder {
 							navigablePath,
 							entityPersister,
 							keyResult,
+							affectedByFilter,
 							creationState
 					);
 				}
@@ -83,6 +88,7 @@ public class ReactiveEntitySelectFetchInitializerBuilder {
 						navigablePath,
 						entityPersister,
 						keyResult,
+						affectedByFilter,
 						creationState
 				);
 		}
@@ -95,13 +101,13 @@ public class ReactiveEntitySelectFetchInitializerBuilder {
 			InitializerParent<?> parent,
 			AssemblerCreationState creationState) {
 		if ( !entityPersister.isBatchLoadable() ) {
-			return NONE;
+			return BatchMode.NONE;
 		}
 		if ( creationState.isDynamicInstantiation() ) {
 			if ( canBatchInitializeBeUsed( entityPersister ) ) {
 				return BatchMode.BATCH_INITIALIZE;
 			}
-			return NONE;
+			return BatchMode.NONE;
 		}
 		while ( parent.isEmbeddableInitializer() ) {
 			final EmbeddableInitializer<?> embeddableInitializer = parent.asEmbeddableInitializer();
@@ -117,7 +123,7 @@ public class ReactiveEntitySelectFetchInitializerBuilder {
 					// we can't inject entities later through setValues()
 					|| !( initializedPart.getMappedType().getRepresentationStrategy().getInstantiator()
 					instanceof StandardEmbeddableInstantiator ) ) {
-				return entityPersister.hasSubclasses() ? NONE : BATCH_INITIALIZE;
+				return entityPersister.hasSubclasses() ? BatchMode.NONE : BatchMode.BATCH_INITIALIZE;
 			}
 			parent = parent.getParent();
 			if ( parent == null ) {
@@ -132,12 +138,12 @@ public class ReactiveEntitySelectFetchInitializerBuilder {
 				// Do batch initialization instead of batch loading if the parent entity is cacheable
 				// to avoid putting entity state into the cache at a point when the association is not yet set
 				if ( canBatchInitializeBeUsed( entityPersister ) ) {
-					return BATCH_INITIALIZE;
+					return BatchMode.BATCH_INITIALIZE;
 				}
-				return NONE;
+				return BatchMode.NONE;
 			}
 		}
-		return BATCH_LOAD;
+		return BatchMode.BATCH_LOAD;
 	}
 
 	private static boolean canBatchInitializeBeUsed(EntityPersister entityPersister) {

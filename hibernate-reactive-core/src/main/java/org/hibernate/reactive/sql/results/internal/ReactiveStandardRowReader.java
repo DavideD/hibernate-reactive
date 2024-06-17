@@ -187,7 +187,7 @@ public class ReactiveStandardRowReader<R> implements ReactiveRowReader<R> {
 						.reactiveAssemble( rowProcessingState, options )
 						.thenAccept( obj -> resultRow[i] = (byte) obj );
 			}
-			resultRow[i] = (byte) assembler.assemble( rowProcessingState, options );
+			resultRow[i] = (byte) assembler.assemble( rowProcessingState );
 			return voidFuture();
 		} ).thenApply( ignore -> {
 			afterRow( rowProcessingState );
@@ -208,7 +208,7 @@ public class ReactiveStandardRowReader<R> implements ReactiveRowReader<R> {
 						.reactiveAssemble( rowProcessingState, options )
 						.thenAccept( obj -> resultRow[i] = (char) obj );
 			}
-			resultRow[i] = (char) assembler.assemble( rowProcessingState, options );
+			resultRow[i] = (char) assembler.assemble( rowProcessingState );
 			return voidFuture();
 		} ).thenApply( ignore -> {
 			afterRow( rowProcessingState );
@@ -229,7 +229,7 @@ public class ReactiveStandardRowReader<R> implements ReactiveRowReader<R> {
 						.reactiveAssemble( rowProcessingState, options )
 						.thenAccept( obj -> resultRow[i] = (short) obj );
 			}
-			resultRow[i] = (short) assembler.assemble( rowProcessingState, options );
+			resultRow[i] = (short) assembler.assemble( rowProcessingState );
 			return voidFuture();
 		} ).thenApply( ignore -> {
 			afterRow( rowProcessingState );
@@ -250,7 +250,7 @@ public class ReactiveStandardRowReader<R> implements ReactiveRowReader<R> {
 						.reactiveAssemble( rowProcessingState, options )
 						.thenAccept( obj -> resultRow[i] = (int) obj );
 			}
-			resultRow[i] = (int) assembler.assemble( rowProcessingState, options );
+			resultRow[i] = (int) assembler.assemble( rowProcessingState );
 			return voidFuture();
 		} ).thenApply( ignore -> {
 			afterRow( rowProcessingState );
@@ -271,7 +271,7 @@ public class ReactiveStandardRowReader<R> implements ReactiveRowReader<R> {
 						.reactiveAssemble( rowProcessingState, options )
 						.thenAccept( obj -> resultRow[i] = (long) obj );
 			}
-			resultRow[i] = (long) assembler.assemble( rowProcessingState, options );
+			resultRow[i] = (long) assembler.assemble( rowProcessingState );
 			return voidFuture();
 		} ).thenApply( ignore -> {
 			afterRow( rowProcessingState );
@@ -292,7 +292,7 @@ public class ReactiveStandardRowReader<R> implements ReactiveRowReader<R> {
 						.reactiveAssemble( rowProcessingState, options )
 						.thenAccept( obj -> resultRow[i] = (float) obj );
 			}
-			resultRow[i] = (float) assembler.assemble( rowProcessingState, options );
+			resultRow[i] = (float) assembler.assemble( rowProcessingState );
 			return voidFuture();
 		} ).thenApply( ignore -> {
 			afterRow( rowProcessingState );
@@ -313,7 +313,7 @@ public class ReactiveStandardRowReader<R> implements ReactiveRowReader<R> {
 						.reactiveAssemble( rowProcessingState, options )
 						.thenAccept( obj -> resultRow[i] = (double) obj );
 			}
-			resultRow[i] = (double) assembler.assemble( rowProcessingState, options );
+			resultRow[i] = (double) assembler.assemble( rowProcessingState );
 			return voidFuture();
 		} ).thenApply( ignore -> {
 			afterRow( rowProcessingState );
@@ -334,7 +334,7 @@ public class ReactiveStandardRowReader<R> implements ReactiveRowReader<R> {
 						.reactiveAssemble( rowProcessingState, options )
 						.thenAccept( obj -> resultRow[i] = obj );
 			}
-			resultRow[i] = assembler.assemble( rowProcessingState, options );
+			resultRow[i] = assembler.assemble( rowProcessingState );
 			return voidFuture();
 		} ).thenApply( ignore -> {
 			afterRow( rowProcessingState );

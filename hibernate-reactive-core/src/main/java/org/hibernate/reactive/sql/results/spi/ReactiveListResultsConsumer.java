@@ -158,7 +158,7 @@ public class ReactiveListResultsConsumer<R> implements ReactiveResultsConsumer<L
 			JdbcValuesSourceProcessingOptions processingOptions,
 			boolean isEntityResultType) {
 		if ( this.uniqueSemantic == FILTER
-				|| this.uniqueSemantic == ASSERT && rowProcessingState.hasCollectionInitializers()
+				|| this.uniqueSemantic == ASSERT && rowReader.hasCollectionInitializers()
 				|| this.uniqueSemantic == ALLOW && isEntityResultType ) {
 			return () -> rowReader
 					.reactiveReadRow( rowProcessingState, processingOptions )

@@ -115,17 +115,7 @@ public class ReactiveRowProcessingState extends BaseExecutionContext implements 
 		jdbcValues.finishRowProcessing( this, wasAdded );
 	}
 
-	//
-//	@Override
-//	public Initializer resolveInitializer(NavigablePath path) {
-//		return this.initializers.resolveInitializer( path );
-//	}
-
 	public QueryOptions getQueryOptions() {
 		return this.executionContext.getQueryOptions();
-	}
-
-	public boolean hasCollectionInitializers() {
-		return this.initializers.hasCollectionInitializers();
 	}
 }
