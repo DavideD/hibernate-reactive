@@ -126,10 +126,10 @@ public class ReactiveStandardRowReader<R> implements ReactiveRowReader<R> {
 		return coordinateInitializers( rowProcessingState )
 				.thenCompose( v -> {
 					// Copied from Hibernate ORM:
-					// The following is ugly, but unfortunately necessary to not hurt performance.
+					// "The following is ugly, but unfortunately necessary to not hurt performance.
 					// This implementation was micro-benchmarked and discussed with Francesco Nigro,
 					// who hinted that using this style instead of the reflective Array.getLength(), Array.set()
-					// is easier for the JVM to optimize
+					// is easier for the JVM to optimize"
 					switch ( componentType ) {
 						case BOOLEAN:
 							return booleanComponent( resultAssemblers, rowProcessingState, options );

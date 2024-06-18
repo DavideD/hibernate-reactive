@@ -7,6 +7,7 @@ package org.hibernate.reactive.sql.results.graph.entity.internal;
 
 import java.util.concurrent.CompletionStage;
 
+import org.hibernate.FetchNotFoundException;
 import org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer;
 import org.hibernate.engine.spi.EntityHolder;
 import org.hibernate.engine.spi.EntityKey;
@@ -24,6 +25,7 @@ import org.hibernate.reactive.sql.results.graph.ReactiveInitializer;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
 import org.hibernate.sql.results.graph.DomainResult;
+import org.hibernate.sql.results.graph.InitializerData;
 import org.hibernate.sql.results.graph.InitializerParent;
 import org.hibernate.sql.results.graph.basic.BasicFetch;
 import org.hibernate.sql.results.graph.entity.internal.EntityDelayedFetchInitializer;
@@ -31,6 +33,7 @@ import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 import org.hibernate.type.Type;
 
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
+import static org.hibernate.sql.results.graph.entity.internal.EntityInitializerImpl.determineConcreteEntityDescriptor;
 
 public class ReactiveEntityDelayedFetchInitializer extends EntityDelayedFetchInitializer implements ReactiveInitializer<EntityDelayedFetchInitializer.EntityDelayedFetchInitializerData> {
 
@@ -48,24 +51,67 @@ public class ReactiveEntityDelayedFetchInitializer extends EntityDelayedFetchIni
 		this.referencedModelPart = referencedModelPart;
 	}
 
+	public static class ReactiveEntityDelayedFetchInitializerData extends EntityDelayedFetchInitializerData {
+
+		public ReactiveEntityDelayedFetchInitializerData(RowProcessingState rowProcessingState) {
+			super( rowProcessingState );
+		}
+		public Object getEntityIdentifier() {
+			return entityIdentifier;
+		}
+
+		public void setEntityIdentifier(Object entityIdentifier) {
+			this.entityIdentifier = entityIdentifier;
+		}
+	}
+
 	@Override
-	public CompletionStage<Void> reactiveResolveInstance(EntityDelayedFetchInitializerData data) {
-		if ( data.getState() != State.KEY_RESOLVED ) {
+	protected InitializerData createInitializerData(RowProcessingState rowProcessingState) {
+		return new ReactiveEntityDelayedFetchInitializerData( rowProcessingState );
+	}
+
+	@Override
+	public CompletionStage<Void> reactiveResolveInstance(EntityDelayedFetchInitializerData initializerData) {
+		if ( initializerData.getState() != State.KEY_RESOLVED ) {
 			return voidFuture();
 		}
 
+		ReactiveEntityDelayedFetchInitializerData data = (ReactiveEntityDelayedFetchInitializerData) initializerData;
 		data.setState( State.RESOLVED );
 
 		final RowProcessingState rowProcessingState = data.getRowProcessingState();
-		data.entityIdentifier = identifierAssembler.assemble( rowProcessingState );
+		data.setEntityIdentifier( getIdentifierAssembler().assemble( rowProcessingState ) );
 
 		CompletionStage<Void> stage = voidFuture();
-		if ( getIdentifier() == null ) {
-			setEntityInstance( null );
+		if ( data.getEntityIdentifier() == null ) {
+			data.setInstance( null );
+			data.setState( State.MISSING );
 		}
 		else {
 			final SharedSessionContractImplementor session = rowProcessingState.getSession();
-			final EntityPersister concreteDescriptor = referencedModelPart.getEntityMappingType().getEntityPersister();
+
+			final EntityPersister entityPersister = referencedModelPart.getEntityMappingType().getEntityPersister();
+			final EntityPersister concreteDescriptor;
+			if ( getDiscriminatorAssembler() != null ) {
+				concreteDescriptor = determineConcreteEntityDescriptor(
+						rowProcessingState,
+						getDiscriminatorAssembler(),
+						entityPersister
+				);
+				if ( concreteDescriptor == null ) {
+					// If we find no discriminator it means there's no entity in the target table
+					if ( !referencedModelPart.isOptional() ) {
+						throw new FetchNotFoundException( entityPersister.getEntityName(), data.getEntityIdentifier() );
+					}
+					data.setInstance( null );
+					data.setState( State.MISSING );
+					return voidFuture();
+				}
+			}
+			else {
+				concreteDescriptor = entityPersister;
+			}
+
 			final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
 			if ( isSelectByUniqueKey() ) {
 				final String uniqueKeyPropertyName = referencedModelPart.getReferencedPropertyName();
@@ -75,58 +121,58 @@ public class ReactiveEntityDelayedFetchInitializer extends EntityDelayedFetchIni
 				final EntityUniqueKey euk = new EntityUniqueKey(
 						concreteDescriptor.getEntityName(),
 						uniqueKeyPropertyName,
-						getIdentifier(),
+						data.getEntityIdentifier(),
 						uniqueKeyPropertyType,
 						session.getFactory()
 				);
-				setEntityInstance( persistenceContext.getEntity( euk ) );
-				if ( getEntityInstance() == null ) {
+				data.setInstance( persistenceContext.getEntity( euk ) );
+				if ( data.getInstance() == null ) {
 					// For unique-key mappings, we always use bytecode-laziness if possible,
 					// because we can't generate a proxy based on the unique key yet
 					if ( referencedModelPart.isLazy() ) {
-						setEntityInstance( LazyPropertyInitializer.UNFETCHED_PROPERTY );
+						data.setInstance( LazyPropertyInitializer.UNFETCHED_PROPERTY );
 					}
 					else {
 						stage = stage
 								.thenCompose( v -> ( (ReactiveEntityPersister) concreteDescriptor )
-										.reactiveLoadByUniqueKey( uniqueKeyPropertyName, getIdentifier(), session ) )
-								.thenAccept( this::setEntityInstance )
+										.reactiveLoadByUniqueKey( uniqueKeyPropertyName, data.getEntityIdentifier(), session ) )
+								.thenAccept( data::setInstance )
 								.thenAccept( v -> {
 									// If the entity was not in the Persistence Context, but was found now,
 									// add it to the Persistence Context
-									if ( getEntityInstance() != null ) {
-										persistenceContext.addEntity( euk, getEntityInstance() );
+									if ( data.getInstance() != null ) {
+										persistenceContext.addEntity( euk, data.getInstance() );
 									}
 								} );
 					}
 				}
 				stage = stage.thenAccept( v -> {
-					if ( getEntityInstance() != null ) {
-						setEntityInstance( persistenceContext.proxyFor( getEntityInstance() ) );
+					if ( data.getInstance() != null ) {
+						data.setInstance( persistenceContext.proxyFor( data.getInstance() ) );
 					}
 				} );
 			}
 			else {
-				final EntityKey entityKey = new EntityKey( getIdentifier(), concreteDescriptor );
+				final EntityKey entityKey = new EntityKey( data.getEntityIdentifier(), concreteDescriptor );
 				final EntityHolder holder = persistenceContext.getEntityHolder( entityKey );
 				if ( holder != null && holder.getEntity() != null ) {
-					setEntityInstance( persistenceContext.proxyFor( holder, concreteDescriptor ) );
+					data.setInstance( persistenceContext.proxyFor( holder, concreteDescriptor ) );
 				}
 				// For primary key based mappings we only use bytecode-laziness if the attribute is optional,
 				// because the non-optionality implies that it is safe to have a proxy
 				else if ( referencedModelPart.isOptional() && referencedModelPart.isLazy() ) {
-					setEntityInstance( LazyPropertyInitializer.UNFETCHED_PROPERTY );
+					data.setInstance( LazyPropertyInitializer.UNFETCHED_PROPERTY );
 				}
 				else {
 					stage = stage.thenCompose( v -> ReactiveQueryExecutorLookup
 							.extract( session )
-							.reactiveInternalLoad( concreteDescriptor.getEntityName(), getIdentifier(), false, false )
-							.thenAccept( this::setEntityInstance )
+							.reactiveInternalLoad( concreteDescriptor.getEntityName(), data.getEntityIdentifier(), false, false )
+							.thenAccept( data::setInstance )
 					);
 				}
 				stage = stage
 						.thenAccept( v -> {
-							final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( getEntityInstance() );
+							final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( data.getInstance() );
 							if ( lazyInitializer != null ) {
 								lazyInitializer.setUnwrap( referencedModelPart.isUnwrapProxy() && concreteDescriptor.isInstrumented() );
 							}

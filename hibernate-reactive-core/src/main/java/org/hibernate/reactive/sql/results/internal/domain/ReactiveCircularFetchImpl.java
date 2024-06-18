@@ -24,7 +24,7 @@ public class ReactiveCircularFetchImpl extends CircularFetchImpl {
 	}
 
 	@Override
-	protected EntityInitializer buildEntitySelectFetchInitializer(
+	protected EntityInitializer<?> buildEntitySelectFetchInitializer(
 			InitializerParent<?> parent,
 			ToOneAttributeMapping fetchable,
 			EntityPersister entityPersister,
@@ -39,6 +39,7 @@ public class ReactiveCircularFetchImpl extends CircularFetchImpl {
 				keyResult,
 				navigablePath,
 				selectByUniqueKey,
+				false,
 				creationState
 		);
 	}

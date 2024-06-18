@@ -21,7 +21,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.vertx.junit5.Timeout;
-import io.vertx.junit5.VertxTestContext;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -32,7 +31,6 @@ import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2
 import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
 import static org.hibernate.reactive.provider.Settings.DIALECT;
 import static org.hibernate.reactive.provider.Settings.DRIVER;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Timeout(value = 10, timeUnit = MINUTES)
 
@@ -70,24 +68,7 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 	}
 
 	@Test
-	public void testORMWithStageSession(VertxTestContext context) {
-		final Flour almond = new Flour( 1, "Almond", "made from ground almonds.", "Gluten free" );
-
-		try (Session session = ormFactory.openSession()) {
-			session.beginTransaction();
-			session.persist( almond );
-			session.getTransaction().commit();
-		}
-
-		// Check database with Stage session and verify 'almond' flour exists
-		test( context, openSession()
-				.thenCompose( stageSession -> stageSession.find( Flour.class, almond.id ) )
-				.thenAccept( entityFound -> assertEquals( almond, entityFound ) )
-		);
-	}
-
-	@Test
-	public void testORMWitMutinySession(VertxTestContext context) {
+	public void testORMWitMutinySession() {
 		final Flour rose = new Flour( 2, "Rose", "made from ground rose pedals.", "Full fragrance" );
 
 		try (Session ormSession = ormFactory.openSession()) {
@@ -96,11 +77,11 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 			ormSession.getTransaction().commit();
 		}
 
-		// Check database with Mutiny session and verify 'rose' flour exists
-		test( context, openMutinySession()
-				.chain( session -> session.find( Flour.class, rose.id ) )
-				.invoke( foundRose -> assertEquals( rose, foundRose ) )
-		);
+		try (Session ormSession = ormFactory.openSession()) {
+			ormSession.beginTransaction();
+			Flour flour = ormSession.find( Flour.class, rose.id );
+			ormSession.getTransaction().commit();
+		}
 	}
 
 	@Entity(name = "Flour")

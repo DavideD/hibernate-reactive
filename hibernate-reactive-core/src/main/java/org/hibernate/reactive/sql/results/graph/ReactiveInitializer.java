@@ -12,6 +12,8 @@ import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
 import org.hibernate.sql.results.graph.InitializerData;
 import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 
+import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
+
 /**
  * @see org.hibernate.sql.results.graph.Initializer
  */
@@ -25,11 +27,21 @@ public interface ReactiveInitializer<Data extends InitializerData> {
 
 	CompletionStage<Void> reactiveResolveInstance(Data data);
 
+	void resolveKey(Data data);
+
+	default CompletionStage<Void> reactiveResolveInstance(Object instance, Data data) {
+		resolveKey( data );
+		return voidFuture();
+	}
+
 	default CompletionStage<Void> reactiveResolveInstance(ReactiveRowProcessingState rowProcessingState) {
 		return reactiveResolveInstance( getData( rowProcessingState ) );
 	}
 
-	CompletionStage<Void> reactiveInitializeInstance(Data data);
+	default CompletionStage<Void> reactiveInitializeInstance(Data data) {
+		// No-op by default: see org.hibernate.sql.results.graph.internal.AbstractInitializer#initializeInstance
+		return voidFuture();
+	}
 
 	default CompletionStage<Void> reactiveInitializeInstance(ReactiveRowProcessingState rowProcessingState) {
 		return reactiveInitializeInstance( getData( rowProcessingState ) );

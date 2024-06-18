@@ -187,6 +187,8 @@ public class StandardReactiveSelectExecutor implements ReactiveSelectExecutor {
 							jdbcValues
 					);
 
+					rowReader.startLoading( rowProcessingState );
+
 					return resultsConsumer
 							.consume(
 									jdbcValues,

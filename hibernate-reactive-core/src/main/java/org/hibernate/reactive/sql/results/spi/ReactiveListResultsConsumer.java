@@ -38,11 +38,9 @@ import static org.hibernate.reactive.util.impl.CompletionStages.whileLoop;
  */
 public class ReactiveListResultsConsumer<R> implements ReactiveResultsConsumer<List<R>, R> {
 
-	private static final ReactiveListResultsConsumer<?> NEVER_DE_DUP_CONSUMER = new ReactiveListResultsConsumer<>(
-			ReactiveListResultsConsumer.UniqueSemantic.NEVER );
+	private static final ReactiveListResultsConsumer<?> NEVER_DE_DUP_CONSUMER = new ReactiveListResultsConsumer<>( ReactiveListResultsConsumer.UniqueSemantic.NEVER );
 	private static final ReactiveListResultsConsumer<?> ALLOW_DE_DUP_CONSUMER = new ReactiveListResultsConsumer<>( ALLOW );
-	private static final ReactiveListResultsConsumer<?> IGNORE_DUP_CONSUMER = new ReactiveListResultsConsumer<>(
-			ReactiveListResultsConsumer.UniqueSemantic.NONE );
+	private static final ReactiveListResultsConsumer<?> IGNORE_DUP_CONSUMER = new ReactiveListResultsConsumer<>( ReactiveListResultsConsumer.UniqueSemantic.NONE );
 	private static final ReactiveListResultsConsumer<?> DE_DUP_CONSUMER = new ReactiveListResultsConsumer<>( FILTER );
 	private static final ReactiveListResultsConsumer<?> ERROR_DUP_CONSUMER = new ReactiveListResultsConsumer<>( ASSERT );
 
@@ -71,7 +69,7 @@ public class ReactiveListResultsConsumer<R> implements ReactiveResultsConsumer<L
 			contexts.register( state );
 		}
 
-		public void deregister() {
+		public void deregiser() {
 			contexts.deregister( state );
 		}
 	}
@@ -103,13 +101,7 @@ public class ReactiveListResultsConsumer<R> implements ReactiveResultsConsumer<L
 						? new EntityResult<>( domainResultJavaType )
 						: new Results<>( domainResultJavaType );
 
-		Supplier<CompletionStage<Boolean>> addToResultsSupplier = addToResultsSupplier(
-				results,
-				rowReader,
-				rowProcessingState,
-				processingOptions,
-				isEntityResultType
-		);
+		Supplier<CompletionStage<Boolean>> addToResultsSupplier = addToResultsSupplier( results, rowReader, rowProcessingState, processingOptions, isEntityResultType );
 		final int[] readRows = {0};
 		return whileLoop( () -> rowProcessingState.next()
 				.thenCompose( hasNext -> {
@@ -123,27 +115,10 @@ public class ReactiveListResultsConsumer<R> implements ReactiveResultsConsumer<L
 
 					}
 					return falseFuture();
-				} )
-		)
-				.thenApply( v -> finishUp(
-						results,
-						rowProcessingState,
-						jdbcValuesSourceProcessingState,
-						rowReader,
-						persistenceContext,
-						queryOptions,
-						readRows[0]
-				) )
+				} ) )
+				.thenApply( v -> finishUp( results, rowProcessingState, jdbcValuesSourceProcessingState, rowReader, persistenceContext, queryOptions, readRows[0] ) )
 				.handle( (list, ex) -> {
-					end(
-							jdbcValues,
-							session,
-							jdbcValuesSourceProcessingState,
-							rowReader,
-							rowProcessingState,
-							persistenceContext,
-							ex
-					);
+					end( jdbcValues, session, jdbcValuesSourceProcessingState, rowReader, rowProcessingState, persistenceContext, ex );
 					return list;
 				} );
 	}

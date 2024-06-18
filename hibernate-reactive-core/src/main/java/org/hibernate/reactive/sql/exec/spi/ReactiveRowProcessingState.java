@@ -59,6 +59,11 @@ public class ReactiveRowProcessingState extends BaseExecutionContext implements 
 	}
 
 	@Override
+	public Object getEntityId() {
+		return executionContext.getEntityId();
+	}
+
+	@Override
 	public LockMode determineEffectiveLockMode(String alias) {
 		if ( jdbcValues.usesFollowOnLocking() ) {
 			// If follow-on locking is used, we must omit the lock options here,
