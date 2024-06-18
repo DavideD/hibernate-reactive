@@ -137,7 +137,7 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 
 		@Override
 		public String toString() {
-			return name;
+			return id + ":" + name;
 		}
 
 		@Override

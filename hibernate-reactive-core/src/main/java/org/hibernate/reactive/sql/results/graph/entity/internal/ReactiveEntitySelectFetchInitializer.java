@@ -100,6 +100,11 @@ public class ReactiveEntitySelectFetchInitializer<Data extends EntitySelectFetch
 		throw LOG.nonReactiveMethodCall( "reactiveInitialize" );
 	}
 
+	@Override
+	public CompletionStage<Void> reactiveResolveKey(Data data) {
+		throw LOG.notYetImplemented();
+	}
+
 	protected CompletionStage<Void> reactiveInitialize(EntitySelectFetchInitializerData ormData) {
 		ReactiveEntityDelayedFetchInitializerData data = new ReactiveEntityDelayedFetchInitializerData( ormData.getRowProcessingState() );
 		final RowProcessingState rowProcessingState = data.getRowProcessingState();

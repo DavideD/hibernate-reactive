@@ -373,16 +373,17 @@ public class ReactiveStandardRowReader<R> implements ReactiveRowReader<R> {
 	}
 
 	private CompletionStage<Void> coordinateInitializers(RowProcessingState rowProcessingState) {
-		for ( int i = 0; i < resultInitializers.length; i++ ) {
-			resultInitializers[i].resolveKey( resultInitializersData[i] );
-		}
-		return loop( 0, sortedForResolveInstance.length, i -> {
+		return loop( 0, resultInitializers.length, i -> ( (ReactiveInitializer) resultInitializers[i] )
+				.reactiveResolveKey( resultInitializersData[i] )
+		)
+		.thenCompose( v -> loop( 0, sortedForResolveInstance.length, i -> {
 			if ( sortedForResolveInstanceData[i].getState() == Initializer.State.KEY_RESOLVED ) {
 				return ( (ReactiveInitializer) sortedForResolveInstance[i] )
 						.reactiveResolveInstance( sortedForResolveInstanceData[i] );
 			}
 			return voidFuture();
-		} ).thenCompose( v -> loop( 0, initializers.length, i -> {
+		} ) )
+		.thenCompose( v -> loop( 0, initializers.length, i -> {
 			if ( initializersData[i].getState() == Initializer.State.RESOLVED ) {
 				return ( (ReactiveInitializer) initializers[i] )
 						.reactiveInitializeInstance( initializersData[i] );

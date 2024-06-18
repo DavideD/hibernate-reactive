@@ -5,6 +5,7 @@
  */
 package org.hibernate.reactive.sql.results.graph.entity.internal;
 
+import java.lang.invoke.MethodHandles;
 import java.util.concurrent.CompletionStage;
 
 import org.hibernate.FetchNotFoundException;
@@ -18,6 +19,8 @@ import org.hibernate.metamodel.mapping.internal.ToOneAttributeMapping;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
+import org.hibernate.reactive.logging.impl.Log;
+import org.hibernate.reactive.logging.impl.LoggerFactory;
 import org.hibernate.reactive.persister.entity.impl.ReactiveEntityPersister;
 import org.hibernate.reactive.session.impl.ReactiveQueryExecutorLookup;
 import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
@@ -35,7 +38,10 @@ import org.hibernate.type.Type;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 import static org.hibernate.sql.results.graph.entity.internal.EntityInitializerImpl.determineConcreteEntityDescriptor;
 
-public class ReactiveEntityDelayedFetchInitializer extends EntityDelayedFetchInitializer implements ReactiveInitializer<EntityDelayedFetchInitializer.EntityDelayedFetchInitializerData> {
+public class ReactiveEntityDelayedFetchInitializer extends EntityDelayedFetchInitializer
+		implements ReactiveInitializer<EntityDelayedFetchInitializer.EntityDelayedFetchInitializerData> {
+
+	private static final Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
 	private final ToOneAttributeMapping referencedModelPart;
 
@@ -183,12 +189,17 @@ public class ReactiveEntityDelayedFetchInitializer extends EntityDelayedFetchIni
 	}
 
 	@Override
+	public CompletionStage<Void> reactiveResolveKey(EntityDelayedFetchInitializerData data) {
+		throw LOG.notYetImplemented();
+	}
+
+	@Override
 	public CompletionStage<Void> reactiveInitializeInstance(EntityDelayedFetchInitializerData data) {
-		return null;
+		throw LOG.notYetImplemented();
 	}
 
 	@Override
 	public CompletionStage<Void> reactiveInitializeInstance(ReactiveRowProcessingState rowProcessingState) {
-		return voidFuture();
+		throw LOG.notYetImplemented();
 	}
 }
