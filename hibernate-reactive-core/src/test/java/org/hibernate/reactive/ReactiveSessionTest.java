@@ -14,7 +14,6 @@ import org.hibernate.LockMode;
 import org.hibernate.reactive.common.AffectedEntities;
 import org.hibernate.reactive.stage.Stage;
 
-import org.hibernate.reactive.util.impl.CompletionStages;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -30,6 +29,7 @@ import jakarta.persistence.metamodel.EntityType;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -777,7 +777,7 @@ public class ReactiveSessionTest extends BaseReactiveTest {
 			session.getFactory().getMetamodel().entity(GuineaPig.class);
 			session.getFactory().getCriteriaBuilder().createQuery(GuineaPig.class);
 			session.getFactory().getStatistics().isStatisticsEnabled();
-			return CompletionStages.voidFuture();
+			return voidFuture();
 		} ) );
 	}
 

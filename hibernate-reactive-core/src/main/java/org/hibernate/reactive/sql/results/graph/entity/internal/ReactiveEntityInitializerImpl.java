@@ -8,19 +8,23 @@ package org.hibernate.reactive.sql.results.graph.entity.internal;
 import java.lang.invoke.MethodHandles;
 import java.util.concurrent.CompletionStage;
 
+import org.hibernate.Hibernate;
+import org.hibernate.LockMode;
 import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.engine.spi.EntityHolder;
 import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.engine.spi.EntityUniqueKey;
 import org.hibernate.engine.spi.PersistenceContext;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.loader.ast.internal.CacheEntityLoaderHelper;
 import org.hibernate.metamodel.mapping.internal.ToOneAttributeMapping;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.proxy.LazyInitializer;
+import org.hibernate.proxy.map.MapProxy;
 import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.logging.impl.LoggerFactory;
+import org.hibernate.reactive.session.ReactiveSession;
 import org.hibernate.reactive.sql.results.graph.ReactiveInitializer;
-import org.hibernate.reactive.util.impl.CompletionStages;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
 import org.hibernate.sql.results.graph.DomainResult;
 import org.hibernate.sql.results.graph.Fetch;
@@ -29,12 +33,15 @@ import org.hibernate.sql.results.graph.InitializerData;
 import org.hibernate.sql.results.graph.InitializerParent;
 import org.hibernate.sql.results.graph.entity.EntityResultGraphNode;
 import org.hibernate.sql.results.graph.entity.internal.EntityInitializerImpl;
+import org.hibernate.sql.results.jdbc.spi.JdbcValuesSourceProcessingOptions;
 import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 import org.hibernate.type.Type;
 
 import static org.hibernate.metamodel.mapping.ForeignKeyDescriptor.Nature.TARGET;
 import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
 import static org.hibernate.reactive.util.impl.CompletionStages.completedFuture;
+import static org.hibernate.reactive.util.impl.CompletionStages.falseFuture;
+import static org.hibernate.reactive.util.impl.CompletionStages.trueFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
 public class ReactiveEntityInitializerImpl extends EntityInitializerImpl
@@ -96,6 +103,14 @@ public class ReactiveEntityInitializerImpl extends EntityInitializerImpl
 
 		public void setShallowCached(boolean shallowCached) {
 			super.shallowCached = shallowCached;
+		}
+
+		public LockMode getLockMode() {
+			return super.lockMode;
+		}
+
+		public void setLockMode(LockMode lockMode) {
+			super.lockMode = lockMode;
 		}
 	}
 
@@ -236,26 +251,33 @@ public class ReactiveEntityInitializerImpl extends EntityInitializerImpl
 			data.setInstance( data.getEntityInstanceForNotify() );
 		}
 		else {
-			resolveEntityInstance1( data );
-			if ( data.getUniqueKeyAttributePath() != null ) {
-				final SharedSessionContractImplementor session = rowProcessingState.getSession();
-				final EntityPersister concreteDescriptor = getConcreteDescriptor( data );
-				final EntityUniqueKey euk = new EntityUniqueKey(
-						concreteDescriptor.getEntityName(),
-						data.getUniqueKeyAttributePath(),
-						rowProcessingState.getEntityUniqueKey(),
-						data.getUniqueKeyPropertyTypes()[concreteDescriptor.getSubclassId()],
-						session.getFactory()
-				);
-				session.getPersistenceContextInternal().addEntity( euk, getEntityInstance( data ) );
-			}
+			return reactiveResolveEntityInstance1( data )
+					.thenAccept( v -> {
+						if ( data.getUniqueKeyAttributePath() != null ) {
+							final SharedSessionContractImplementor session = rowProcessingState.getSession();
+							final EntityPersister concreteDescriptor = getConcreteDescriptor( data );
+							final EntityUniqueKey euk = new EntityUniqueKey(
+									concreteDescriptor.getEntityName(),
+									data.getUniqueKeyAttributePath(),
+									rowProcessingState.getEntityUniqueKey(),
+									data.getUniqueKeyPropertyTypes()[concreteDescriptor.getSubclassId()],
+									session.getFactory()
+							);
+							session.getPersistenceContextInternal().addEntity( euk, getEntityInstance( data ) );
+						}
+						postResolveInstance( data );
+					} );
 		}
+		postResolveInstance( data );
+		return voidFuture();
+	}
 
+	private void postResolveInstance(ReactiveEntityInitializerData data) {
 		if ( data.getInstance() != null ) {
 			upgradeLockMode( data );
 			if ( data.getState() == State.INITIALIZED ) {
 				registerReloadedEntity( data );
-				if ( rowProcessingState.needsResolveState() ) {
+				if ( data.getRowProcessingState().needsResolveState() ) {
 					// We need to read result set values to correctly populate the query cache
 					resolveState( data );
 				}
@@ -264,7 +286,204 @@ public class ReactiveEntityInitializerImpl extends EntityInitializerImpl
 				initializeSubInstancesFromParent( data );
 			}
 		}
+	}
+
+	@Override
+	public CompletionStage<Void> reactiveInitializeInstance(EntityInitializerData data) {
+		if ( data.getState() != State.RESOLVED ) {
+			return voidFuture();
+		}
+		if ( !skipInitialization( data ) ) {
+			assert consistentInstance( data );
+			initializeEntityInstance( data );
+			return voidFuture();
+		}
+		data.setState( State.INITIALIZED );
 		return voidFuture();
+	}
+
+	protected CompletionStage<Void> reactiveResolveEntityInstance1(ReactiveEntityInitializerData data) {
+		final Object proxy = data.getEntityHolder().getProxy();
+		final boolean unwrapProxy = proxy != null && getInitializedPart() instanceof ToOneAttributeMapping
+				&& ( (ToOneAttributeMapping) getInitializedPart() ).isUnwrapProxy()
+				&& getConcreteDescriptor( data ).getBytecodeEnhancementMetadata().isEnhancedForLazyLoading();
+		final Object entityFromExecutionContext;
+		if ( !unwrapProxy && isProxyInstance( proxy ) ) {
+			if ( ( entityFromExecutionContext = getEntityFromExecutionContext( data ) ) != null ) {
+				data.setEntityInstanceForNotify( entityFromExecutionContext );
+				data.setInstance( data.getEntityInstanceForNotify() );
+				// If the entity comes from the execution context, it is treated as not initialized
+				// so that we can refresh the data as requested
+				registerReloadedEntity( data );
+			}
+			else {
+				data.setInstance( proxy );
+				if ( Hibernate.isInitialized( data.getInstance() ) ) {
+					data.setState( State.INITIALIZED );
+					data.setEntityInstanceForNotify( Hibernate.unproxy( data.getInstance() ) );
+				}
+				else {
+					final LazyInitializer lazyInitializer = extractLazyInitializer( data.getInstance() );
+					assert lazyInitializer != null;
+					return reactiveResolveEntityInstance2( data )
+							.thenAccept( entityInstance -> {
+								data.setEntityInstanceForNotify( entityInstance );
+								lazyInitializer.setImplementation( data.getEntityInstanceForNotify() );
+								ensureEntityIsInitialized( data );
+							} );
+				}
+			}
+		}
+		else {
+			final Object existingEntity = data.getEntityHolder().getEntity();
+			if ( existingEntity != null ) {
+				data.setEntityInstanceForNotify( existingEntity );
+				data.setInstance( data.getEntityInstanceForNotify() );
+				if ( data.getEntityHolder().getEntityInitializer() == null ) {
+					assert data.getEntityHolder().isInitialized() == isExistingEntityInitialized( existingEntity );
+					if ( data.getEntityHolder().isInitialized() ) {
+						data.setState( State.INITIALIZED );
+					}
+					else if ( isResultInitializer() ) {
+						registerLoadingEntity( data, data.getInstance() );
+					}
+				}
+				else if ( data.getEntityHolder().getEntityInitializer() != this ) {
+					data.setState( State.INITIALIZED );
+				}
+			}
+			else if ( ( entityFromExecutionContext = getEntityFromExecutionContext( data ) ) != null ) {
+				// This is the entity to refresh, so don't set the state to initialized
+				data.setEntityInstanceForNotify( entityFromExecutionContext );
+				data.setInstance( data.getEntityInstanceForNotify() );
+				if ( isResultInitializer() ) {
+					registerLoadingEntity( data, data.getInstance() );
+				}
+			}
+			else {
+				assert data.getEntityHolder().getEntityInitializer() == this;
+				// look to see if another initializer from a parent load context or an earlier
+				// initializer is already loading the entity
+				return reactiveResolveEntityInstance2( data )
+						.thenAccept( entityInstance -> {
+							data.setEntityInstanceForNotify( entityInstance );
+							data.setInstance( data.getEntityInstanceForNotify() );
+							final Initializer<?> idInitializer;
+							if ( data.getEntityHolder().getEntityInitializer() == this && data.getState() != State.INITIALIZED
+									&& getIdentifierAssembler() != null
+									&& ( idInitializer = getIdentifierAssembler().getInitializer() ) != null ) {
+								// If this is the owning initializer and the returned object is not initialized,
+								// this means that the entity instance was just instantiated.
+								// In this case, we want to call "assemble" and hence "initializeInstance" on the initializer
+								// for possibly non-aggregated identifier mappings, so inject the virtual id representation
+								idInitializer.initializeInstance( data.getRowProcessingState() );
+							}
+							ensureEntityIsInitialized( data );
+						} );
+			}
+		}
+		ensureEntityIsInitialized( data );
+		return voidFuture();
+	}
+
+	private void ensureEntityIsInitialized(ReactiveEntityInitializerData data) {
+		// todo: ensure we initialize the entity
+		assert !data.getShallowCached() || data.getState() == State.INITIALIZED : "Forgot to initialize the entity";
+	}
+
+	protected CompletionStage<Object> reactiveResolveEntityInstance2(ReactiveEntityInitializerData data) {
+		if ( data.getEntityHolder().getEntityInitializer() == this ) {
+			assert data.getEntityHolder().getEntity() == null;
+			return reactiveResolveEntityInstance( data );
+		}
+		else {
+			// the entity is already being loaded elsewhere
+			return completedFuture( data.getEntityHolder().getEntity() );
+		}
+	}
+
+	protected CompletionStage<Object> reactiveResolveEntityInstance(ReactiveEntityInitializerData data) {
+		final RowProcessingState rowProcessingState = data.getRowProcessingState();
+		final Object resolved = resolveToOptionalInstance( data );
+		if ( resolved != null ) {
+			registerLoadingEntity( data, resolved );
+			return completedFuture( resolved );
+		}
+		else {
+			if ( rowProcessingState.isQueryCacheHit() && getEntityDescriptor().useShallowQueryCacheLayout() ) {
+				// We must load the entity this way, because the query cache entry contains only the primary key
+				data.setState( State.INITIALIZED );
+				final SharedSessionContractImplementor session = rowProcessingState.getSession();
+				assert data.getEntityHolder().getEntityInitializer() == this;
+				// If this initializer owns the entity, we have to remove the entity holder,
+				// because the subsequent loading process will claim the entity
+				session.getPersistenceContextInternal().removeEntityHolder( data.getEntityKey() );
+				return ( (ReactiveSession) session ).reactiveInternalLoad(
+						data.getConcreteDescriptor().getEntityName(),
+						data.getEntityKey().getIdentifier(),
+						true,
+						false
+				);
+			}
+			// We have to query the second level cache if reference cache entries are used
+			else if ( getEntityDescriptor().canUseReferenceCacheEntries() ) {
+				final Object cached = resolveInstanceFromCache( data );
+				if ( cached != null ) {
+					// EARLY EXIT!!!
+					// because the second level cache has reference cache entries, the entity is initialized
+					data.setState( State.INITIALIZED );
+					return completedFuture( cached );
+				}
+			}
+			final Object instance = instantiateEntity( data );
+			registerLoadingEntity( data, instance );
+			return completedFuture( instance );
+		}
+	}
+
+	// FIXME: I could change the scope of this method in ORM
+	private Object resolveToOptionalInstance(ReactiveEntityInitializerData data) {
+		if ( isResultInitializer() ) {
+			// this isEntityReturn bit is just for entity loaders, not hql/criteria
+			final JdbcValuesSourceProcessingOptions processingOptions =
+					data.getRowProcessingState().getJdbcValuesSourceProcessingState().getProcessingOptions();
+			return matchesOptionalInstance( data, processingOptions ) ? processingOptions.getEffectiveOptionalObject() : null;
+		}
+		else {
+			return null;
+		}
+	}
+
+	// FIXME: I could change the scope of this method in ORM
+	private boolean isProxyInstance(Object proxy) {
+		return proxy != null
+				&& ( proxy instanceof MapProxy || getEntityDescriptor().getJavaType().getJavaTypeClass().isInstance( proxy ) );
+	}
+
+	// FIXME: I could change the scope of this method in ORM
+	private Object resolveInstanceFromCache(ReactiveEntityInitializerData data) {
+		return CacheEntityLoaderHelper.INSTANCE.loadFromSecondLevelCache(
+				data.getRowProcessingState().getSession().asEventSource(),
+				null,
+				data.getLockMode(),
+				getEntityDescriptor(),
+				data.getEntityKey()
+		);
+	}
+
+	// FIXME: I could change the scope of this method in ORM
+	private boolean matchesOptionalInstance(
+			ReactiveEntityInitializerData data,
+			JdbcValuesSourceProcessingOptions processingOptions) {
+		final Object optionalEntityInstance = processingOptions.getEffectiveOptionalObject();
+		final Object requestedEntityId = processingOptions.getEffectiveOptionalId();
+		return requestedEntityId != null
+				&& optionalEntityInstance != null
+				&& requestedEntityId.equals( data.getEntityKey().getIdentifier() );
+	}
+
+	private boolean isExistingEntityInitialized(Object existingEntity) {
+		return Hibernate.isInitialized( existingEntity );
 	}
 
 	@Override
@@ -288,40 +507,52 @@ public class ReactiveEntityInitializerImpl extends EntityInitializerImpl
 		data.setEntityInstanceForNotify( null );
 		data.setEntityHolder( null );
 
-		return initializeId(data);
-		resolveEntityKey( data, id );
-		if ( !entityKeyOnly ) {
-			// Resolve the entity instance early as we have no key many-to-one
-			resolveInstance( data );
-			if ( !data.shallowCached ) {
-				if ( data.getState() == State.INITIALIZED ) {
-					if ( data.entityHolder.getEntityInitializer() == null ) {
-						// The entity is already part of the persistence context,
-						// so let's figure out the loaded state and only run sub-initializers if necessary
-						resolveInstanceSubInitializers( data );
+		final Object[] id = new Object[1];
+		return initializeId( data, id, entityKeyOnly )
+				.thenCompose( initialized -> {
+					if ( initialized ) {
+						resolveEntityKey( data, id[0] );
+						if ( !entityKeyOnly ) {
+							// Resolve the entity instance early as we have no key many-to-one
+							return reactiveResolveInstance( data )
+									.thenCompose( v -> {
+										if ( !data.getShallowCached() ) {
+											if ( data.getState() == State.INITIALIZED ) {
+												if ( data.getEntityHolder().getEntityInitializer() == null ) {
+													// The entity is already part of the persistence context,
+													// so let's figure out the loaded state and only run sub-initializers if necessary
+													resolveInstanceSubInitializers( data );
+												}
+												// If the entity is initialized and getEntityInitializer() == this,
+												// we already processed a row for this entity before,
+												// but we still have to call resolveKeySubInitializers to activate sub-initializers,
+												// because a row might contain data that sub-initializers want to consume
+												else {
+													// todo: try to diff the eagerness of the sub-initializers to avoid further processing
+													resolveKeySubInitializers( data );
+												}
+											}
+											else {
+												resolveKeySubInitializers( data );
+											}
+										}
+										return voidFuture();
+									} );
+						}
 					}
-					// If the entity is initialized and getEntityInitializer() == this,
-					// we already processed a row for this entity before,
-					// but we still have to call resolveKeySubInitializers to activate sub-initializers,
-					// because a row might contain data that sub-initializers want to consume
-					else {
-						// todo: try to diff the eagerness of the sub-initializers to avoid further processing
-						resolveKeySubInitializers( data );
-					}
-				}
-				else {
-					resolveKeySubInitializers( data );
-				}
-			}
-		}
+					return voidFuture();
+				} );
 	}
 
-	private CompletionStage<Object> initializeId(ReactiveEntityInitializerData data, boolean entityKeyOnly) {
+	/**
+	 * Return {@code true} if the identifier has been initialized
+	 */
+	private CompletionStage<Boolean> initializeId(ReactiveEntityInitializerData data, Object[] id, boolean entityKeyOnly) {
 		final RowProcessingState rowProcessingState = data.getRowProcessingState();
 		if ( getIdentifierAssembler() == null ) {
-			final Object id = rowProcessingState.getEntityId();
-			assert id != null : "Initializer requires a not null id for loading";
-			return completedFuture( id );
+			id[0] = rowProcessingState.getEntityId();
+			assert id[0] != null : "Initializer requires a not null id for loading";
+			return trueFuture();
 		}
 		else {
 			//noinspection unchecked
@@ -330,9 +561,10 @@ public class ReactiveEntityInitializerImpl extends EntityInitializerImpl
 				final InitializerData subData = initializer.getData( rowProcessingState );
 				return ( (ReactiveInitializer<InitializerData>) initializer )
 						.reactiveResolveKey( subData )
-						.thenAccept( v -> {
+						.thenCompose( v -> {
 							if ( subData.getState() == State.MISSING ) {
 								setMissing( data );
+								return falseFuture();
 							}
 							else {
 								data.setConcreteDescriptor( determineConcreteEntityDescriptor(
@@ -345,16 +577,23 @@ public class ReactiveEntityInitializerImpl extends EntityInitializerImpl
 									if ( !data.getShallowCached() && !entityKeyOnly ) {
 										resolveKeySubInitializers( data );
 									}
-									return;
+									return falseFuture();
 								}
-								final Object id = getIdentifierAssembler().assemble( rowProcessingState );
-								if ( id == null ) {
-									setMissing( data );
-								}
-								return id;
 							}
+							id[0] = getIdentifierAssembler().assemble( rowProcessingState );
+							if ( id[0] == null ) {
+								setMissing( data );
+								return falseFuture();
+							}
+							return trueFuture();
 						} );
 			}
+			id[0] = getIdentifierAssembler().assemble( rowProcessingState );
+			if ( id[0] == null ) {
+				setMissing( data );
+				return falseFuture();
+			}
+			return trueFuture();
 		}
 	}
 
@@ -370,7 +609,7 @@ public class ReactiveEntityInitializerImpl extends EntityInitializerImpl
 
 	@Override
 	protected Object resolveEntityInstance(EntityInitializerData data) {
-		throw LOG.nonReactiveMethodCall( "reactiveResolveInstance" );
+		throw LOG.nonReactiveMethodCall( "reactiveResolveEntityInstance" );
 	}
 
 	@Override

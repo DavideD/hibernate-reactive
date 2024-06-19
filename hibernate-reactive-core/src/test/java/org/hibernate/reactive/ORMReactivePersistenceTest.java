@@ -8,6 +8,7 @@ package org.hibernate.reactive;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletionStage;
 
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -15,6 +16,7 @@ import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.reactive.annotations.DisabledFor;
+import org.hibernate.reactive.util.impl.CompletionStages;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -82,6 +84,11 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 			Flour flour = ormSession.find( Flour.class, rose.id );
 			ormSession.getTransaction().commit();
 		}
+	}
+
+	@Override
+	protected CompletionStage<Void> cleanDb() {
+		return CompletionStages.voidFuture();
 	}
 
 	@Entity(name = "Flour")

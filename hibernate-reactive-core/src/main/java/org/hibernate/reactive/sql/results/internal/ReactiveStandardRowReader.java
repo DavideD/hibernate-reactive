@@ -373,23 +373,31 @@ public class ReactiveStandardRowReader<R> implements ReactiveRowReader<R> {
 	}
 
 	private CompletionStage<Void> coordinateInitializers(RowProcessingState rowProcessingState) {
-		return loop( 0, resultInitializers.length, i -> ( (ReactiveInitializer) resultInitializers[i] )
-				.reactiveResolveKey( resultInitializersData[i] )
+		return loop( 0, resultInitializers.length, i -> {
+						 if ( sortedForResolveInstance[i] instanceof ReactiveInitializer ) {
+							 return ( (ReactiveInitializer) resultInitializers[i] )
+									 .reactiveResolveKey( resultInitializersData[i] );
+						 }
+						 resultInitializers[i].resolveKey( resultInitializersData[i] );
+						 return voidFuture();
+					 }
 		)
-		.thenCompose( v -> loop( 0, sortedForResolveInstance.length, i -> {
-			if ( sortedForResolveInstanceData[i].getState() == Initializer.State.KEY_RESOLVED ) {
-				return ( (ReactiveInitializer) sortedForResolveInstance[i] )
-						.reactiveResolveInstance( sortedForResolveInstanceData[i] );
-			}
-			return voidFuture();
-		} ) )
-		.thenCompose( v -> loop( 0, initializers.length, i -> {
-			if ( initializersData[i].getState() == Initializer.State.RESOLVED ) {
-				return ( (ReactiveInitializer) initializers[i] )
-						.reactiveInitializeInstance( initializersData[i] );
-			}
-			return voidFuture();
-		} ) );
+				.thenCompose( v -> loop( 0, sortedForResolveInstance.length, i -> {
+					if ( sortedForResolveInstance[i] instanceof ReactiveInitializer ) {
+						return ( (ReactiveInitializer) sortedForResolveInstance[i] )
+								.reactiveResolveInstance( sortedForResolveInstanceData[i] );
+					}
+					sortedForResolveInstance[i].resolveInstance( sortedForResolveInstanceData[i] );
+					return voidFuture();
+				} ) )
+				.thenCompose( v -> loop( 0, initializers.length, i -> {
+					if ( initializers[i] instanceof ReactiveInitializer ) {
+						return ( (ReactiveInitializer) initializers[i] )
+								.reactiveInitializeInstance( initializersData[i] );
+					}
+					initializers[i].resolveInstance( initializersData[i] );
+					return voidFuture();
+				} ) );
 	}
 
 	@Override

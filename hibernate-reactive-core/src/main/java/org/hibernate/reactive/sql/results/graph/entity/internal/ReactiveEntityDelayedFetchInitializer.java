@@ -7,6 +7,7 @@ package org.hibernate.reactive.sql.results.graph.entity.internal;
 
 import java.lang.invoke.MethodHandles;
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiFunction;
 
 import org.hibernate.FetchNotFoundException;
 import org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer;
@@ -53,7 +54,15 @@ public class ReactiveEntityDelayedFetchInitializer extends EntityDelayedFetchIni
 			DomainResult<?> keyResult,
 			BasicFetch<?> discriminatorResult,
 			AssemblerCreationState creationState) {
-		super( parent, fetchedNavigable, referencedModelPart, selectByUniqueKey, keyResult, discriminatorResult, creationState );
+		super(
+				parent,
+				fetchedNavigable,
+				referencedModelPart,
+				selectByUniqueKey,
+				keyResult,
+				discriminatorResult,
+				creationState
+		);
 		this.referencedModelPart = referencedModelPart;
 	}
 
@@ -62,6 +71,7 @@ public class ReactiveEntityDelayedFetchInitializer extends EntityDelayedFetchIni
 		public ReactiveEntityDelayedFetchInitializerData(RowProcessingState rowProcessingState) {
 			super( rowProcessingState );
 		}
+
 		public Object getEntityIdentifier() {
 			return entityIdentifier;
 		}
@@ -123,7 +133,10 @@ public class ReactiveEntityDelayedFetchInitializer extends EntityDelayedFetchIni
 				final String uniqueKeyPropertyName = referencedModelPart.getReferencedPropertyName();
 				final Type uniqueKeyPropertyType = uniqueKeyPropertyName == null
 						? concreteDescriptor.getIdentifierType()
-						: session.getFactory().getReferencedPropertyType( concreteDescriptor.getEntityName(), uniqueKeyPropertyName );
+						: session.getFactory().getReferencedPropertyType(
+						concreteDescriptor.getEntityName(),
+						uniqueKeyPropertyName
+				);
 				final EntityUniqueKey euk = new EntityUniqueKey(
 						concreteDescriptor.getEntityName(),
 						uniqueKeyPropertyName,
@@ -141,7 +154,11 @@ public class ReactiveEntityDelayedFetchInitializer extends EntityDelayedFetchIni
 					else {
 						stage = stage
 								.thenCompose( v -> ( (ReactiveEntityPersister) concreteDescriptor )
-										.reactiveLoadByUniqueKey( uniqueKeyPropertyName, data.getEntityIdentifier(), session ) )
+										.reactiveLoadByUniqueKey(
+												uniqueKeyPropertyName,
+												data.getEntityIdentifier(),
+												session
+										) )
 								.thenAccept( data::setInstance )
 								.thenAccept( v -> {
 									// If the entity was not in the Persistence Context, but was found now,
@@ -172,7 +189,12 @@ public class ReactiveEntityDelayedFetchInitializer extends EntityDelayedFetchIni
 				else {
 					stage = stage.thenCompose( v -> ReactiveQueryExecutorLookup
 							.extract( session )
-							.reactiveInternalLoad( concreteDescriptor.getEntityName(), data.getEntityIdentifier(), false, false )
+							.reactiveInternalLoad(
+									concreteDescriptor.getEntityName(),
+									data.getEntityIdentifier(),
+									false,
+									false
+							)
 							.thenAccept( data::setInstance )
 					);
 				}
@@ -190,16 +212,21 @@ public class ReactiveEntityDelayedFetchInitializer extends EntityDelayedFetchIni
 
 	@Override
 	public CompletionStage<Void> reactiveResolveKey(EntityDelayedFetchInitializerData data) {
-		throw LOG.notYetImplemented();
+		data.setState( State.KEY_RESOLVED );
+		return reactiveForEachSubInitializer( ReactiveInitializer::reactiveResolveKey, data );
 	}
 
 	@Override
 	public CompletionStage<Void> reactiveInitializeInstance(EntityDelayedFetchInitializerData data) {
-		throw LOG.notYetImplemented();
+		// No-op by default
+		return voidFuture();
 	}
 
-	@Override
-	public CompletionStage<Void> reactiveInitializeInstance(ReactiveRowProcessingState rowProcessingState) {
-		throw LOG.notYetImplemented();
+	protected CompletionStage<Void> reactiveForEachSubInitializer(BiFunction<ReactiveInitializer<?>, ReactiveRowProcessingState, CompletionStage<Void>> consumer, InitializerData data) {
+		final ReactiveInitializer<?> initializer = (ReactiveInitializer<?>) getIdentifierAssembler().getInitializer();
+		if ( initializer != null ) {
+			return consumer.apply( initializer, (ReactiveRowProcessingState) data.getRowProcessingState() );
+		}
+		return voidFuture();
 	}
 }
