@@ -11,11 +11,13 @@ import java.util.concurrent.CompletionStage;
 import org.hibernate.Hibernate;
 import org.hibernate.LockMode;
 import org.hibernate.annotations.NotFoundAction;
+import org.hibernate.bytecode.enhance.spi.interceptor.EnhancementAsProxyLazinessInterceptor;
 import org.hibernate.engine.spi.EntityEntry;
 import org.hibernate.engine.spi.EntityHolder;
 import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.engine.spi.EntityUniqueKey;
 import org.hibernate.engine.spi.PersistenceContext;
+import org.hibernate.engine.spi.PersistentAttributeInterceptor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.engine.spi.Status;
 import org.hibernate.loader.ast.internal.CacheEntityLoaderHelper;
@@ -26,10 +28,12 @@ import org.hibernate.proxy.map.MapProxy;
 import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.logging.impl.LoggerFactory;
 import org.hibernate.reactive.session.ReactiveSession;
+import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
 import org.hibernate.reactive.sql.results.graph.ReactiveInitializer;
 import org.hibernate.reactive.util.impl.CompletionStages;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
 import org.hibernate.sql.results.graph.DomainResult;
+import org.hibernate.sql.results.graph.DomainResultAssembler;
 import org.hibernate.sql.results.graph.Fetch;
 import org.hibernate.sql.results.graph.Initializer;
 import org.hibernate.sql.results.graph.InitializerData;
@@ -38,9 +42,12 @@ import org.hibernate.sql.results.graph.entity.EntityResultGraphNode;
 import org.hibernate.sql.results.graph.entity.internal.EntityInitializerImpl;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesSourceProcessingOptions;
 import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
+import org.hibernate.stat.spi.StatisticsImplementor;
 import org.hibernate.type.Type;
 
 import static org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer.UNFETCHED_PROPERTY;
+import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptable;
+import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttributeInterceptable;
 import static org.hibernate.metamodel.mapping.ForeignKeyDescriptor.Nature.TARGET;
 import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
 import static org.hibernate.reactive.util.impl.CompletionStages.completedFuture;
@@ -314,11 +321,100 @@ public class ReactiveEntityInitializerImpl extends EntityInitializerImpl
 		}
 		if ( !skipInitialization( data ) ) {
 			assert consistentInstance( data );
-			initializeEntityInstance( data );
-			return voidFuture();
+			return reactiveInitializeEntityInstance( (ReactiveEntityInitializerData) data );
 		}
 		data.setState( State.INITIALIZED );
 		return voidFuture();
+	}
+
+	protected CompletionStage<Void> reactiveInitializeEntityInstance(ReactiveEntityInitializerData data) {
+		final RowProcessingState rowProcessingState = data.getRowProcessingState();
+		final Object entityIdentifier = data.getEntityKey().getIdentifier();
+		final SharedSessionContractImplementor session = rowProcessingState.getSession();
+		final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
+
+		return reactiveExtractConcreteTypeStateValues( data )
+				.thenAccept( resolvedEntityState -> {
+
+					preLoad( data, resolvedEntityState );
+
+					if ( isPersistentAttributeInterceptable( data.getEntityInstanceForNotify() ) ) {
+						final PersistentAttributeInterceptor persistentAttributeInterceptor =
+								asPersistentAttributeInterceptable( data.getEntityInstanceForNotify() ).$$_hibernate_getInterceptor();
+						if ( persistentAttributeInterceptor == null
+								|| persistentAttributeInterceptor instanceof EnhancementAsProxyLazinessInterceptor ) {
+							// if we do this after the entity has been initialized the
+							// BytecodeLazyAttributeInterceptor#isAttributeLoaded(String fieldName) would return false;
+							data.getConcreteDescriptor().getBytecodeEnhancementMetadata()
+									.injectInterceptor( data.getEntityInstanceForNotify(), entityIdentifier, session );
+						}
+					}
+					data.getConcreteDescriptor().setPropertyValues( data.getEntityInstanceForNotify(), resolvedEntityState );
+
+					persistenceContext.addEntity( data.getEntityKey(), data.getEntityInstanceForNotify() );
+
+					// Also register possible unique key entries
+					registerPossibleUniqueKeyEntries( data, resolvedEntityState, session );
+
+					final Object version = getVersionAssembler() != null ? getVersionAssembler().assemble( rowProcessingState ) : null;
+					final Object rowId = getRowIdAssembler() != null ? getRowIdAssembler().assemble( rowProcessingState ) : null;
+
+					// from the perspective of Hibernate, an entity is read locked as soon as it is read
+					// so regardless of the requested lock mode, we upgrade to at least the read level
+					final LockMode lockModeToAcquire = data.getLockMode() == LockMode.NONE ? LockMode.READ : data.getLockMode();
+
+					final EntityEntry entityEntry = persistenceContext.addEntry(
+							data.getEntityInstanceForNotify(),
+							Status.LOADING,
+							resolvedEntityState,
+							rowId,
+							data.getEntityKey().getIdentifier(),
+							version,
+							lockModeToAcquire,
+							true,
+							data.getConcreteDescriptor(),
+							false
+					);
+					data.getEntityHolder().setEntityEntry( entityEntry );
+
+					registerNaturalIdResolution( data, persistenceContext, resolvedEntityState );
+
+					takeSnapshot( data, session, persistenceContext, entityEntry, resolvedEntityState );
+
+					data.getConcreteDescriptor().afterInitialize( data.getEntityInstanceForNotify(), session );
+
+					assert data.getConcreteDescriptor().getIdentifier( data.getEntityInstanceForNotify(), session ) != null;
+
+					final StatisticsImplementor statistics = session.getFactory().getStatistics();
+					if ( statistics.isStatisticsEnabled() ) {
+						if ( !rowProcessingState.isQueryCacheHit() ) {
+							statistics.loadEntity( data.getConcreteDescriptor().getEntityName() );
+						}
+					}
+					updateCaches(
+							data,
+							session,
+							session.getPersistenceContextInternal(),
+							resolvedEntityState,
+							version
+					);
+				} );
+	}
+
+	protected CompletionStage<Object[]> reactiveExtractConcreteTypeStateValues(ReactiveEntityInitializerData data) {
+		final RowProcessingState rowProcessingState = data.getRowProcessingState();
+		final Object[] values = new Object[data.getConcreteDescriptor().getNumberOfAttributeMappings()];
+		final DomainResultAssembler<?>[] concreteAssemblers = getAssemblers()[data.getConcreteDescriptor().getSubclassId()];
+		return CompletionStages.loop( 0, values.length, i -> {
+			final DomainResultAssembler<?> assembler = concreteAssemblers[i];
+			if ( assembler instanceof ReactiveEntityAssembler ) {
+				return ( (ReactiveEntityAssembler) assembler )
+						.reactiveAssemble( (ReactiveRowProcessingState) rowProcessingState )
+						.thenAccept( assembled -> values[i] = assembled );
+			}
+			values[i] = assembler == null ? UNFETCHED_PROPERTY : assembler.assemble( rowProcessingState );
+			return voidFuture();
+		} ).thenApply( v -> values );
 	}
 
 	protected CompletionStage<Void> reactiveResolveEntityInstance1(ReactiveEntityInitializerData data) {

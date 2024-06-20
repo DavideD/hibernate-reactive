@@ -41,7 +41,7 @@ public class ReactiveEntityAssembler extends EntityAssembler implements Reactive
 		// Ensure that the instance really is initialized
 		// This is important for key-many-to-ones that are part of a collection key fk,
 		// as the instance is needed for resolveKey before initializing the instance in RowReader
-		return ( (ReactiveInitializer) getInitializer() )
+		return ( (ReactiveInitializer<?>) getInitializer() )
 				.reactiveResolveInstance( rowProcessingState )
 				.thenApply( v -> getInitializer().getEntityInstance( rowProcessingState ) );
 

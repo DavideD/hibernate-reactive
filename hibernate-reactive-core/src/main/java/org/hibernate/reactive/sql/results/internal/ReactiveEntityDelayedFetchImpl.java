@@ -6,6 +6,7 @@
 package org.hibernate.reactive.sql.results.internal;
 
 import org.hibernate.metamodel.mapping.internal.ToOneAttributeMapping;
+import org.hibernate.reactive.sql.results.graph.entity.internal.ReactiveEntityAssembler;
 import org.hibernate.reactive.sql.results.graph.entity.internal.ReactiveEntityDelayedFetchInitializer;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
@@ -14,6 +15,7 @@ import org.hibernate.sql.results.graph.DomainResultCreationState;
 import org.hibernate.sql.results.graph.FetchParent;
 import org.hibernate.sql.results.graph.InitializerParent;
 import org.hibernate.sql.results.graph.entity.EntityInitializer;
+import org.hibernate.sql.results.graph.entity.internal.EntityAssembler;
 import org.hibernate.sql.results.graph.entity.internal.EntityDelayedFetchImpl;
 
 public class ReactiveEntityDelayedFetchImpl extends EntityDelayedFetchImpl {
@@ -38,5 +40,10 @@ public class ReactiveEntityDelayedFetchImpl extends EntityDelayedFetchImpl {
 				getDiscriminatorFetch(),
 				creationState
 		);
+	}
+
+	@Override
+	protected EntityAssembler buildEntityAssembler(EntityInitializer<?> entityInitializer) {
+		return new ReactiveEntityAssembler( getFetchedMapping().getJavaType(), entityInitializer );
 	}
 }

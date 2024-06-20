@@ -8,6 +8,7 @@ package org.hibernate.reactive.sql.results.graph.entity.internal;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
 import org.hibernate.sql.results.graph.InitializerParent;
 import org.hibernate.sql.results.graph.entity.EntityInitializer;
+import org.hibernate.sql.results.graph.entity.internal.EntityAssembler;
 import org.hibernate.sql.results.graph.entity.internal.EntityFetchJoinedImpl;
 
 public class ReactiveEntityFetchJoinedImpl extends EntityFetchJoinedImpl {
@@ -30,5 +31,10 @@ public class ReactiveEntityFetchJoinedImpl extends EntityFetchJoinedImpl {
 				false,
 				creationState
 		);
+	}
+
+	@Override
+	protected EntityAssembler buildEntityAssembler(EntityInitializer<?> entityInitializer) {
+		return new ReactiveEntityAssembler( getFetchedMapping().getJavaType(), entityInitializer );
 	}
 }
