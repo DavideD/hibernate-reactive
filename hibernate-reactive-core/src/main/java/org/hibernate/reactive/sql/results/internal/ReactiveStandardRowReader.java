@@ -394,7 +394,7 @@ public class ReactiveStandardRowReader<R> implements ReactiveRowReader<R> {
 				} ) )
 				.thenCompose( v -> loop( 0, initializers.length, i -> {
 					if ( initializersData[i].getState() == Initializer.State.RESOLVED ) {
-						if ( initializers[i] instanceof ReactiveInitializer) {
+						if ( initializers[i] instanceof ReactiveInitializer ) {
 							return ( (ReactiveInitializer) initializers[i] )
 									.reactiveInitializeInstance( initializersData[i] );
 						}
