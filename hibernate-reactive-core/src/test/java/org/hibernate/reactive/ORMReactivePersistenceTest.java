@@ -5,9 +5,9 @@
  */
 package org.hibernate.reactive;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.CompletionStage;
 
 import org.hibernate.Session;
@@ -23,8 +23,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.vertx.junit5.Timeout;
+import jakarta.persistence.Basic;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
@@ -48,7 +52,7 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
-		return List.of( Flour.class );
+		return List.of( Book.class, Author.class );
 	}
 
 	@BeforeEach
@@ -71,17 +75,24 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 
 	@Test
 	public void testORMWitMutinySession() {
-		final Flour rose = new Flour( 2, "Rose", "made from ground rose pedals.", "Full fragrance" );
+		Book endjinn = new Book( "Feersum Endjinn" );
+		Book useOfWeapons = new Book( "Use of Weapons" );
+		Author ian = new Author( "Iain M Banks" );
+		ian.books.add( endjinn );
+		ian.books.add( useOfWeapons );
 
 		try (Session ormSession = ormFactory.openSession()) {
 			ormSession.beginTransaction();
-			ormSession.persist( rose );
+			ormSession.persist( endjinn );
+			ormSession.persist( useOfWeapons );
+			ormSession.persist( ian );
 			ormSession.getTransaction().commit();
 		}
 
 		try (Session ormSession = ormFactory.openSession()) {
 			ormSession.beginTransaction();
-			Flour flour = ormSession.find( Flour.class, rose.id );
+			Author author = ormSession.find( Author.class, ian.id );
+			List<Book> books = author.books;
 			ormSession.getTransaction().commit();
 		}
 	}
@@ -91,79 +102,43 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 		return CompletionStages.voidFuture();
 	}
 
-	@Entity(name = "Flour")
-	@Table(name = "Flour")
-	public static class Flour {
+	@Entity(name = "Book")
+	@Table(name = "OTMBook")
+	static class Book {
+		Book(String title) {
+			this.title = title;
+		}
+
+		Book() {
+		}
+
+		@GeneratedValue
 		@Id
-		private Integer id;
-		private String name;
-		private String description;
-		private String type;
+		long id;
 
-		public Flour() {
-		}
+		@Basic(optional = false)
+		String title;
+	}
 
-		public Flour(Integer id, String name, String description, String type) {
-			this.id = id;
-			this.name = name;
-			this.description = description;
-			this.type = type;
-		}
-
-		public Integer getId() {
-			return id;
-		}
-
-		public void setId(Integer id) {
-			this.id = id;
-		}
-
-		public String getName() {
-			return name;
-		}
-
-		public void setName(String name) {
+	@Entity(name = "Author")
+	@Table(name = "OTMAuthor")
+	static class Author {
+		Author(String name) {
 			this.name = name;
 		}
 
-		public String getDescription() {
-			return description;
+		public Author() {
 		}
 
-		public void setDescription(String description) {
-			this.description = description;
-		}
+		@GeneratedValue
+		@Id
+		long id;
 
-		public String getType() {
-			return type;
-		}
+		@Basic(optional = false)
+		String name;
 
-		public void setType(String type) {
-			this.type = type;
-		}
-
-		@Override
-		public String toString() {
-			return id + ":" + name;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if ( this == o ) {
-				return true;
-			}
-			if ( o == null || getClass() != o.getClass() ) {
-				return false;
-			}
-			Flour flour = (Flour) o;
-			return Objects.equals( name, flour.name ) &&
-					Objects.equals( description, flour.description ) &&
-					Objects.equals( type, flour.type );
-		}
-
-		@Override
-		public int hashCode() {
-			return Objects.hash( name, description, type );
-		}
+		@OneToMany
+		@OrderColumn(name = "list_index")
+		List<Book> books = new ArrayList<>();
 	}
 }

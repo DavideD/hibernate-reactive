@@ -808,22 +808,22 @@ public class ReactiveEntityInitializerImpl extends EntityInitializerImpl
 	public void resolveInstance(EntityInitializerData data) {
 		throw LOG.nonReactiveMethodCall( "reactiveResolveInstance" );
 	}
-//
-//	@Override
-//	protected void resolveKey(EntityInitializerData data, boolean entityKeyOnly) {
-//		throw LOG.nonReactiveMethodCall( "reactiveResolveKey" );
-//	}
-//
-//	@Override
-//	public void resolveKey(EntityInitializerData data) {
-//		throw LOG.nonReactiveMethodCall( "reactiveResolveKey" );
-//	}
-//
-//	@Override
-//	public void resolveKey(RowProcessingState rowProcessingState) {
-//		throw LOG.nonReactiveMethodCall( "reactiveResolveKey" );
-//	}
-//
+
+	@Override
+	protected void resolveKey(EntityInitializerData data, boolean entityKeyOnly) {
+		throw LOG.nonReactiveMethodCall( "reactiveResolveKey" );
+	}
+
+	@Override
+	public void resolveKey(EntityInitializerData data) {
+		throw LOG.nonReactiveMethodCall( "reactiveResolveKey" );
+	}
+
+	@Override
+	public void resolveKey(RowProcessingState rowProcessingState) {
+		throw LOG.nonReactiveMethodCall( "reactiveResolveKey" );
+	}
+
 
 	@Override
 	protected void resolveInstanceSubInitializers(EntityInitializerData data) {
