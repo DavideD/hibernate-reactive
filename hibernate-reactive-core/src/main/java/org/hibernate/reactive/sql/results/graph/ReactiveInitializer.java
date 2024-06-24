@@ -29,7 +29,8 @@ public interface ReactiveInitializer<Data extends InitializerData> {
 	CompletionStage<Void> reactiveResolveKey(Data data);
 
 	default CompletionStage<Void> reactiveResolveKey(RowProcessingState rowProcessingState) {
-		return reactiveResolveKey( getData( rowProcessingState ) );
+		Data data = getData( rowProcessingState );
+		return reactiveResolveKey( data );
 	}
 
 	default CompletionStage<Void> reactiveResolveInstance(Object instance, Data data) {

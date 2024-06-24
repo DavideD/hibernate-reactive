@@ -373,35 +373,37 @@ public class ReactiveStandardRowReader<R> implements ReactiveRowReader<R> {
 	}
 
 	private CompletionStage<Void> coordinateInitializers(RowProcessingState rowProcessingState) {
-		return loop( 0, resultInitializers.length, i -> {
-						 if ( resultInitializers[i] instanceof ReactiveInitializer ) {
-							 return ( (ReactiveInitializer) resultInitializers[i] )
-									 .reactiveResolveKey( resultInitializersData[i] );
-						 }
-						 resultInitializers[i].resolveKey( resultInitializersData[i] );
-						 return voidFuture();
-					 }
-		)
-				.thenCompose( v -> loop( 0, sortedForResolveInstance.length, i -> {
-					if ( sortedForResolveInstanceData[i].getState() == Initializer.State.KEY_RESOLVED ) {
-						if ( sortedForResolveInstance[i] instanceof ReactiveInitializer ) {
-							return ( (ReactiveInitializer) sortedForResolveInstance[i] )
-									.reactiveResolveInstance( sortedForResolveInstanceData[i] );
-						}
-						sortedForResolveInstance[i].resolveInstance( sortedForResolveInstanceData[i] );
-					}
-					return voidFuture();
-				} ) )
-				.thenCompose( v -> loop( 0, initializers.length, i -> {
-					if ( initializersData[i].getState() == Initializer.State.RESOLVED ) {
-						if ( initializers[i] instanceof ReactiveInitializer ) {
-							return ( (ReactiveInitializer) initializers[i] )
-									.reactiveInitializeInstance( initializersData[i] );
-						}
-						initializers[i].initializeInstance( initializersData[i] );
-					}
-					return voidFuture();
-				} ) );
+		return loop( 0, resultInitializers.length, i -> resolveKey( resultInitializers[i], resultInitializersData[i] ) )
+				.thenCompose( v -> loop( 0, sortedForResolveInstance.length, i -> resolveInstance( sortedForResolveInstance[i], sortedForResolveInstanceData[i] ) ) )
+				.thenCompose( v -> loop( 0, initializers.length, i -> initializeInstance( initializers[i], initializersData[i] ) ) );
+	}
+
+	private CompletionStage<Void> resolveKey(Initializer<InitializerData> initializer, InitializerData initializerData) {
+		if ( initializer instanceof ReactiveInitializer ) {
+			return ( (ReactiveInitializer) initializer ).reactiveResolveKey( initializerData );
+		}
+		initializer.resolveKey( initializerData );
+		return voidFuture();
+	}
+
+	private CompletionStage<Void> resolveInstance(Initializer<InitializerData> initializer, InitializerData initializerData) {
+		if ( initializerData.getState() == Initializer.State.KEY_RESOLVED ) {
+			if ( initializer instanceof ReactiveInitializer ) {
+				return ( (ReactiveInitializer) initializer ).reactiveResolveInstance( initializerData );
+			}
+			initializer.resolveInstance( initializerData );
+		}
+		return voidFuture();
+	}
+
+	private CompletionStage<Void> initializeInstance(Initializer<InitializerData> initializer, InitializerData initializerData) {
+		if ( initializerData.getState() == Initializer.State.RESOLVED ) {
+			if ( initializer instanceof ReactiveInitializer ) {
+				return ( (ReactiveInitializer) initializer ).reactiveInitializeInstance( initializerData );
+			}
+			initializer.initializeInstance( initializerData );
+		}
+		return voidFuture();
 	}
 
 	@Override
