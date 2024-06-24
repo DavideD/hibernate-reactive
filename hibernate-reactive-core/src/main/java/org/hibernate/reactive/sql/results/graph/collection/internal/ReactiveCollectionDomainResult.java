@@ -101,12 +101,14 @@ public class ReactiveCollectionDomainResult extends CollectionDomainResult {
 
 		@Override
 		public void resolveKey(T data) {
-			throw LOG.nonReactiveMethodCall( "reactiveResolveKey" );
+//			throw LOG.nonReactiveMethodCall( "reactiveResolveKey" );
+			delegate.resolveKey( data );
 		}
 
 		@Override
 		public void resolveInstance(T data) {
-			throw LOG.nonReactiveMethodCall( "reactiveResolveInstance" );
+			delegate.resolveInstance( data );
+//			throw LOG.nonReactiveMethodCall( "reactiveResolveInstance" );
 		}
 
 		@Override

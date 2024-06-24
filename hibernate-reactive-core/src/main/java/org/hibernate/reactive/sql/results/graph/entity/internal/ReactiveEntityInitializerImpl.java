@@ -789,49 +789,49 @@ public class ReactiveEntityInitializerImpl extends EntityInitializerImpl
 		return new ReactiveEntityInitializerData( rowProcessingState );
 	}
 
-	@Override
-	protected Object resolveEntityInstance(EntityInitializerData data) {
-		throw LOG.nonReactiveMethodCall( "reactiveResolveEntityInstance" );
-	}
+//	@Override
+//	protected Object resolveEntityInstance(EntityInitializerData data) {
+//		throw LOG.nonReactiveMethodCall( "reactiveResolveEntityInstance" );
+//	}
+//
+//	@Override
+//	public void resolveInstance(RowProcessingState rowProcessingState) {
+//		throw LOG.nonReactiveMethodCall( "reactiveResolveInstance" );
+//	}
+//
+//	@Override
+//	public void resolveInstance(Object instance, EntityInitializerData data) {
+//		throw LOG.nonReactiveMethodCall( "reactiveResolveInstance" );
+//	}
+//
+//	@Override
+//	public void resolveInstance(EntityInitializerData data) {
+//		throw LOG.nonReactiveMethodCall( "reactiveResolveInstance" );
+//	}
 
-	@Override
-	public void resolveInstance(RowProcessingState rowProcessingState) {
-		throw LOG.nonReactiveMethodCall( "reactiveResolveInstance" );
-	}
-
-	@Override
-	public void resolveInstance(Object instance, EntityInitializerData data) {
-		throw LOG.nonReactiveMethodCall( "reactiveResolveInstance" );
-	}
-
-	@Override
-	public void resolveInstance(EntityInitializerData data) {
-		throw LOG.nonReactiveMethodCall( "reactiveResolveInstance" );
-	}
-
-	@Override
-	protected void resolveKey(EntityInitializerData data, boolean entityKeyOnly) {
-		throw LOG.nonReactiveMethodCall( "reactiveResolveKey" );
-	}
-
-	@Override
-	public void resolveKey(EntityInitializerData data) {
-		throw LOG.nonReactiveMethodCall( "reactiveResolveKey" );
-	}
-
-	@Override
-	public void resolveKey(RowProcessingState rowProcessingState) {
-		throw LOG.nonReactiveMethodCall( "reactiveResolveKey" );
-	}
-
-
-	@Override
-	protected void resolveInstanceSubInitializers(EntityInitializerData data) {
-		throw LOG.nonReactiveMethodCall( "reactiveInstanceSubInitializers" );
-	}
-
-	@Override
-	protected void resolveKeySubInitializers(EntityInitializerData data) {
-		throw LOG.nonReactiveMethodCall( "reactiveResolveKeySubInitializers" );
-	}
+//	@Override
+//	protected void resolveKey(EntityInitializerData data, boolean entityKeyOnly) {
+//		throw LOG.nonReactiveMethodCall( "reactiveResolveKey" );
+//	}
+//
+//	@Override
+//	public void resolveKey(EntityInitializerData data) {
+//		throw LOG.nonReactiveMethodCall( "reactiveResolveKey" );
+//	}
+//
+//	@Override
+//	public void resolveKey(RowProcessingState rowProcessingState) {
+//		throw LOG.nonReactiveMethodCall( "reactiveResolveKey" );
+//	}
+//
+//
+//	@Override
+//	protected void resolveInstanceSubInitializers(EntityInitializerData data) {
+//		throw LOG.nonReactiveMethodCall( "reactiveInstanceSubInitializers" );
+//	}
+//
+//	@Override
+//	protected void resolveKeySubInitializers(EntityInitializerData data) {
+//		throw LOG.nonReactiveMethodCall( "reactiveResolveKeySubInitializers" );
+//	}
 }
