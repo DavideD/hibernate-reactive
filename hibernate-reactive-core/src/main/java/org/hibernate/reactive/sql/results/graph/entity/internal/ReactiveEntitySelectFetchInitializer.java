@@ -7,6 +7,7 @@ package org.hibernate.reactive.sql.results.graph.entity.internal;
 
 import java.lang.invoke.MethodHandles;
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiFunction;
 
 import org.hibernate.EntityFilterException;
 import org.hibernate.FetchNotFoundException;
@@ -22,11 +23,12 @@ import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.logging.impl.LoggerFactory;
+import org.hibernate.reactive.session.ReactiveSession;
 import org.hibernate.reactive.sql.results.graph.ReactiveInitializer;
-import org.hibernate.reactive.sql.results.graph.entity.internal.ReactiveEntityDelayedFetchInitializer.ReactiveEntityDelayedFetchInitializerData;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
 import org.hibernate.sql.results.graph.DomainResult;
+import org.hibernate.sql.results.graph.Initializer;
 import org.hibernate.sql.results.graph.InitializerData;
 import org.hibernate.sql.results.graph.InitializerParent;
 import org.hibernate.sql.results.graph.entity.internal.EntitySelectFetchInitializer;
@@ -82,7 +84,7 @@ public class ReactiveEntitySelectFetchInitializer<Data extends EntitySelectFetch
 
 	@Override
 	protected InitializerData createInitializerData(RowProcessingState rowProcessingState) {
-		return new ReactiveEntityDelayedFetchInitializerData( rowProcessingState );
+		return new ReactiveEntitySelectFetchInitializerData( rowProcessingState );
 	}
 
 	@Override
@@ -101,12 +103,18 @@ public class ReactiveEntitySelectFetchInitializer<Data extends EntitySelectFetch
 	}
 
 	@Override
-	public CompletionStage<Void> reactiveResolveKey(Data data) {
-		throw LOG.notYetImplemented();
+	public CompletionStage<Void> forEachReactiveSubInitializer(
+			BiFunction<ReactiveInitializer<?>, RowProcessingState, CompletionStage<Void>> consumer,
+			InitializerData data) {
+		Initializer<?> initializer = getKeyAssembler().getInitializer();
+		if ( initializer != null ) {
+			return consumer.apply( (ReactiveInitializer<?>) initializer, data.getRowProcessingState() );
+		}
+		return voidFuture();
 	}
 
 	protected CompletionStage<Void> reactiveInitialize(EntitySelectFetchInitializerData ormData) {
-		ReactiveEntityDelayedFetchInitializerData data = new ReactiveEntityDelayedFetchInitializerData( ormData.getRowProcessingState() );
+		ReactiveEntitySelectFetchInitializerData data = (ReactiveEntitySelectFetchInitializerData) ormData;
 		final RowProcessingState rowProcessingState = data.getRowProcessingState();
 		final SharedSessionContractImplementor session = rowProcessingState.getSession();
 		final EntityKey entityKey = new EntityKey( data.getEntityIdentifier(), concreteDescriptor );
@@ -136,41 +144,42 @@ public class ReactiveEntitySelectFetchInitializer<Data extends EntitySelectFetch
 		data.setState( State.INITIALIZED );
 		final String entityName = concreteDescriptor.getEntityName();
 
-		final Object instance = session.internalLoad(
-				entityName,
-				data.getEntityIdentifier(),
-				true,
-				toOneMapping.isInternalLoadNullable()
-		);
-		data.setInstance( instance );
+		return ( (ReactiveSession) session ).reactiveInternalLoad(
+						entityName,
+						data.getEntityIdentifier(),
+						true,
+						toOneMapping.isInternalLoadNullable()
+				)
+				.thenAccept( instance -> {
+					data.setInstance( instance );
 
-		if ( instance == null ) {
-			if ( toOneMapping.getNotFoundAction() != NotFoundAction.IGNORE ) {
-				if ( affectedByFilter ) {
-					throw new EntityFilterException(
-							entityName,
-							data.getEntityIdentifier(),
-							toOneMapping.getNavigableRole().getFullPath()
-					);
-				}
-				if ( toOneMapping.getNotFoundAction() == NotFoundAction.EXCEPTION ) {
-					throw new FetchNotFoundException( entityName, data.getEntityIdentifier() );
-				}
-			}
-			rowProcessingState.getSession().getPersistenceContextInternal().claimEntityHolderIfPossible(
-					new EntityKey( data.getEntityIdentifier(), concreteDescriptor ),
-					instance,
-					rowProcessingState.getJdbcValuesSourceProcessingState(),
-					this
-			);
-		}
+					if ( instance == null ) {
+						if ( toOneMapping.getNotFoundAction() != NotFoundAction.IGNORE ) {
+							if ( affectedByFilter ) {
+								throw new EntityFilterException(
+										entityName,
+										data.getEntityIdentifier(),
+										toOneMapping.getNavigableRole().getFullPath()
+								);
+							}
+							if ( toOneMapping.getNotFoundAction() == NotFoundAction.EXCEPTION ) {
+								throw new FetchNotFoundException( entityName, data.getEntityIdentifier() );
+							}
+						}
+						rowProcessingState.getSession().getPersistenceContextInternal().claimEntityHolderIfPossible(
+								new EntityKey( data.getEntityIdentifier(), concreteDescriptor ),
+								instance,
+								rowProcessingState.getJdbcValuesSourceProcessingState(),
+								this
+						);
+					}
 
-		final boolean unwrapProxy = toOneMapping.isUnwrapProxy() && isEnhancedForLazyLoading;
-		final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( data.getInstance() );
-		if ( lazyInitializer != null ) {
-			lazyInitializer.setUnwrap( unwrapProxy );
-		}
-		return voidFuture();
+					final boolean unwrapProxy = toOneMapping.isUnwrapProxy() && isEnhancedForLazyLoading;
+					final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( data.getInstance() );
+					if ( lazyInitializer != null ) {
+						lazyInitializer.setUnwrap( unwrapProxy );
+					}
+				} );
 	}
 
 	@Override

@@ -6,9 +6,11 @@
 package org.hibernate.reactive.sql.results.graph;
 
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiFunction;
 
 import org.hibernate.Incubating;
 import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
+import org.hibernate.sql.results.graph.Initializer;
 import org.hibernate.sql.results.graph.InitializerData;
 import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 
@@ -26,7 +28,13 @@ public interface ReactiveInitializer<Data extends InitializerData> {
 
 	CompletionStage<Void> reactiveResolveInstance(Data data);
 
-	CompletionStage<Void> reactiveResolveKey(Data data);
+	/**
+	 * @see org.hibernate.sql.results.graph.internal.AbstractInitializer#resolveKey(InitializerData)
+	 */
+	default CompletionStage<Void> reactiveResolveKey(Data data) {
+		data.setState( Initializer.State.KEY_RESOLVED );
+		return forEachReactiveSubInitializer( ReactiveInitializer::reactiveResolveKey, data );
+	}
 
 	default CompletionStage<Void> reactiveResolveKey(RowProcessingState rowProcessingState) {
 		Data data = getData( rowProcessingState );
@@ -50,4 +58,9 @@ public interface ReactiveInitializer<Data extends InitializerData> {
 	default CompletionStage<Void> reactiveInitializeInstance(ReactiveRowProcessingState rowProcessingState) {
 		return reactiveInitializeInstance( getData( rowProcessingState ) );
 	}
+
+	CompletionStage<Void> forEachReactiveSubInitializer(
+			BiFunction<ReactiveInitializer<?>, RowProcessingState, CompletionStage<Void>> consumer,
+			InitializerData data);
+
 }

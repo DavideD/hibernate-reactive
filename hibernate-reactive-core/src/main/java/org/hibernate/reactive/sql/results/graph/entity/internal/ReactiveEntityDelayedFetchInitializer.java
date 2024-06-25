@@ -24,7 +24,6 @@ import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.logging.impl.LoggerFactory;
 import org.hibernate.reactive.persister.entity.impl.ReactiveEntityPersister;
 import org.hibernate.reactive.session.impl.ReactiveQueryExecutorLookup;
-import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
 import org.hibernate.reactive.sql.results.graph.ReactiveInitializer;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
@@ -211,21 +210,18 @@ public class ReactiveEntityDelayedFetchInitializer extends EntityDelayedFetchIni
 	}
 
 	@Override
-	public CompletionStage<Void> reactiveResolveKey(EntityDelayedFetchInitializerData data) {
-		data.setState( State.KEY_RESOLVED );
-		return reactiveForEachSubInitializer( ReactiveInitializer::reactiveResolveKey, data );
-	}
-
-	@Override
 	public CompletionStage<Void> reactiveInitializeInstance(EntityDelayedFetchInitializerData data) {
 		// No-op by default
 		return voidFuture();
 	}
 
-	protected CompletionStage<Void> reactiveForEachSubInitializer(BiFunction<ReactiveInitializer<?>, ReactiveRowProcessingState, CompletionStage<Void>> consumer, InitializerData data) {
+	@Override
+	public CompletionStage<Void> forEachReactiveSubInitializer(
+			BiFunction<ReactiveInitializer<?>, RowProcessingState, CompletionStage<Void>> consumer,
+			InitializerData data) {
 		final ReactiveInitializer<?> initializer = (ReactiveInitializer<?>) getIdentifierAssembler().getInitializer();
 		if ( initializer != null ) {
-			return consumer.apply( initializer, (ReactiveRowProcessingState) data.getRowProcessingState() );
+			return consumer.apply( initializer, data.getRowProcessingState() );
 		}
 		return voidFuture();
 	}

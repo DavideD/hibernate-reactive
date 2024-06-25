@@ -7,6 +7,7 @@ package org.hibernate.reactive.sql.results.graph.entity.internal;
 
 import java.lang.invoke.MethodHandles;
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiFunction;
 
 import org.hibernate.Hibernate;
 import org.hibernate.LockMode;
@@ -30,7 +31,6 @@ import org.hibernate.reactive.logging.impl.LoggerFactory;
 import org.hibernate.reactive.session.ReactiveSession;
 import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
 import org.hibernate.reactive.sql.results.graph.ReactiveInitializer;
-import org.hibernate.reactive.util.impl.CompletionStages;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
 import org.hibernate.sql.results.graph.DomainResult;
 import org.hibernate.sql.results.graph.DomainResultAssembler;
@@ -405,7 +405,7 @@ public class ReactiveEntityInitializerImpl extends EntityInitializerImpl
 		final RowProcessingState rowProcessingState = data.getRowProcessingState();
 		final Object[] values = new Object[data.getConcreteDescriptor().getNumberOfAttributeMappings()];
 		final DomainResultAssembler<?>[] concreteAssemblers = getAssemblers()[data.getConcreteDescriptor().getSubclassId()];
-		return CompletionStages.loop( 0, values.length, i -> {
+		return loop( 0, values.length, i -> {
 			final DomainResultAssembler<?> assembler = concreteAssemblers[i];
 			if ( assembler instanceof ReactiveEntityAssembler ) {
 				return ( (ReactiveEntityAssembler) assembler )
@@ -717,7 +717,7 @@ public class ReactiveEntityInitializerImpl extends EntityInitializerImpl
 
 	protected CompletionStage<Void> reactiveResolveKeySubInitializers(ReactiveEntityInitializerData data) {
 		final RowProcessingState rowProcessingState = data.getRowProcessingState();
-		return CompletionStages.loop(
+		return loop(
 				getSubInitializers()[data.getConcreteDescriptor().getSubclassId()],
 				initializer -> {
 					if ( initializer != null ) {
@@ -789,7 +789,64 @@ public class ReactiveEntityInitializerImpl extends EntityInitializerImpl
 		return new ReactiveEntityInitializerData( rowProcessingState );
 	}
 
-//	@Override
+	@Override
+	public CompletionStage<Void> forEachReactiveSubInitializer(
+			BiFunction<ReactiveInitializer<?>, RowProcessingState, CompletionStage<Void>> consumer,
+			InitializerData data) {
+		final RowProcessingState rowProcessingState = data.getRowProcessingState();
+		return voidFuture()
+				.thenCompose( v -> {
+					if ( getKeyAssembler() != null ) {
+						final Initializer<?> initializer = getKeyAssembler().getInitializer();
+						if ( initializer != null ) {
+							return consumer.apply( (ReactiveInitializer<?>) initializer, rowProcessingState );
+						}
+					}
+					return voidFuture();
+				} )
+				.thenCompose( v -> {
+					if ( getIdentifierAssembler() != null ) {
+						final Initializer<?> initializer = getIdentifierAssembler().getInitializer();
+						if ( initializer != null ) {
+							consumer.apply( (ReactiveInitializer<?>) initializer, rowProcessingState );
+						}
+					}
+					return voidFuture();
+				} )
+				.thenCompose( v -> {
+					final ReactiveEntityInitializerDataAdaptor entityInitializerData = new ReactiveEntityInitializerDataAdaptor(
+							(EntityInitializerData) data );
+					if ( entityInitializerData.getConcreteDescriptor() == null ) {
+						return loop( getSubInitializers(), initializers ->
+						 	loop( initializers, initializer -> {
+								if ( initializer != null ) {
+									return consumer.apply( (ReactiveInitializer<?>) initializer, rowProcessingState );
+								}
+								return voidFuture();
+							} )
+						);
+					}
+					else {
+						Initializer<?>[] subInitializers = getSubInitializers()[entityInitializerData.getConcreteDescriptor()
+								.getSubclassId()];
+						return loop( subInitializers, initializer -> consumer
+								.apply( (ReactiveInitializer<?>) initializer, rowProcessingState )
+						);
+					}
+				} );
+	}
+
+	private static class ReactiveEntityInitializerDataAdaptor extends EntityInitializerData {
+
+		public ReactiveEntityInitializerDataAdaptor(EntityInitializerData delegate) {
+			super( delegate );
+		}
+
+		public EntityPersister getConcreteDescriptor() {
+			return concreteDescriptor;
+		}
+	}
+	//	@Override
 //	protected Object resolveEntityInstance(EntityInitializerData data) {
 //		throw LOG.nonReactiveMethodCall( "reactiveResolveEntityInstance" );
 //	}
