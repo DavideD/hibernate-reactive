@@ -846,7 +846,8 @@ public class ReactiveEntityInitializerImpl extends EntityInitializerImpl
 			return concreteDescriptor;
 		}
 	}
-	//	@Override
+
+//	@Override
 //	protected Object resolveEntityInstance(EntityInitializerData data) {
 //		throw LOG.nonReactiveMethodCall( "reactiveResolveEntityInstance" );
 //	}
