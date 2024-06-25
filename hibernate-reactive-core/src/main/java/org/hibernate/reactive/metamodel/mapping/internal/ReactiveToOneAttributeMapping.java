@@ -99,4 +99,9 @@ public class ReactiveToOneAttributeMapping extends ToOneAttributeMapping {
 			TableGroupProducer declaringTableGroupProducer) {
 		return new ReactiveToOneAttributeMapping( super.copy( declaringType, declaringTableGroupProducer ) );
 	}
+
+	@Override
+	protected Object lazyInitialize(Object domainValue) {
+		return domainValue;
+	}
 }
