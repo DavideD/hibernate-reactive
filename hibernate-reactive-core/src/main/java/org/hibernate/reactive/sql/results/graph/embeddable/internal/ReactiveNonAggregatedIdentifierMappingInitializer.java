@@ -11,12 +11,15 @@ import java.util.function.BiFunction;
 
 import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.sql.results.graph.ReactiveInitializer;
+import org.hibernate.reactive.sql.results.graph.entity.internal.ReactiveEntityFetchJoinedImpl;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
+import org.hibernate.sql.results.graph.Fetch;
 import org.hibernate.sql.results.graph.Initializer;
 import org.hibernate.sql.results.graph.InitializerData;
 import org.hibernate.sql.results.graph.InitializerParent;
 import org.hibernate.sql.results.graph.embeddable.EmbeddableResultGraphNode;
 import org.hibernate.sql.results.graph.embeddable.internal.NonAggregatedIdentifierMappingInitializer;
+import org.hibernate.sql.results.graph.entity.internal.EntityFetchJoinedImpl;
 import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 
 import static java.lang.invoke.MethodHandles.lookup;
@@ -34,13 +37,54 @@ public class ReactiveNonAggregatedIdentifierMappingInitializer extends NonAggreg
 			InitializerParent<?> parent,
 			AssemblerCreationState creationState,
 			boolean isResultInitializer) {
-		super( resultDescriptor, parent, creationState, isResultInitializer );
+		super( resultDescriptor, parent, creationState, isResultInitializer, ReactiveNonAggregatedIdentifierMappingInitializer::convertFetch );
+	}
+
+	private static Fetch convertFetch(Fetch fetch) {
+		if ( fetch instanceof EntityFetchJoinedImpl ) {
+			return new ReactiveEntityFetchJoinedImpl( (EntityFetchJoinedImpl) fetch );
+		}
+		return fetch;
 	}
 //
 //	@Override
 //	public void resolveInstance(NonAggregatedIdentifierMappingInitializerData data) {
 //		throw LOG.nonReactiveMethodCall( "reactiveResolveInstance" );
 //	}
+
+
+	@Override
+	public CompletionStage<Void> reactiveResolveKey(NonAggregatedIdentifierMappingInitializerData data) {
+		if ( data.getState() != State.UNINITIALIZED ) {
+			return voidFuture();
+		}
+		// We need to possibly wrap the processing state if the embeddable is within an aggregate
+		data.setInstance( null );
+		data.setState( State.KEY_RESOLVED );
+		if ( getInitializers().length == 0 ) {
+			// Resolve the component early to know if the key is missing or not
+			return reactiveResolveInstance( data );
+		}
+		else {
+			final RowProcessingState rowProcessingState = data.getRowProcessingState();
+			final boolean[] dataIsMissing = {false};
+			return loop( getInitializers(), initializer -> {
+				if ( dataIsMissing[0] ) {
+					return voidFuture();
+				}
+				final InitializerData subData = ( (ReactiveInitializer<?>) initializer )
+						.getData( rowProcessingState );
+				return ( (ReactiveInitializer<InitializerData>) initializer )
+						.reactiveResolveKey( subData )
+						.thenAccept( v -> {
+							if ( subData.getState() == State.MISSING ) {
+								data.setState( State.MISSING );
+								dataIsMissing[0] = true;
+							}
+						} );
+			} );
+		}
+	}
 
 	@Override
 	public CompletionStage<Void> reactiveResolveInstance(NonAggregatedIdentifierMappingInitializerData data) {
@@ -50,12 +94,13 @@ public class ReactiveNonAggregatedIdentifierMappingInitializer extends NonAggreg
 
 	@Override
 	public void initializeInstance(NonAggregatedIdentifierMappingInitializerData data) {
-		throw LOG.nonReactiveMethodCall( "reactiveInitializeInstance" );
+		super.initializeInstance( data );
 	}
 
 	@Override
 	public CompletionStage<Void> reactiveInitializeInstance(NonAggregatedIdentifierMappingInitializerData data) {
-		throw LOG.notYetImplemented();
+		super.initializeInstance( data );
+		return voidFuture();
 	}
 
 	@Override

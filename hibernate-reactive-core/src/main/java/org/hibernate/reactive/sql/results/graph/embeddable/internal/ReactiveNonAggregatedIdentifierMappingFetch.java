@@ -13,7 +13,6 @@ import org.hibernate.sql.results.graph.DomainResultCreationState;
 import org.hibernate.sql.results.graph.FetchParent;
 import org.hibernate.sql.results.graph.InitializerParent;
 import org.hibernate.sql.results.graph.embeddable.EmbeddableInitializer;
-import org.hibernate.sql.results.graph.embeddable.internal.EmbeddableFetchImpl;
 import org.hibernate.sql.results.graph.embeddable.internal.NonAggregatedIdentifierMappingFetch;
 
 public class ReactiveNonAggregatedIdentifierMappingFetch extends NonAggregatedIdentifierMappingFetch {
@@ -27,7 +26,7 @@ public class ReactiveNonAggregatedIdentifierMappingFetch extends NonAggregatedId
 		super( navigablePath, embeddedPartDescriptor, fetchParent, fetchTiming, hasTableGroup, creationState );
 	}
 
-	public ReactiveNonAggregatedIdentifierMappingFetch(EmbeddableFetchImpl fetch) {
+	public ReactiveNonAggregatedIdentifierMappingFetch(NonAggregatedIdentifierMappingFetch fetch) {
 		super( fetch );
 	}
 

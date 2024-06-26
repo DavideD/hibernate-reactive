@@ -8,6 +8,7 @@ package org.hibernate.reactive.persister.entity.impl;
 import java.sql.PreparedStatement;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Supplier;
 
 import org.hibernate.FetchMode;
 import org.hibernate.HibernateException;
@@ -31,6 +32,7 @@ import org.hibernate.loader.ast.spi.SingleUniqueKeyEntityLoader;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.metamodel.mapping.AttributeMapping;
+import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
 import org.hibernate.metamodel.mapping.ManagedMappingType;
 import org.hibernate.metamodel.mapping.NaturalIdMapping;
 import org.hibernate.metamodel.mapping.SingularAttributeMapping;
@@ -277,6 +279,18 @@ public class ReactiveSingleTableEntityPersister extends SingleTableEntityPersist
 			Object rowId,
 			SharedSessionContractImplementor session) throws HibernateException {
 		throw LOG.nonReactiveMethodCall( "mergeReactive" );
+	}
+
+	@Override
+	protected EntityIdentifierMapping generateIdentifierMapping(
+			Supplier<?> templateInstanceCreator,
+			PersistentClass bootEntityDescriptor,
+			MappingModelCreationProcess creationProcess) {
+		return reactiveDelegate.convertEntityIdentifierMapping( super.generateIdentifierMapping(
+				templateInstanceCreator,
+				bootEntityDescriptor,
+				creationProcess
+		) );
 	}
 
 	/**

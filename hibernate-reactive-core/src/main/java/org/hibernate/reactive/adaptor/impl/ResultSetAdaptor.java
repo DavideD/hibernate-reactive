@@ -64,12 +64,6 @@ public class ResultSetAdaptor implements ResultSet {
 	private Row row;
 	private boolean wasNull;
 
-	public ResultSetAdaptor(Object id, Class<?> idClass, String columnName) {
-		requireNonNull( id );
-		this.iterator = List.of( new RowAdaptor( id, idClass, columnName ) ).iterator();
-		this.columnNames = columnName == null ? emptyList() : List.of( columnName );
-		this.columnDescriptors = List.of( toColumnDescriptor( idClass, columnName ) );
-	}
 
 	private static class RowAdaptor implements Row {
 		private final Object id;
@@ -120,6 +114,13 @@ public class ResultSetAdaptor implements ResultSet {
 		public List<Class<?>> types() {
 			return List.of( idClass );
 		}
+	}
+
+	public ResultSetAdaptor(Object id, Class<?> idClass, String columnName) {
+		requireNonNull( id );
+		this.iterator = List.of( new RowAdaptor( id, idClass, columnName ) ).iterator();
+		this.columnNames = columnName == null ? emptyList() : List.of( columnName );
+		this.columnDescriptors = List.of( toColumnDescriptor( idClass, columnName ) );
 	}
 
 	public ResultSetAdaptor(RowSet<Row> rows) {

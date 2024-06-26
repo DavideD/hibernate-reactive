@@ -256,7 +256,7 @@ public class ReactiveEntityInitializerImpl extends EntityInitializerImpl
 		data.setState( State.RESOLVED );
 		if ( data.getEntityKey() == null ) {
 			assert getIdentifierAssembler() != null;
-			final Object id = getIdentifierAssembler().assemble( rowProcessingState );
+ 			final Object id = getIdentifierAssembler().assemble( rowProcessingState );
 			if ( id == null ) {
 				setMissing( data );
 				return voidFuture();
