@@ -23,7 +23,6 @@ import org.hibernate.cache.spi.access.SoftLock;
 import org.hibernate.engine.internal.CascadePoint;
 import org.hibernate.engine.spi.ActionQueue;
 import org.hibernate.engine.spi.EntityEntry;
-import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.engine.spi.PersistenceContext;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.event.internal.EvictVisitor;
@@ -150,11 +149,11 @@ public class DefaultReactiveRefreshEventListener
 		return cascadeRefresh( source, persister, entity, refreshedAlready )
 				.thenCompose( v -> {
 					if ( entry != null ) {
-						final EntityKey key = source.generateEntityKey( id, persister );
-						persistenceContext.removeEntity( key );
+						persistenceContext.removeEntityHolder( entry.getEntityKey() );
 						if ( persister.hasCollections() ) {
-							new EvictVisitor( source, entity ).process( entity, persister );
+							new EvictVisitor( source, object ).process( object, persister );
 						}
+						persistenceContext.removeEntry( object );
 					}
 
 					evictEntity( entity, persister, id, source );

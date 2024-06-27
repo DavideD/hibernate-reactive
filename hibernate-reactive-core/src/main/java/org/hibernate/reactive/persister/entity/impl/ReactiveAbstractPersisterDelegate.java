@@ -322,7 +322,7 @@ public class ReactiveAbstractPersisterDelegate {
 
 	public EntityIdentifierMapping convertEntityIdentifierMapping(EntityIdentifierMapping entityIdentifierMapping) {
 		if ( entityIdentifierMapping instanceof NonAggregatedIdentifierMappingImpl ) {
-			return entityIdentifierMapping;
+			return new ReactiveNonAggregatedIdentifierMappingImpl( (NonAggregatedIdentifierMappingImpl) entityIdentifierMapping );
 		}
 		return entityIdentifierMapping;
 	}
@@ -336,6 +336,10 @@ public class ReactiveAbstractPersisterDelegate {
 				String[] rootTableKeyColumnNames,
 				MappingModelCreationProcess creationProcess) {
 			super( entityPersister, bootEntityDescriptor, rootTableName, rootTableKeyColumnNames, creationProcess );
+		}
+
+		public ReactiveNonAggregatedIdentifierMappingImpl(NonAggregatedIdentifierMappingImpl entityIdentifierMapping) {
+			super( entityIdentifierMapping );
 		}
 
 		@Override
