@@ -15,7 +15,7 @@ import org.hibernate.jenkins.pipeline.helpers.version.Version
 
 // --------------------------------------------
 // Global build configuration
-env.PROJECT = "hr"
+env.PROJECT = "reactive"
 env.JIRA_KEY = "HREACT"
 def RELEASE_ON_PUSH = false // Set to `true` *only* on branches where you want a release on each push.
 
@@ -73,20 +73,21 @@ pipeline {
 		string(
 				name: 'RELEASE_VERSION',
 				defaultValue: '',
-				description: 'The version to be released, e.g. 6.2.1.Final. Mandatory for manual releases, to prevent mistakes.',
+				description: 'The version to be released, e.g. 2.4.0.Final. Mandatory for manual releases, to prevent mistakes.',
 				trim: true
 		)
 		string(
 				name: 'DEVELOPMENT_VERSION',
 				defaultValue: '',
-				description: 'The next version to be used after the release, e.g. 6.2.2-SNAPSHOT. If not set, determined automatically from the release version.',
+				description: 'The next version to be used after the release, e.g. 2.4.1-SNAPSHOT. If not set, determined automatically from the release version.',
 				trim: true
 		)
-		booleanParam(
-				name: 'RELEASE_DRY_RUN',
-				defaultValue: false,
-				description: 'If true, just simulate the release, without pushing any commits or tags, and without uploading any artifacts or documentation.'
-		)
+		// Dry run is not supported at the moment
+// 		booleanParam(
+// 				name: 'RELEASE_DRY_RUN',
+// 				defaultValue: false,
+// 				description: 'If true, just simulate the release, without pushing any commits or tags, and without uploading any artifacts or documentation.'
+// 		)
 	}
 	stages {
 		stage('Release check') {
@@ -147,42 +148,44 @@ pipeline {
 
 					env.RELEASE_VERSION = releaseVersion.toString()
 					env.DEVELOPMENT_VERSION = developmentVersion.toString()
-					env.SCRIPT_OPTIONS = params.RELEASE_DRY_RUN ? "-d" : ""
+					// Dry run is not supported at the moment
+					env.SCRIPT_OPTIONS = ""
+// 					env.SCRIPT_OPTIONS = params.RELEASE_DRY_RUN ? "-d" : ""
 
 					// Determine version id to check if Jira version exists
 					sh ".release/scripts/determine-jira-version-id.sh ${env.JIRA_KEY} ${releaseVersion.withoutFinalQualifier}"
 				}
 			}
 		}
-		stage('Release prepare') {
-			steps {
-				script {
-					checkoutReleaseScripts()
-
-					configFileProvider([
-							configFile(fileId: 'release.config.ssh', targetLocation: "${env.HOME}/.ssh/config"),
-							configFile(fileId: 'release.config.ssh.knownhosts', targetLocation: "${env.HOME}/.ssh/known_hosts")
-					]) {
-						withCredentials([
-							usernamePassword(credentialsId: 'ossrh.sonatype.org', passwordVariable: 'OSSRH_PASSWORD', usernameVariable: 'OSSRH_USER'),
-							usernamePassword(credentialsId: 'gradle-plugin-portal-api-key', passwordVariable: 'PLUGIN_PORTAL_PASSWORD', usernameVariable: 'PLUGIN_PORTAL_USERNAME'),
-							file(credentialsId: 'release.gpg.private-key', variable: 'RELEASE_GPG_PRIVATE_KEY_PATH'),
-							string(credentialsId: 'release.gpg.passphrase', variable: 'RELEASE_GPG_PASSPHRASE')
-						]) {
-							sshagent(['ed25519.Hibernate-CI.github.com', 'hibernate.filemgmt.jboss.org', 'hibernate-ci.frs.sourceforge.net']) {
-								// set release version
-								// update changelog from JIRA
-								// tags the version
-								// changes the version to the provided development version
-								withEnv(["BRANCH=${env.GIT_BRANCH}"]) {
-									sh ".release/scripts/prepare-release.sh ${env.PROJECT} ${env.RELEASE_VERSION} ${env.DEVELOPMENT_VERSION}"
-								}
-							}
-						}
-					}
-				}
-			}
-		}
+// 		stage('Release prepare') {
+// 			steps {
+// 				script {
+// 					checkoutReleaseScripts()
+//
+// 					configFileProvider([
+// 							configFile(fileId: 'release.config.ssh', targetLocation: "${env.HOME}/.ssh/config"),
+// 							configFile(fileId: 'release.config.ssh.knownhosts', targetLocation: "${env.HOME}/.ssh/known_hosts")
+// 					]) {
+// 						withCredentials([
+// 							usernamePassword(credentialsId: 'ossrh.sonatype.org', passwordVariable: 'OSSRH_PASSWORD', usernameVariable: 'OSSRH_USER'),
+// 							usernamePassword(credentialsId: 'gradle-plugin-portal-api-key', passwordVariable: 'PLUGIN_PORTAL_PASSWORD', usernameVariable: 'PLUGIN_PORTAL_USERNAME'),
+// 							file(credentialsId: 'release.gpg.private-key', variable: 'RELEASE_GPG_PRIVATE_KEY_PATH'),
+// 							string(credentialsId: 'release.gpg.passphrase', variable: 'RELEASE_GPG_PASSPHRASE')
+// 						]) {
+// 							sshagent(['ed25519.Hibernate-CI.github.com', 'hibernate.filemgmt.jboss.org', 'hibernate-ci.frs.sourceforge.net']) {
+// 								// set release version
+// 								// update changelog from JIRA
+// 								// tags the version
+// 								// changes the version to the provided development version
+// 								withEnv(["BRANCH=${env.GIT_BRANCH}"]) {
+// 									sh ".release/scripts/prepare-release.sh ${env.PROJECT} ${env.RELEASE_VERSION} ${env.DEVELOPMENT_VERSION}"
+// 								}
+// 							}
+// 						}
+// 					}
+// 				}
+// 			}
+// 		}
 		stage('Publish release') {
 			steps {
 				script {
@@ -209,33 +212,34 @@ pipeline {
 				}
 			}
 		}
-		stage('Website release') {
-			steps {
-				script {
-					checkoutReleaseScripts()
-
-					configFileProvider([
-							configFile(fileId: 'release.config.ssh', targetLocation: "${env.HOME}/.ssh/config"),
-							configFile(fileId: 'release.config.ssh.knownhosts', targetLocation: "${env.HOME}/.ssh/known_hosts")
-					]) {
-						withCredentials([
-								gitUsernamePassword(credentialsId: 'username-and-token.Hibernate-CI.github.com', gitToolName: 'Default')
-						]) {
-							sshagent( ['ed25519.Hibernate-CI.github.com', 'hibernate.filemgmt.jboss.org', 'hibernate-ci.frs.sourceforge.net'] ) {
-								dir( '.release/hibernate.org' ) {
-									checkout scmGit(
-											branches: [[name: '*/production']],
-											extensions: [],
-											userRemoteConfigs: [[credentialsId: 'ed25519.Hibernate-CI.github.com', url: 'https://github.com/hibernate/hibernate.org.git']]
-									)
-									sh "../scripts/website-release.sh ${env.SCRIPT_OPTIONS} ${env.PROJECT} ${env.RELEASE_VERSION}"
-								}
-							}
-						}
-					}
-				}
-			}
-		}
+		// Needs to be adapted for Hibernate Reactive: Check scripts website-release.sh
+// 		stage('Website release') {
+// 			steps {
+// 				script {
+// 					checkoutReleaseScripts()
+//
+// 					configFileProvider([
+// 							configFile(fileId: 'release.config.ssh', targetLocation: "${env.HOME}/.ssh/config"),
+// 							configFile(fileId: 'release.config.ssh.knownhosts', targetLocation: "${env.HOME}/.ssh/known_hosts")
+// 					]) {
+// 						withCredentials([
+// 								gitUsernamePassword(credentialsId: 'username-and-token.Hibernate-CI.github.com', gitToolName: 'Default')
+// 						]) {
+// 							sshagent( ['ed25519.Hibernate-CI.github.com', 'hibernate.filemgmt.jboss.org', 'hibernate-ci.frs.sourceforge.net'] ) {
+// 								dir( '.release/hibernate.org' ) {
+// 									checkout scmGit(
+// 											branches: [[name: '*/production']],
+// 											extensions: [],
+// 											userRemoteConfigs: [[credentialsId: 'ed25519.Hibernate-CI.github.com', url: 'https://github.com/hibernate/hibernate.org.git']]
+// 									)
+// 									sh "../scripts/website-release.sh ${env.SCRIPT_OPTIONS} ${env.PROJECT} ${env.RELEASE_VERSION}"
+// 								}
+// 							}
+// 						}
+// 					}
+// 				}
+// 			}
+// 		}
 		stage('GitHub release') {
 			steps {
 				script {
