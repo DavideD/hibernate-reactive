@@ -9,12 +9,6 @@ plugins {
 }
 
 ext {
-    if ( !project.hasProperty( 'jbossNexusUser' ) ) {
-        jbossNexusUser = null
-    }
-    if ( !project.hasProperty( 'jbossNexusPassword' ) ) {
-        jbossNexusPassword = null
-    }
     if ( !project.hasProperty( 'sonatypeOssrhUser' ) ) {
         sonatypeOssrhUser = null
     }
@@ -90,10 +84,6 @@ ext {
 }
 
 // To release, see task ciRelease in release/build.gradle
-
-// To publish snapshots:
-// ./gradlew publishToJBossNexus closeAndReleaseJBossNexusStagingRepository -PjbossNexusUser="<YOUR USERNAME>" -PjbossNexusPassword="<YOUR PASSWORD>"
-
 // To publish on Sonatype (Maven Central):
 // ./gradlew publishToSonatype closeAndReleaseStagingRepository -PsonatypeOssrhUser="<YOUR USERNAME>" -PsonatypeOssrhPassword="<YOUR PASSWORD>"
 nexusPublishing {
@@ -101,11 +91,6 @@ nexusPublishing {
         sonatype {
             username = project.sonatypeOssrhUser
             password = project.sonatypeOssrhPassword
-        }
-        jBossNexus {
-            snapshotRepositoryUrl = uri('https://repository.jboss.org/nexus/content/repositories/snapshots')
-            username = project.jbossNexusUser
-            password = project.jbossNexusPassword
         }
     }
 }

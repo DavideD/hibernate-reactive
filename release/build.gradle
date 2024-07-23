@@ -28,13 +28,13 @@ description = 'Release module'
 //  ./gradlew ciRelease -PreleaseVersion=x.y.z.Final -PdevelopmentVersion=x.y.z-SNAPSHOT -PgitRemote=origin -PgitBranch=main
 
 // The folder containing the rendered documentation
-final String documentationDir = rootProject.project( 'documentation' ).buildDir
+final String documentationDir = rootProject.layout.buildDirectory.dir( "documentation" )
 
 // Relative path on the static website where the documentation is located
 final String docWebsiteRelativePath = "reactive/documentation/${projectVersion.family}"
 
 // The location of the docs when the website has been cloned
-final String docWebsiteReactiveFolder = "${project.buildDir}/docs-website/${docWebsiteRelativePath}"
+final String docWebsiteReactiveFolder = project.layout.buildDirectory.dir( "docs-website/${docWebsiteRelativePath}" )
 
 /**
  * Assembles all documentation into the {buildDir}/documentation directory.
@@ -50,7 +50,7 @@ assemble.dependsOn assembleDocumentation
 * Clone the website
 */
 tasks.register( 'removeDocsWebsite', Delete ) {
-    delete "${project.layout.buildDirectory}/docs-website/"
+    delete project.layout.buildDirectory.dir( "docs-website" )
 }
 
 // Depending on compileJava makes sure that the buildDir exists. Otherwise this task will fail.
@@ -62,7 +62,7 @@ tasks.register( 'cloneDocsWebsite', Exec ) {
 
 tasks.register( 'sparseCheckoutDocumentation', Exec ) {
     dependsOn cloneDocsWebsite
-    workingDir "${project.layout.buildDirectory}/docs-website"
+    workingDir project.layout.buildDirectory.dir( "docs-website" )
     commandLine 'git', 'sparse-checkout', 'set', docWebsiteRelativePath
 }
 
@@ -70,8 +70,8 @@ tasks.register( 'sparseCheckoutDocumentation', Exec ) {
 * Update the docs on the cloned website
 */
 tasks.register( 'updateDocumentation' ) {
-    dependsOn[assembleDocumentation, sparseCheckoutDocumentation]
-    description = "Update the documentation o the cloned static website"
+    dependsOn assembleDocumentation, sparseCheckoutDocumentation
+    description = "Update the documentation on the cloned static website"
 
     // copy documentation outputs into target/documentation:
     // * this is used in building the dist bundles
@@ -100,7 +100,7 @@ tasks.register( 'updateDocumentation' ) {
 */
 tasks.register( 'stageDocChanges', Exec ) {
     dependsOn updateDocumentation
-    workingDir "${project.buildDir}/docs-website"
+    workingDir project.layout.buildDirectory.dir( "docs-website" )
     commandLine 'git', 'add', '-A', '.'
 }
 
