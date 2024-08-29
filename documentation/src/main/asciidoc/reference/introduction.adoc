@@ -17,6 +17,9 @@ simplistic example program in the {example}[`session-example`] directory,
 which shows off all the "bits" you'll need to get your own program up and
 running.
 
+
+Testing
+
 == Information about Hibernate ORM
 
 This document assumes some passing familiarity with Hibernate ORM or another
