@@ -177,14 +177,6 @@ def releaseChecksTask = tasks.register( "releaseChecks" ) {
     }
 }
 
-def preVerifyReleaseTask = tasks.register( "preVerifyRelease" ) {
-    group 'Release'
-    description 'Pre-verifies a release job execution (Run locally before a CI release)'
-
-    dependsOn tasks.clean
-    dependsOn assembleDocumentationTask
-}
-
 def changeToReleaseVersionTask = tasks.register( 'changeToReleaseVersion' ) {
     description 'Updates `gradle/version.properties` file to the specified release-version'
     group 'Release'
