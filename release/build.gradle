@@ -233,9 +233,8 @@ void updateVersionFile(String version) {
 }
 
 def publishReleaseArtifactsTask = tasks.register( 'publishReleaseArtifacts' ) {
-    mustRunAfter gitPreparationForReleaseTask
-
     dependsOn uploadDocumentationTask
+    mustRunAfter gitPreparationForReleaseTask
 }
 
 def releasePerformPostGitTask = tasks.register( 'gitTasksAfterReleasePerform' ) {
