@@ -135,10 +135,7 @@ def assembleDocumentationTask = tasks.register( 'assembleDocumentation' ) {
 	group 'Documentation'
 	description 'Grouping task for performing all documentation building tasks'
 
-	doFirst {
-		logger.lifecycle "Documentation groupId: '" + project.group + "', version: '" + project.version + "'"
-		renderReferenceDocumentation.configure
-	}
+	logger.lifecycle "Documentation groupId: '" + project.group + "', version: '" + project.version + "'"
 }
 
 assemble.dependsOn assembleDocumentationTask
