@@ -30,6 +30,8 @@ ext {
     }
 }
 
+ext.reloadVersion = () -> projectVersion = Version.parseProjectVersion( readVersionFromProperties( rootProject.projectVersionFile ) )
+
 // nexusPublishing uses group and version
 // as defaults
 group = projectGroup
@@ -199,6 +201,10 @@ subprojects {
             }
         }
     }
+}
+
+void reloadVersion() {
+    project.version = Version.parseProjectVersion( null )
 }
 
 private static String readVersionFromProperties(File file) {
