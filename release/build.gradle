@@ -258,7 +258,7 @@ def releasePrepareTask = tasks.register( "releasePrepare" ) {
 
     dependsOn gitPreparationForReleaseTask
 
-//    finalizedBy releasePreparePostGitTask
+    finalizedBy releasePreparePostGitTask
 }
 
 def releasePerformTask = tasks.register( 'releasePerform' ) {

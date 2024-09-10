@@ -116,14 +116,16 @@ def renderReferenceDocumentationTask = tasks.register( 'renderReferenceDocumenta
 
 	outputDir = project.layout.buildDirectory.dir( "asciidoc/reference/html_single" ).get().asFile
 	options logDocuments: true
-	attributes icons: 'font',
-			   'source-highlighter': 'rouge',
-			   experimental: true,
-			   linkcss: true,
-			   majorMinorVersion: project.version.family,
-			   fullVersion: project.version.toString(),
-			   docinfo: 'private'
 
+	doFirst {
+		attributes icons: 'font',
+				   'source-highlighter': 'rouge',
+				   experimental: true,
+				   linkcss: true,
+				   majorMinorVersion: project.version.family,
+				   fullVersion: project.version.toString(),
+				   docinfo: 'private'
+	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -201,10 +201,6 @@ subprojects {
     }
 }
 
-void reloadVersion() {
-    project.version = Version.parseProjectVersion( null )
-}
-
 private static String readVersionFromProperties(File file) {
     if ( !file.exists() ) {
         throw new FileNotFoundException( "Version file $file.canonicalPath does not exists" )
