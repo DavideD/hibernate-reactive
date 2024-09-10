@@ -227,10 +227,10 @@ def releasePreparePostGitTask = tasks.register( 'gitTasksAfterRelease' ) {
     }
 }
 
-void updateVersionFile(String version) {
+void updateVersionFile(var version) {
     logger.lifecycle( "Updating `gradle/version.properties` version to `${version}`" )
     project.projectVersionFile.text = "projectVersion=${version}"
-    project.version =
+    project.version = version
 }
 
 def publishReleaseArtifactsTask = tasks.register( 'publishReleaseArtifacts' ) {
