@@ -257,7 +257,7 @@ def releasePrepareTask = tasks.register( "releasePrepare" ) {
     group "Release"
 
     dependsOn assembleDocumentationTask
-    dependsOn commitDocChangesTask
+    dependsOn gitPreparationForReleaseTask
 
     finalizedBy releasePreparePostGitTask
 }
