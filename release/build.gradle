@@ -97,7 +97,6 @@ def updateDocumentationTask = tasks.register( 'updateDocumentation' ) {
 }
 
 def stageDocChangesTask = tasks.register( 'stageDocChanges', Exec ) {
-    dependsOn updateDocumentationTask
     workingDir project.layout.buildDirectory.dir( "docs-website" )
     commandLine 'git', 'add', '-A', '.'
 }
@@ -190,8 +189,8 @@ def changeToReleaseVersionTask = tasks.register( 'changeToReleaseVersion' ) {
 }
 
 def gitPreparationForReleaseTask = tasks.register( 'gitPreparationForRelease' ) {
-    dependsOn releaseChecksTask
-    dependsOn changeToReleaseVersionTask
+    dependsOn releaseChecksTask, changeToReleaseVersionTask
+    finalizedBy updateDocumentationTask
 
     doLast {
         logger.lifecycle( "Performing pre-steps Git commit : `${project.releaseVersion}`" )
@@ -255,8 +254,7 @@ def releasePrepareTask = tasks.register( "releasePrepare" ) {
     description "On a local checkout, performs all the changes required for the release, website updates included"
     group "Release"
 
-    dependsOn assembleDocumentationTask
-    dependsOn gitPreparationForReleaseTask
+    dependsOn assembleDocumentationTask, gitPreparationForReleaseTask
 
     finalizedBy releasePreparePostGitTask
 }
