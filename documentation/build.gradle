@@ -50,6 +50,8 @@ def aggregateJavadocsTask = tasks.register( 'aggregateJavadocs', Javadoc ) {
 		use = true
 		options.encoding = 'UTF-8'
 
+		logger.lifecycle "---- Aggregating javadoc with version $project.version"
+
 		def matcher = hibernateOrmVersion =~ /\d+\.\d+/
 		def ormMinorVersion = matcher.find() ? matcher.group() : "5.6";
 
@@ -117,15 +119,15 @@ def renderReferenceDocumentationTask = tasks.register( 'renderReferenceDocumenta
 	outputDir = project.layout.buildDirectory.dir( "asciidoc/reference/html_single" ).get().asFile
 	options logDocuments: true
 
-	doFirst {
-		attributes icons: 'font',
-				   'source-highlighter': 'rouge',
-				   experimental: true,
-				   linkcss: true,
-				   majorMinorVersion: project.version.family,
-				   fullVersion: project.version.toString(),
-				   docinfo: 'private'
-	}
+	logger.lifecycle "---- Rendering docs with version $project.version"
+
+	attributes icons: 'font',
+			   'source-highlighter': 'rouge',
+			   experimental: true,
+			   linkcss: true,
+			   majorMinorVersion: project.version.family,
+			   fullVersion: project.version.toString(),
+			   docinfo: 'private'
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
