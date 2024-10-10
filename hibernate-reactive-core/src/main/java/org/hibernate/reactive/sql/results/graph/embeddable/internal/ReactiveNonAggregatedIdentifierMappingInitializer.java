@@ -12,6 +12,7 @@ import org.hibernate.reactive.sql.results.graph.ReactiveInitializer;
 import org.hibernate.reactive.sql.results.graph.entity.internal.ReactiveEntityFetchJoinedImpl;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
 import org.hibernate.sql.results.graph.Fetch;
+import org.hibernate.sql.results.graph.Initializer;
 import org.hibernate.sql.results.graph.InitializerData;
 import org.hibernate.sql.results.graph.InitializerParent;
 import org.hibernate.sql.results.graph.embeddable.EmbeddableResultGraphNode;
@@ -19,8 +20,11 @@ import org.hibernate.sql.results.graph.embeddable.internal.NonAggregatedIdentifi
 import org.hibernate.sql.results.graph.entity.internal.EntityFetchJoinedImpl;
 import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 
+import static org.hibernate.reactive.util.impl.CompletionStages.falseFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.loop;
+import static org.hibernate.reactive.util.impl.CompletionStages.trueFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
+import static org.hibernate.reactive.util.impl.CompletionStages.whileLoop;
 
 public class ReactiveNonAggregatedIdentifierMappingInitializer extends NonAggregatedIdentifierMappingInitializer
 		implements ReactiveInitializer<NonAggregatedIdentifierMappingInitializer.NonAggregatedIdentifierMappingInitializerData> {
@@ -51,7 +55,6 @@ public class ReactiveNonAggregatedIdentifierMappingInitializer extends NonAggreg
 		if ( data.getState() != State.UNINITIALIZED ) {
 			return voidFuture();
 		}
-		// We need to possibly wrap the processing state if the embeddable is within an aggregate
 		data.setInstance( null );
 		data.setState( State.KEY_RESOLVED );
 		if ( getInitializers().length == 0 ) {
@@ -60,21 +63,28 @@ public class ReactiveNonAggregatedIdentifierMappingInitializer extends NonAggreg
 		}
 		else {
 			final RowProcessingState rowProcessingState = data.getRowProcessingState();
-			final boolean[] dataIsMissing = {false};
-			return loop( getInitializers(), initializer -> {
-				if ( dataIsMissing[0] ) {
-					return voidFuture();
+			final int[] index = {-1};
+			final int[] size = {getInitializers().length};
+			final Initializer<InitializerData>[] initializers = getInitializers();
+			return whileLoop( () -> {
+				index[0]++;
+				if ( index[0] < size[0] ) {
+					Initializer<InitializerData> initializer = initializers[index[0]];
+					if ( initializer == null ) {
+						return trueFuture();
+					}
+					final InitializerData subData = ( (ReactiveInitializer<?>) initializer )
+							.getData( rowProcessingState );
+					return ( (ReactiveInitializer<InitializerData>) initializer )
+							.reactiveResolveKey( subData )
+							.thenApply( v -> {
+								if ( subData.getState() == State.MISSING ) {
+									data.setState( State.MISSING );
+								}
+								return false;
+							} );
 				}
-				final InitializerData subData = ( (ReactiveInitializer<?>) initializer )
-						.getData( rowProcessingState );
-				return ( (ReactiveInitializer<InitializerData>) initializer )
-						.reactiveResolveKey( subData )
-						.thenAccept( v -> {
-							if ( subData.getState() == State.MISSING ) {
-								data.setState( State.MISSING );
-								dataIsMissing[0] = true;
-							}
-						} );
+				return falseFuture();
 			} );
 		}
 	}
