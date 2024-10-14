@@ -5,7 +5,6 @@
  */
 package org.hibernate.reactive.persister.entity.impl;
 
-import java.sql.PreparedStatement;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
@@ -23,7 +22,6 @@ import org.hibernate.event.spi.EventSource;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
-import org.hibernate.jdbc.Expectation;
 import org.hibernate.loader.ast.spi.MultiIdEntityLoader;
 import org.hibernate.loader.ast.spi.MultiIdLoadOptions;
 import org.hibernate.loader.ast.spi.SingleIdEntityLoader;
@@ -210,11 +208,6 @@ public class ReactiveSingleTableEntityPersister extends SingleTableEntityPersist
 				fetchMode,
 				creationProcess
 		);
-	}
-
-	@Override
-	public boolean check(int rows, Object id, int tableNumber, Expectation expectation, PreparedStatement statement, String sql) throws HibernateException {
-		return super.check( rows, id, tableNumber, expectation,statement, sql  );
 	}
 
 	@Override

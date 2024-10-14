@@ -5,7 +5,6 @@
  */
 package org.hibernate.reactive.persister.entity.impl;
 
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
@@ -29,7 +28,6 @@ import org.hibernate.event.spi.LoadEvent;
 import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.internal.util.collections.ArrayHelper;
-import org.hibernate.jdbc.Expectation;
 import org.hibernate.loader.ast.internal.CacheEntityLoaderHelper;
 import org.hibernate.loader.ast.internal.LoaderSelectBuilder;
 import org.hibernate.loader.ast.spi.NaturalIdLoader;
@@ -118,13 +116,6 @@ public interface ReactiveAbstractEntityPersister extends ReactiveEntityPersister
 	default ReactiveConnection getReactiveConnection(SharedSessionContractImplementor session) {
 		return ReactiveQueryExecutorLookup.extract( session ).getReactiveConnection();
 	}
-
-	boolean check(
-			int rows,
-			Object id,
-			int tableNumber,
-			Expectation expectation,
-			PreparedStatement statement, String sql) throws HibernateException;
 
 	default String generateSelectLockString(LockOptions lockOptions) {
 		final SessionFactoryImplementor factory = getFactory();

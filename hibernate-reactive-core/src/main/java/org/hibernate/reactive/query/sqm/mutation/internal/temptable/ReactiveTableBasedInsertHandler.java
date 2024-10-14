@@ -92,7 +92,6 @@ public class ReactiveTableBasedInsertHandler extends TableBasedInsertHandler imp
 			JdbcParameter sessionUidParameter,
 			DomainQueryExecutionContext executionContext) {
 		return new ReactiveInsertExecutionDelegate(
-				sqmInsert,
 				sqmConverter,
 				entityTable,
 				afterUseAction,
