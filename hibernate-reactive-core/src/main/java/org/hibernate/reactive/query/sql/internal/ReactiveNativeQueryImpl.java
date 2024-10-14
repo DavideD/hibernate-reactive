@@ -382,12 +382,6 @@ public class ReactiveNativeQueryImpl<R> extends NativeQueryImpl<R>
 		return this;
 	}
 
-	@Override @Deprecated
-	public ReactiveNativeQueryImpl<R> setAliasSpecificLockMode(String alias, LockMode lockMode) {
-		super.setAliasSpecificLockMode( alias, lockMode );
-		return this;
-	}
-
 	@Override
 	public ReactiveNativeQueryImpl<R> setHint(String hintName, Object value) {
 		super.setHint( hintName, value );

@@ -1376,9 +1376,15 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 		private boolean sessionCheckingEnabled;
 		private boolean returnOfDeletedEntitiesEnabled;
 		private boolean orderedReturnEnabled = true;
+		private boolean readOnly;
 
 		public ReactiveMultiIdentifierLoadAccessImpl(EntityPersister entityPersister) {
 			this.entityPersister = entityPersister;
+		}
+
+		@Override
+		public Boolean getReadOnly(SessionImplementor session) {
+			return session.getLoadQueryInfluencers().getReadOnly();
 		}
 
 		public ReactiveMultiIdentifierLoadAccessImpl(Class<T> entityClass) {
@@ -1456,7 +1462,6 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 			return this;
 		}
 
-		@SuppressWarnings("unchecked")
 		public CompletionStage<List<T>> multiLoad(Object... ids) {
 			Object[] sids = new Object[ids.length];
 			System.arraycopy( ids, 0, sids, 0, ids.length );

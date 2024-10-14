@@ -174,7 +174,6 @@ public class ReactiveRestrictedDeleteExecutionDelegate
 		if ( needsIdTable ) {
 			return executeWithIdTable(
 					predicateCollector.getPredicate(),
-					deletingTableGroup,
 					converter.getJdbcParamsBySqmParam(),
 					converter.getSqmParameterMappingModelExpressibleResolutions(),
 					executionContextAdapter
@@ -224,17 +223,15 @@ public class ReactiveRestrictedDeleteExecutionDelegate
 						domainParameterXref,
 						() -> restrictionSqmParameterResolutions
 				),
-				sessionFactory.getRuntimeMetamodels().getMappingMetamodel(),
-				navigablePath -> tableGroup,
 				new SqmParameterMappingModelResolutionAccess() {
-					@Override
-					@SuppressWarnings("unchecked")
+					@Override @SuppressWarnings("unchecked")
 					public <T> MappingModelExpressible<T> getResolvedMappingModelType(SqmParameter<T> parameter) {
-						return (MappingModelExpressible<T>) paramTypeResolutions.get( parameter );
+						return (MappingModelExpressible<T>) paramTypeResolutions.get(parameter);
 					}
 				},
 				executionContext.getSession()
 		);
+
 
 		CompletionStage<Void> cleanUpCollectionTablesStage = ReactiveSqmMutationStrategyHelper.cleanUpCollectionTables(
 				entityDescriptor,
@@ -499,7 +496,6 @@ public class ReactiveRestrictedDeleteExecutionDelegate
 
 	private CompletionStage<Integer> executeWithIdTable(
 			Predicate predicate,
-			TableGroup deletingTableGroup,
 			Map<SqmParameter<?>, List<List<JdbcParameter>>> restrictionSqmParameterResolutions,
 			Map<SqmParameter<?>, MappingModelExpressible<?>> paramTypeResolutions,
 			ExecutionContext executionContext) {
@@ -510,13 +506,10 @@ public class ReactiveRestrictedDeleteExecutionDelegate
 						domainParameterXref,
 						() -> restrictionSqmParameterResolutions
 				),
-				sessionFactory.getRuntimeMetamodels().getMappingMetamodel(),
-				navigablePath -> deletingTableGroup,
 				new SqmParameterMappingModelResolutionAccess() {
-					@Override
-					@SuppressWarnings("unchecked")
+					@Override @SuppressWarnings("unchecked")
 					public <T> MappingModelExpressible<T> getResolvedMappingModelType(SqmParameter<T> parameter) {
-						return (MappingModelExpressible<T>) paramTypeResolutions.get( parameter );
+						return (MappingModelExpressible<T>) paramTypeResolutions.get(parameter);
 					}
 				},
 				executionContext.getSession()

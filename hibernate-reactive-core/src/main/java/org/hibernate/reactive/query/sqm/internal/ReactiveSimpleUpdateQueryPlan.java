@@ -64,13 +64,10 @@ public class ReactiveSimpleUpdateQueryPlan implements ReactiveNonSelectQueryPlan
 				executionContext.getQueryParameterBindings(),
 				domainParameterXref,
 				jdbcParamsXref,
-				session.getFactory().getRuntimeMetamodels().getMappingMetamodel(),
-				tableGroupAccess::findTableGroup,
 				new SqmParameterMappingModelResolutionAccess() {
-					@Override
-					@SuppressWarnings("unchecked")
+					@Override @SuppressWarnings("unchecked")
 					public <T> MappingModelExpressible<T> getResolvedMappingModelType(SqmParameter<T> parameter) {
-						return (MappingModelExpressible<T>) sqmParamMappingTypeResolutions.get( parameter );
+						return (MappingModelExpressible<T>) sqmParamMappingTypeResolutions.get(parameter);
 					}
 				},
 				session

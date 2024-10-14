@@ -506,7 +506,7 @@ public class ReactiveQuerySqmImpl<R> extends QuerySqmImpl<R> implements Reactive
 
 	@Override
 	public ReactiveQuerySqmImpl<R> setFirstResult(int startPosition) {
-		applyFirstResult( startPosition );
+		super.setFirstResult( startPosition );
 		return this;
 	}
 
@@ -530,13 +530,6 @@ public class ReactiveQuerySqmImpl<R> extends QuerySqmImpl<R> implements Reactive
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// covariance
-
-
-	@Override @Deprecated
-	public ReactiveQuerySqmImpl<R> setAliasSpecificLockMode(String alias, LockMode lockMode) {
-		super.setAliasSpecificLockMode( alias, lockMode );
-		return this;
-	}
 
 	@Override
 	public ReactiveQuerySqmImpl<R> applyGraph(RootGraph graph, GraphSemantic semantic) {

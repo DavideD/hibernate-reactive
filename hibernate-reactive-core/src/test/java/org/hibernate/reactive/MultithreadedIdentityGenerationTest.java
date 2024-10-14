@@ -123,9 +123,7 @@ public class MultithreadedIdentityGenerationTest {
 
 	private ReactiveGeneratorWrapper getIdGenerator() {
 		final ReactiveSessionFactoryImpl hibernateSessionFactory = (ReactiveSessionFactoryImpl) sessionFactory;
-		final ReactiveGeneratorWrapper identifierGenerator = (ReactiveGeneratorWrapper) hibernateSessionFactory.getIdentifierGenerator(
-				"org.hibernate.reactive.MultithreadedIdentityGenerationTest$EntityWithGeneratedId" );
-		return identifierGenerator;
+		return  (ReactiveGeneratorWrapper) hibernateSessionFactory.getGenerator( "org.hibernate.reactive.MultithreadedIdentityGenerationTest$EntityWithGeneratedId" );
 	}
 
 	@Test
