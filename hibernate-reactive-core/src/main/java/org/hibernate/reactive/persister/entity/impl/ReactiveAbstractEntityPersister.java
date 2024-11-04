@@ -34,7 +34,9 @@ import org.hibernate.loader.ast.spi.NaturalIdLoader;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.metamodel.mapping.*;
 import org.hibernate.metamodel.mapping.internal.MappingModelCreationProcess;
+import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
 import org.hibernate.persister.entity.AbstractEntityPersister;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.reactive.adaptor.impl.PreparedStatementAdaptor;
 import org.hibernate.reactive.generator.values.internal.ReactiveGeneratedValuesHelper;
 import org.hibernate.reactive.loader.ast.internal.ReactiveSingleIdArrayLoadPlan;
@@ -46,10 +48,12 @@ import org.hibernate.reactive.pool.ReactiveConnection;
 import org.hibernate.reactive.pool.impl.Parameters;
 import org.hibernate.reactive.session.ReactiveSession;
 import org.hibernate.reactive.session.impl.ReactiveQueryExecutorLookup;
+import org.hibernate.reactive.tuple.entity.ReactiveEntityMetamodel;
 import org.hibernate.sql.SimpleSelect;
 import org.hibernate.sql.Update;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
 import org.hibernate.sql.exec.spi.JdbcParametersList;
+import org.hibernate.tuple.entity.EntityMetamodel;
 import org.hibernate.type.BasicType;
 
 import jakarta.persistence.metamodel.Attribute;
@@ -87,6 +91,17 @@ import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
  * @see ReactiveSingleTableEntityPersister
  */
 public interface ReactiveAbstractEntityPersister extends ReactiveEntityPersister {
+
+	class ReactiveEntityMetamodelFactory extends AbstractEntityPersister.EntityMetamodelFactory {
+
+		@Override
+		public EntityMetamodel createEntityMetamodel(
+				PersistentClass persistentClass,
+				EntityPersister persister,
+				RuntimeModelCreationContext creationContext) {
+			return new ReactiveEntityMetamodel( persistentClass, persister, creationContext, s ->  );
+		}
+	}
 
 	default Parameters parameters() {
 		return Parameters.instance( getFactory().getJdbcServices().getDialect() );
