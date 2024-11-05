@@ -99,7 +99,7 @@ public interface ReactiveAbstractEntityPersister extends ReactiveEntityPersister
 				PersistentClass persistentClass,
 				EntityPersister persister,
 				RuntimeModelCreationContext creationContext) {
-			return new ReactiveEntityMetamodel( persistentClass, persister, creationContext, s ->  );
+			return new ReactiveEntityMetamodel( persistentClass, persister, creationContext );
 		}
 	}
 
