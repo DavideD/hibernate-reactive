@@ -15,6 +15,7 @@ import org.hibernate.id.enhanced.SequenceStructure;
 import org.hibernate.id.enhanced.SequenceStyleGenerator;
 import org.hibernate.id.enhanced.TableGenerator;
 import org.hibernate.id.enhanced.TableStructure;
+import org.hibernate.mapping.GeneratorCreator;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.SimpleValue;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
@@ -56,7 +57,7 @@ public class ReactiveEntityMetamodel extends EntityMetamodel {
 		}
 		else {
 			SimpleValue identifier = (SimpleValue) persistentClass.getIdentifier();
-
+//			identifier.setCustomIdGeneratorCreator( reactiveIdGenerator() );
 			final Generator idgenerator = identifier
 					// returns the cached Generator if it was already created
 					.createGenerator(
@@ -70,7 +71,11 @@ public class ReactiveEntityMetamodel extends EntityMetamodel {
 		}
 	}
 
-//	public static Generator augmentWithReactiveGenerator(ServiceRegistry serviceRegistry, Generator generator, Type type, Properties params) {
+	private static GeneratorCreator reactiveIdGenerator() {
+		return null;
+	}
+
+	//	public static Generator augmentWithReactiveGenerator(ServiceRegistry serviceRegistry, Generator generator, Type type, Properties params) {
 	public static Generator augmentWithReactiveGenerator(Generator generator) {
 		final ReactiveIdentifierGenerator<?> reactiveGenerator;
 		if ( generator instanceof SequenceStyleGenerator ) {
