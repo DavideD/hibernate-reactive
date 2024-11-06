@@ -5,17 +5,20 @@
  */
 package org.hibernate.reactive.tuple.entity;
 
+import java.util.Map;
 import java.util.function.Function;
 
+import org.hibernate.engine.config.spi.ConfigurationService;
+import org.hibernate.engine.config.spi.StandardConverters;
 import org.hibernate.generator.Generator;
 import org.hibernate.id.IdentifierGenerator;
+import org.hibernate.id.PersistentIdentifierGenerator;
 import org.hibernate.id.SelectGenerator;
 import org.hibernate.id.enhanced.DatabaseStructure;
 import org.hibernate.id.enhanced.SequenceStructure;
 import org.hibernate.id.enhanced.SequenceStyleGenerator;
 import org.hibernate.id.enhanced.TableGenerator;
 import org.hibernate.id.enhanced.TableStructure;
-import org.hibernate.mapping.GeneratorCreator;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.SimpleValue;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
@@ -26,6 +29,8 @@ import org.hibernate.reactive.id.impl.ReactiveGeneratorWrapper;
 import org.hibernate.reactive.id.impl.ReactiveSequenceIdentifierGenerator;
 import org.hibernate.reactive.id.impl.TableReactiveIdentifierGenerator;
 import org.hibernate.reactive.logging.impl.Log;
+import org.hibernate.reactive.provider.Settings;
+import org.hibernate.service.ServiceRegistry;
 import org.hibernate.tuple.entity.EntityMetamodel;
 
 import static java.lang.invoke.MethodHandles.lookup;
@@ -57,7 +62,6 @@ public class ReactiveEntityMetamodel extends EntityMetamodel {
 		}
 		else {
 			SimpleValue identifier = (SimpleValue) persistentClass.getIdentifier();
-//			identifier.setCustomIdGeneratorCreator( reactiveIdGenerator() );
 			final Generator idgenerator = identifier
 					// returns the cached Generator if it was already created
 					.createGenerator(
@@ -66,17 +70,13 @@ public class ReactiveEntityMetamodel extends EntityMetamodel {
 							persistentClass.getIdentifierProperty(),
 							creationContext.getGeneratorSettings()
 					);
+
 			creationContext.getGenerators().put( rootName, idgenerator );
 			return idgenerator;
 		}
 	}
 
-	private static GeneratorCreator reactiveIdGenerator() {
-		return null;
-	}
-
-	//	public static Generator augmentWithReactiveGenerator(ServiceRegistry serviceRegistry, Generator generator, Type type, Properties params) {
-	public static Generator augmentWithReactiveGenerator(Generator generator) {
+	public static Generator augmentWithReactiveGenerator(Generator generator, RuntimeModelCreationContext creationContext) {
 		final ReactiveIdentifierGenerator<?> reactiveGenerator;
 		if ( generator instanceof SequenceStyleGenerator ) {
 			final DatabaseStructure structure = ( (SequenceStyleGenerator) generator ).getDatabaseStructure();
@@ -100,24 +100,25 @@ public class ReactiveEntityMetamodel extends EntityMetamodel {
 			//nothing to do
 			return generator;
 		}
-//
-//		//this is not the way ORM does this: instead it passes a
-//		//SqlStringGenerationContext to IdentifierGenerator.initialize()
-//		final ConfigurationService cs = serviceRegistry.getService( ConfigurationService.class );
-//		if ( !params.containsKey( PersistentIdentifierGenerator.SCHEMA ) ) {
-//			final String schema = cs.getSetting( Settings.DEFAULT_SCHEMA, StandardConverters.STRING );
-//			if ( schema != null ) {
-//				params.put( PersistentIdentifierGenerator.SCHEMA, schema );
-//			}
-//		}
-//		if ( !params.containsKey( PersistentIdentifierGenerator.CATALOG ) ) {
-//			final String catalog = cs.getSetting( Settings.DEFAULT_CATALOG, StandardConverters.STRING );
-//			if ( catalog != null ) {
-//				params.put( PersistentIdentifierGenerator.CATALOG, catalog );
-//			}
-//		}
 
-//		( (Configurable) reactiveGenerator ).configure( type, params, serviceRegistry );
+		ServiceRegistry serviceRegistry = creationContext.getServiceRegistry();
+		//this is not the way ORM does this: instead it passes a
+		//SqlStringGenerationContext to IdentifierGenerator.initialize()
+		final ConfigurationService cs = serviceRegistry.getService( ConfigurationService.class );
+		if ( !params.containsKey( PersistentIdentifierGenerator.SCHEMA ) ) {
+			final String schema = cs.getSetting( Settings.DEFAULT_SCHEMA, StandardConverters.STRING );
+			if ( schema != null ) {
+				params.put( PersistentIdentifierGenerator.SCHEMA, schema );
+			}
+		}
+		if ( !params.containsKey( PersistentIdentifierGenerator.CATALOG ) ) {
+			final String catalog = cs.getSetting( Settings.DEFAULT_CATALOG, StandardConverters.STRING );
+			if ( catalog != null ) {
+				params.put( PersistentIdentifierGenerator.CATALOG, catalog );
+			}
+		}
+
+		( (Configurable) reactiveGenerator ).configure( creationContext,  );
 		return new ReactiveGeneratorWrapper( reactiveGenerator, (IdentifierGenerator) generator );
 	}
 }
