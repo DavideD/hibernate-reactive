@@ -23,11 +23,11 @@ import org.hibernate.LockMode;
 import org.hibernate.LockOptions;
 import org.hibernate.TypeMismatchException;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.generator.Generator;
 import org.hibernate.graph.GraphSemantic;
 import org.hibernate.graph.RootGraph;
 import org.hibernate.graph.spi.RootGraphImplementor;
 import org.hibernate.id.BulkInsertionCapableIdentifierGenerator;
-import org.hibernate.id.IdentifierGenerator;
 import org.hibernate.id.OptimizableGenerator;
 import org.hibernate.id.enhanced.Optimizer;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
@@ -413,6 +413,7 @@ public class ReactiveQuerySqmImpl<R> extends QuerySqmImpl<R> implements Reactive
 			? new ReactiveSimpleUpdateQueryPlan( sqmUpdate, getDomainParameterXref() )
 			: new ReactiveMultiTableUpdateQueryPlan( sqmUpdate, getDomainParameterXref(), multiTableStrategy );
 	}
+
 	private ReactiveNonSelectQueryPlan buildInsertQueryPlan() {
 		//noinspection rawtypes
 		final SqmInsertStatement sqmInsert = (SqmInsertStatement) getSqmStatement();
@@ -423,7 +424,8 @@ public class ReactiveQuerySqmImpl<R> extends QuerySqmImpl<R> implements Reactive
 
 		boolean useMultiTableInsert = persister.hasMultipleTables();
 		if ( !useMultiTableInsert && !isSimpleValuesInsert( sqmInsert, persister ) ) {
-			final IdentifierGenerator identifierGenerator = persister.getIdentifierGenerator();
+			final Generator identifierGenerator = persister.getGenerator();
+
 			if ( identifierGenerator instanceof BulkInsertionCapableIdentifierGenerator && identifierGenerator instanceof OptimizableGenerator ) {
 				final Optimizer optimizer = ( (OptimizableGenerator) identifierGenerator ).getOptimizer();
 				if ( optimizer != null && optimizer.getIncrementSize() > 1 ) {

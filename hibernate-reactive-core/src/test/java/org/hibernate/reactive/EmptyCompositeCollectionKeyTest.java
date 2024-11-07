@@ -38,7 +38,7 @@ public class EmptyCompositeCollectionKeyTest extends BaseReactiveTest {
 	protected Collection<Class<?>> annotatedEntities() {
 		return List.of( Family.class );
 	}
-
+//
 //	@Override
 //	protected Configuration constructConfiguration() {
 //		Configuration configuration = super.constructConfiguration();

@@ -5,20 +5,20 @@
  */
 package org.hibernate.reactive.tuple.entity;
 
-import java.util.Map;
 import java.util.function.Function;
 
-import org.hibernate.engine.config.spi.ConfigurationService;
-import org.hibernate.engine.config.spi.StandardConverters;
+
 import org.hibernate.generator.Generator;
+import org.hibernate.generator.GeneratorCreationContext;
+import org.hibernate.id.Configurable;
 import org.hibernate.id.IdentifierGenerator;
-import org.hibernate.id.PersistentIdentifierGenerator;
 import org.hibernate.id.SelectGenerator;
 import org.hibernate.id.enhanced.DatabaseStructure;
 import org.hibernate.id.enhanced.SequenceStructure;
 import org.hibernate.id.enhanced.SequenceStyleGenerator;
 import org.hibernate.id.enhanced.TableGenerator;
 import org.hibernate.id.enhanced.TableStructure;
+import org.hibernate.mapping.GeneratorCreator;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.SimpleValue;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
@@ -29,8 +29,6 @@ import org.hibernate.reactive.id.impl.ReactiveGeneratorWrapper;
 import org.hibernate.reactive.id.impl.ReactiveSequenceIdentifierGenerator;
 import org.hibernate.reactive.id.impl.TableReactiveIdentifierGenerator;
 import org.hibernate.reactive.logging.impl.Log;
-import org.hibernate.reactive.provider.Settings;
-import org.hibernate.service.ServiceRegistry;
 import org.hibernate.tuple.entity.EntityMetamodel;
 
 import static java.lang.invoke.MethodHandles.lookup;
@@ -44,7 +42,12 @@ public class ReactiveEntityMetamodel extends EntityMetamodel {
 			PersistentClass persistentClass,
 			EntityPersister persister,
 			RuntimeModelCreationContext creationContext) {
-		this( persistentClass, persister, creationContext, s -> buildIdGenerator( s, persistentClass, creationContext ) );
+		this(
+				persistentClass,
+				persister,
+				creationContext,
+				s -> buildIdGenerator( s, persistentClass, creationContext )
+		);
 	}
 
 	public ReactiveEntityMetamodel(
@@ -55,13 +58,21 @@ public class ReactiveEntityMetamodel extends EntityMetamodel {
 		super( persistentClass, persister, creationContext, generatorSupplier );
 	}
 
-	private static Generator buildIdGenerator(String rootName, PersistentClass persistentClass, RuntimeModelCreationContext creationContext) {
+	private static Generator buildIdGenerator(
+			String rootName,
+			PersistentClass persistentClass,
+			RuntimeModelCreationContext creationContext) {
 		final Generator existing = creationContext.getGenerators().get( rootName );
 		if ( existing != null ) {
 			return existing;
 		}
 		else {
 			SimpleValue identifier = (SimpleValue) persistentClass.getIdentifier();
+			GeneratorCreator customIdGeneratorCreator = identifier.getCustomIdGeneratorCreator();
+			identifier.setCustomIdGeneratorCreator( context -> {
+				Generator generator = customIdGeneratorCreator.createGenerator( context );
+				return augmentWithReactiveGenerator( generator, context, creationContext );
+			} );
 			final Generator idgenerator = identifier
 					// returns the cached Generator if it was already created
 					.createGenerator(
@@ -70,55 +81,40 @@ public class ReactiveEntityMetamodel extends EntityMetamodel {
 							persistentClass.getIdentifierProperty(),
 							creationContext.getGeneratorSettings()
 					);
-
 			creationContext.getGenerators().put( rootName, idgenerator );
 			return idgenerator;
 		}
 	}
 
-	public static Generator augmentWithReactiveGenerator(Generator generator, RuntimeModelCreationContext creationContext) {
-		final ReactiveIdentifierGenerator<?> reactiveGenerator;
+	public static Generator augmentWithReactiveGenerator(
+			Generator generator,
+			GeneratorCreationContext creationContext,
+			RuntimeModelCreationContext runtimeModelCreationContext) {
 		if ( generator instanceof SequenceStyleGenerator ) {
 			final DatabaseStructure structure = ( (SequenceStyleGenerator) generator ).getDatabaseStructure();
 			if ( structure instanceof TableStructure ) {
-				reactiveGenerator = new EmulatedSequenceReactiveIdentifierGenerator();
+				return initialize( (IdentifierGenerator) generator, new EmulatedSequenceReactiveIdentifierGenerator(), creationContext );
 			}
-			else if ( structure instanceof SequenceStructure ) {
-				reactiveGenerator = new ReactiveSequenceIdentifierGenerator();
+			if ( structure instanceof SequenceStructure ) {
+				return initialize( (IdentifierGenerator) generator, new ReactiveSequenceIdentifierGenerator( structure, runtimeModelCreationContext ), creationContext );
 			}
-			else {
-				throw LOG.unknownStructureType();
-			}
+			throw LOG.unknownStructureType();
 		}
-		else if ( generator instanceof TableGenerator ) {
-			reactiveGenerator = new TableReactiveIdentifierGenerator();
+		if ( generator instanceof TableGenerator ) {
+			return initialize( (IdentifierGenerator) generator, new TableReactiveIdentifierGenerator(), creationContext );
 		}
-		else if ( generator instanceof SelectGenerator ) {
+		if ( generator instanceof SelectGenerator ) {
 			throw LOG.selectGeneratorIsNotSupportedInHibernateReactive();
 		}
-		else {
-			//nothing to do
-			return generator;
-		}
+		//nothing to do
+		return generator;
+	}
 
-		ServiceRegistry serviceRegistry = creationContext.getServiceRegistry();
-		//this is not the way ORM does this: instead it passes a
-		//SqlStringGenerationContext to IdentifierGenerator.initialize()
-		final ConfigurationService cs = serviceRegistry.getService( ConfigurationService.class );
-		if ( !params.containsKey( PersistentIdentifierGenerator.SCHEMA ) ) {
-			final String schema = cs.getSetting( Settings.DEFAULT_SCHEMA, StandardConverters.STRING );
-			if ( schema != null ) {
-				params.put( PersistentIdentifierGenerator.SCHEMA, schema );
-			}
-		}
-		if ( !params.containsKey( PersistentIdentifierGenerator.CATALOG ) ) {
-			final String catalog = cs.getSetting( Settings.DEFAULT_CATALOG, StandardConverters.STRING );
-			if ( catalog != null ) {
-				params.put( PersistentIdentifierGenerator.CATALOG, catalog );
-			}
-		}
-
-		( (Configurable) reactiveGenerator ).configure( creationContext,  );
-		return new ReactiveGeneratorWrapper( reactiveGenerator, (IdentifierGenerator) generator );
+	private static Generator initialize(
+			IdentifierGenerator idGenerator,
+			ReactiveIdentifierGenerator<?> reactiveIdGenerator,
+			GeneratorCreationContext creationContext) {
+		( (Configurable) reactiveIdGenerator ).initialize( creationContext.getSqlStringGenerationContext() );
+		return new ReactiveGeneratorWrapper( reactiveIdGenerator, idGenerator );
 	}
 }
