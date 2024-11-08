@@ -23,6 +23,7 @@ import org.hibernate.id.IdentifierGenerator;
 import org.hibernate.id.enhanced.TableGenerator;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.jdbc.TooManyRowsAffectedException;
+import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
 import org.hibernate.reactive.pool.ReactiveConnection;
 import org.hibernate.reactive.pool.impl.Parameters;
 import org.hibernate.reactive.provider.Settings;
@@ -64,6 +65,45 @@ public class TableReactiveIdentifierGenerator extends BlockingIdentifierGenerato
 	private String selectQuery;
 	private String insertQuery;
 	private String updateQuery;
+
+	public TableReactiveIdentifierGenerator() {
+	}
+
+	public TableReactiveIdentifierGenerator(TableGenerator generator, RuntimeModelCreationContext runtimeModelCreationContext) {
+		ServiceRegistry serviceRegistry = runtimeModelCreationContext.getServiceRegistry();
+		segmentColumnName = generator.getSegmentColumnName();
+		valueColumnName = generator.getValueColumnName();
+		segmentValue = generator.getSegmentValue();
+		initialValue =  generator.getInitialValue();
+		increment = generator.getIncrementSize();
+		storeLastUsedValue = determineStoreLastUsedValue( serviceRegistry );
+		renderedTableName = generator.getTableName();
+
+		JdbcEnvironment jdbcEnvironment = serviceRegistry.getService( JdbcEnvironment.class );
+		Dialect dialect = jdbcEnvironment.getDialect();
+		Parameters parameters = Parameters.instance( dialect );
+		selectQuery = parameters.process( applyLocksToSelect( dialect, "tbl", buildSelectQuery() ) );
+		updateQuery = parameters.process( buildUpdateQuery() );
+		insertQuery = parameters.process( buildInsertQuery() );
+	}
+
+	@Override
+	public void configure(Type type, Properties params, ServiceRegistry serviceRegistry) {
+		JdbcEnvironment jdbcEnvironment = serviceRegistry.getService( JdbcEnvironment.class );
+		segmentColumnName = determineSegmentColumnName( params, jdbcEnvironment );
+		valueColumnName = determineValueColumnNameForTable( params, jdbcEnvironment );
+		segmentValue = determineSegmentValue( params );
+		initialValue = determineInitialValue( params );
+		increment = determineIncrement( params );
+		storeLastUsedValue = determineStoreLastUsedValue( serviceRegistry );
+		renderedTableName = determineTableName( type, params, serviceRegistry );
+
+		Dialect dialect = jdbcEnvironment.getDialect();
+		Parameters parameters = Parameters.instance( dialect );
+		selectQuery = parameters.process( applyLocksToSelect( dialect, "tbl", buildSelectQuery() ) );
+		updateQuery = parameters.process( buildUpdateQuery() );
+		insertQuery = parameters.process( buildInsertQuery() );
+	}
 
 	@Override
 	protected int getBlockSize() {
@@ -128,24 +168,6 @@ public class TableReactiveIdentifierGenerator extends BlockingIdentifierGenerato
 									}
 							);
 				} );
-	}
-
-	@Override
-	public void configure(Type type, Properties params, ServiceRegistry serviceRegistry) {
-		JdbcEnvironment jdbcEnvironment = serviceRegistry.getService( JdbcEnvironment.class );
-		segmentColumnName = determineSegmentColumnName( params, jdbcEnvironment );
-		valueColumnName = determineValueColumnNameForTable( params, jdbcEnvironment );
-		segmentValue = determineSegmentValue( params );
-		initialValue = determineInitialValue( params );
-		increment = determineIncrement( params );
-		storeLastUsedValue = determineStoreLastUsedValue( serviceRegistry );
-		renderedTableName = determineTableName( type, params, serviceRegistry );
-
-		Dialect dialect = jdbcEnvironment.getDialect();
-		Parameters parameters = Parameters.instance( dialect );
-		selectQuery = parameters.process( applyLocksToSelect( dialect, "tbl", buildSelectQuery() ) );
-		updateQuery = parameters.process( buildUpdateQuery() );
-		insertQuery = parameters.process( buildInsertQuery() );
 	}
 
 	@Override

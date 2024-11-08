@@ -101,7 +101,11 @@ public class ReactiveEntityMetamodel extends EntityMetamodel {
 			throw LOG.unknownStructureType();
 		}
 		if ( generator instanceof TableGenerator ) {
-			return initialize( (IdentifierGenerator) generator, new TableReactiveIdentifierGenerator(), creationContext );
+			return initialize(
+					(IdentifierGenerator) generator,
+					new TableReactiveIdentifierGenerator( (TableGenerator) generator, runtimeModelCreationContext ),
+					creationContext
+			);
 		}
 		if ( generator instanceof SelectGenerator ) {
 			throw LOG.selectGeneratorIsNotSupportedInHibernateReactive();
