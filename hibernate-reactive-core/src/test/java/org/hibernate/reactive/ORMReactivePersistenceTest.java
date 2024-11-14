@@ -6,7 +6,9 @@
 package org.hibernate.reactive;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -20,10 +22,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.vertx.junit5.Timeout;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.COCKROACHDB;
@@ -45,8 +43,8 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 	private SessionFactory ormFactory;
 
 	@Override
-	protected Collection<Class<?>> annotatedEntities() {
-		return List.of( LongTypeEntity.class );
+	protected Collection<String> mappings() {
+		return List.of( "org/hibernate/reactive/dynamic/Book.hbm.xml" );
 	}
 
 	@BeforeEach
@@ -54,6 +52,7 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 		Configuration configuration = constructConfiguration();
 		configuration.setProperty( DRIVER, dbType().getJdbcDriver() );
 		configuration.setProperty( DIALECT, dbType().getDialectClass().getName() );
+		configuration.setProperty( "hibernate.default_entity_mode", "dynamic-map" );
 
 		StandardServiceRegistryBuilder builder = new StandardServiceRegistryBuilder()
 				.applySettings( configuration.getProperties() );
@@ -69,31 +68,17 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 
 
 	@Test
-	public void testORMWitMutinySession() {
-		final LongTypeEntity guineaPig = new LongTypeEntity();
+	public void test() {
+		Map<String, String> book = new HashMap<>();
+		book.put( "ISBN", "9781932394153" );
+		book.put( "title", "Hibernate in Action" );
+		book.put( "author", "Christian Bauer and Gavin King" );
+
 
 		try (Session ormSession = ormFactory.openSession()) {
 			ormSession.beginTransaction();
-			ormSession.persist( guineaPig );
+			ormSession.persist( "Book", book );
 			ormSession.getTransaction().commit();
 		}
 	}
-
-	interface TypeIdentity<T extends Number> {
-		T getId();
-	}
-
-	@Entity(name = "LongTypeEntity")
-	@Table(name = "LongTypeEntity")
-	static class LongTypeEntity implements TypeIdentity<Long> {
-		@Id
-		@GeneratedValue
-		public Long id;
-
-		@Override
-		public Long getId() {
-			return id;
-		}
-	}
-
 }

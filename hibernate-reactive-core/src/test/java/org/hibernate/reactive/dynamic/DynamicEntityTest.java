@@ -38,19 +38,15 @@ public class DynamicEntityTest extends BaseReactiveTest {
 		book.put( "author", "Christian Bauer and Gavin King" );
 
 		test( context, getMutinySessionFactory()
-				.withTransaction( session -> session.persist( book ) )
+				.withTransaction( session -> session.persist( "Book", book ) )
 				.chain( v -> getMutinySessionFactory()
-						.withSession( session -> session
-								.createSelectionQuery( "from Book", Map.class )
-								.getSingleResult() )
-						.invoke( map -> {
-							assertThat( map ).containsExactly(
-									entry( "author", "Christian Bauer and Gavin King" ),
-									entry( "ISBN", "9781932394153" ),
-									entry( "title", "Hibernate in Action" ),
-									entry( "author", "Christian Bauer and Gavin King" )
-							);
-						} ) )
+						.withSession( session -> session.createSelectionQuery( "from Book", Map.class ).getSingleResult() )
+						.invoke( map -> assertThat( map ).containsExactly(
+								entry( "author", "Christian Bauer and Gavin King" ),
+								entry( "ISBN", "9781932394153" ),
+								entry( "title", "Hibernate in Action" ),
+								entry( "author", "Christian Bauer and Gavin King" )
+						) ) )
 		);
 	}
 
