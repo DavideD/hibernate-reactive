@@ -716,6 +716,12 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 	}
 
 	@Override
+	public CompletionStage<Void> reactivePersist(String entityName, Object entity) {
+		checkOpen();
+		return firePersist( new PersistEvent( entityName, entity, this ) );
+	}
+
+	@Override
 	public CompletionStage<Void> reactivePersist(Object object, PersistContext copiedAlready) {
 		checkOpenOrWaitingForAutoClose();
 		return firePersist( copiedAlready, new PersistEvent( null, object, this ) );
