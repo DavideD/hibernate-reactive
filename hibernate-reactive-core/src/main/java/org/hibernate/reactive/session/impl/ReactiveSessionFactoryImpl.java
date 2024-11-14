@@ -8,9 +8,7 @@ package org.hibernate.reactive.session.impl;
 import org.hibernate.boot.spi.BootstrapContext;
 import org.hibernate.boot.spi.MetadataImplementor;
 import org.hibernate.boot.spi.SessionFactoryOptions;
-import org.hibernate.generator.Generator;
 import org.hibernate.internal.SessionFactoryImpl;
-import org.hibernate.metamodel.spi.RuntimeMetamodelsImplementor;
 import org.hibernate.query.spi.QueryEngine;
 import org.hibernate.reactive.boot.spi.ReactiveMetadataImplementor;
 import org.hibernate.reactive.mutiny.Mutiny;
@@ -30,18 +28,8 @@ public class ReactiveSessionFactoryImpl extends SessionFactoryImpl {
 	}
 
 	@Override
-	public RuntimeMetamodelsImplementor getRuntimeMetamodels() {
-		return super.getRuntimeMetamodels();
-	}
-
-	@Override
 	public QueryEngine getQueryEngine() {
 		return super.getQueryEngine();
-	}
-
-	@Override
-	public Generator getGenerator(String rootEntityName) {
-		return super.getGenerator( rootEntityName );
 	}
 
 	@Override
