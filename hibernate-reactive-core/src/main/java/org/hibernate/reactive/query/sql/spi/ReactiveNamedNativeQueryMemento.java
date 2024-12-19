@@ -69,17 +69,17 @@ public class ReactiveNamedNativeQueryMemento implements NamedNativeQueryMemento 
 
 	@Override
 	public <T> NativeQueryImplementor<T> toQuery(SharedSessionContractImplementor session) {
-		return new ReactiveNativeQueryImpl<T>( this, session );
+		return new ReactiveNativeQueryImpl<>( this, session );
 	}
 
 	@Override
 	public <T> NativeQueryImplementor<T> toQuery(SharedSessionContractImplementor session, Class<T> resultType) {
-		return new ReactiveNativeQueryImpl<T>( this, resultType, session );
+		return new ReactiveNativeQueryImpl<>( this, resultType, session );
 	}
 
 	@Override
 	public <T> NativeQueryImplementor<T> toQuery(SharedSessionContractImplementor session, String resultSetMapping) {
-		return new ReactiveNativeQueryImpl<T>( this, resultSetMapping, session );
+		return new ReactiveNativeQueryImpl<>( this, resultSetMapping, session );
 	}
 
 	@Override
