@@ -64,22 +64,24 @@ public class NaturalIdTest extends BaseReactiveTest {
 		thing2.naturalKey = "xyz666";
 		thing2.version = 2;
 		test(
-				context,
-				getSessionFactory()
+				context, getSessionFactory()
 						.withSession( session -> session.persist( thing1, thing2 ).thenCompose( v -> session.flush() ) )
-						.thenCompose( v -> getSessionFactory().withSession(
-								session -> session.find( CompoundThing.class, composite(
-										id( "naturalKey", "xyz666" ),
-										id( "version", 1 )
-								) )
+						.thenCompose( v -> getSessionFactory().withSession( session -> session
+								.find(
+										CompoundThing.class, composite(
+												id( "naturalKey", "xyz666" ),
+												id( "version", 1 )
+										)
+								)
 						) )
-
 						.thenAccept( t -> assertThat( t ).isEqualTo( thing1 ) )
 						.thenCompose( v -> getSessionFactory().withSession(
-								session -> session.find( CompoundThing.class, composite(
-										id( CompoundThing.class, "naturalKey", "xyz666" ),
-										id( CompoundThing.class, "version", 3 )
-								) )
+								session -> session.find(
+										CompoundThing.class, composite(
+												id( CompoundThing.class, "naturalKey", "xyz666" ),
+												id( CompoundThing.class, "version", 3 )
+										)
+								)
 						) )
 						.thenAccept( Assertions::assertNull )
 		);
