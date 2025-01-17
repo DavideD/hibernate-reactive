@@ -138,7 +138,7 @@ public class EntityTypes {
 		else {
 			return persister
 					.reactiveLoadByUniqueKey( uniqueKeyPropertyName, key, session )
-					.thenApply( ukResult -> loadHibernateProxyEntity( ukResult, session )
+					.thenCompose( ukResult -> loadHibernateProxyEntity( ukResult, session )
 							.thenApply( targetUK -> {
 								persistenceContext.addEntity( euk, targetUK );
 								return targetUK;
@@ -269,15 +269,16 @@ public class EntityTypes {
 					// as a ComponentType. In the case that the entity is unfetched, we need to
 					// explicitly fetch it here before calling replace(). (Note that in Hibernate
 					// ORM this is unnecessary due to transparent lazy fetching.)
-					return ( (ReactiveSessionImpl) session ).reactiveFetch( id, true )
+					return ( (ReactiveSessionImpl) session )
+							.reactiveFetch( id, true )
 							.thenCompose( fetched -> {
-								Object idOrUniqueKey = entityType.getIdentifierOrUniqueKeyType( session.getFactory() )
+								Object idOrUniqueKey = entityType
+										.getIdentifierOrUniqueKeyType( session.getFactory() )
 										.replace( fetched, null, session, owner, copyCache );
 								if ( idOrUniqueKey instanceof CompletionStage ) {
 									return ( (CompletionStage<?>) idOrUniqueKey )
 											.thenCompose( key -> resolve( entityType, key, owner, session ) );
 								}
-
 								return resolve( entityType, idOrUniqueKey, owner, session );
 							} );
 				} );
