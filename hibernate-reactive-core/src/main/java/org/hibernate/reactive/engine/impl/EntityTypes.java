@@ -364,9 +364,9 @@ public class EntityTypes {
 						if ( type.isEntityIdentifierMapping() ) {
 							propertyValue = getIdentifier( (EntityType) type, propertyValue, (SessionImplementor) session );
 						}
-						return completedFuture( propertyValue );
+						return propertyValue;
 					}
-					return nullFuture();
+					return null;
 				} );
 	}
 
