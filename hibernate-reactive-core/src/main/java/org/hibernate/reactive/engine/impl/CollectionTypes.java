@@ -28,7 +28,6 @@ import org.hibernate.metamodel.mapping.PluralAttributeMapping;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.logging.impl.LoggerFactory;
-import org.hibernate.reactive.util.impl.CompletionStages;
 import org.hibernate.type.ArrayType;
 import org.hibernate.type.CollectionType;
 import org.hibernate.type.CustomCollectionType;
@@ -199,7 +198,7 @@ public abstract class CollectionTypes {
 			return completedFuture( type.replaceElements( original, target, owner, copyCache, session ) );
 		}
 		else if ( type instanceof MapType ) {
-			return replaceMaptypeElements(
+			return replaceMapTypeElements(
 					type,
 					(Map<Object, Object>) original,
 					(Map<Object, Object>) target,
@@ -223,23 +222,19 @@ public abstract class CollectionTypes {
 	private static CompletionStage<Object> replaceCollectionTypeElements(
 			CollectionType type,
 			Object original,
-			Collection<Object> target,
+			final Collection<Object> result,
 			Object owner,
 			Map<Object, Object> copyCache,
 			SessionImplementor session) {
-		final Collection<Object> result = target;
 		result.clear();
 
 		// copy elements into newly empty target collection
 		final Type elemType = type.getElementType( session.getFactory() );
 		return loop(
-				(Collection<Object>) original, o ->
-						getReplace( elemType, o, owner, session, copyCache )
-								.thenCompose( o1 -> {
-									result.add( o1 );
-									return completedFuture( result );
-								} )
+				(Collection<Object>) original, o -> getReplace( elemType, o, owner, session, copyCache )
+						.thenAccept( result::add )
 		)
+				// FIXME: Should be thenCompose
 				.thenApply( unused -> {
 					// if the original is a PersistentCollection, and that original
 					// was not flagged as dirty, then reset the target's dirty flag
@@ -254,13 +249,12 @@ public abstract class CollectionTypes {
 								originalPersistentCollection, resultPersistentCollection,
 								elemType, owner, copyCache, session
 						)
-								.thenCompose( v -> {
-												  if ( !originalPersistentCollection.isDirty() ) {
-													  resultPersistentCollection.clearDirty();
-												  }
-												  return voidFuture();
-											  }
-								).thenApply( v -> result );
+								.thenApply( v -> {
+									if ( !originalPersistentCollection.isDirty() ) {
+										resultPersistentCollection.clearDirty();
+									}
+									return result;
+								} );
 					}
 					else {
 						return result;
@@ -268,17 +262,15 @@ public abstract class CollectionTypes {
 				} );
 	}
 
-	private static CompletionStage<Object> replaceMaptypeElements(
+	private static CompletionStage<Object> replaceMapTypeElements(
 			CollectionType type,
 			Map<Object, Object> original,
 			Map<Object, Object> target,
 			Object owner,
 			Map<Object, Object> copyCache,
 			SessionImplementor session) {
-		final CollectionPersister persister =
-				session.getFactory().getRuntimeMetamodels().getMappingMetamodel()
-						.getCollectionDescriptor( type.getRole() );
-
+		final CollectionPersister persister = session.getFactory().getRuntimeMetamodels()
+				.getMappingMetamodel().getCollectionDescriptor( type.getRole() );
 		final Map<Object, Object> source = original;
 		final Map<Object, Object> result = target;
 		result.clear();
@@ -287,15 +279,13 @@ public abstract class CollectionTypes {
 				source.entrySet(), entry -> {
 					final Map.Entry<Object, Object> me = entry;
 					return getReplace( persister.getIndexType(), me.getKey(), owner, session, copyCache )
-							.thenCompose( key ->
-												  getReplace(
-														  persister.getElementType(),
-														  me.getValue(),
-														  owner,
-														  session,
-														  copyCache
-												  ).thenAccept( value ->
-																		result.put( key, value ) )
+							.thenCompose( key -> getReplace(
+												  persister.getElementType(),
+												  me.getValue(),
+												  owner,
+												  session,
+												  copyCache
+										  ).thenAccept( value -> result.put( key, value ) )
 							);
 				}
 		).thenApply( unused -> result );
@@ -320,14 +310,11 @@ public abstract class CollectionTypes {
 
 		final Type elemType = type.getElementType( session.getFactory() );
 		return loop(
-				0, length, i -> {
-					return getReplace( elemType, Array.get( original, i ), owner, session, copyCache )
-							.thenCompose( o -> {
-											  Array.set( result, i, o );
-											  return completedFuture( result );
-										  }
-							);
-				}
+				0, length, i -> getReplace( elemType, Array.get( original, i ), owner, session, copyCache )
+						.thenApply( o -> {
+							Array.set( result, i, o );
+							return result;
+						} )
 		).thenApply( unused -> result );
 	}
 
@@ -366,9 +353,7 @@ public abstract class CollectionTypes {
 		final CollectionEntry ce = session.getPersistenceContextInternal().getCollectionEntry( result );
 		if ( ce != null ) {
 			return createSnapshot( original, result, elemType, owner, copyCache, session )
-					.thenCompose( CompletionStages::completedFuture )
-					.thenAccept( serializable ->
-										 ce.resetStoredSnapshot( result, serializable ) );
+					.thenAccept( serializable -> ce.resetStoredSnapshot( result, serializable ) );
 		}
 		return voidFuture();
 	}
@@ -403,13 +388,8 @@ public abstract class CollectionTypes {
 			Map<Object, Object> copyCache,
 			SessionImplementor session) {
 		return loop(
-				0, array.length,
-				i ->
-						getReplace( elemType, array[i], owner, session, copyCache )
-								.thenCompose( o -> {
-									array[i] = o;
-									return voidFuture();
-								} ).thenApply( unused -> voidFuture() )
+				0, array.length, i -> getReplace( elemType, array[i], owner, session, copyCache )
+						.thenAccept( o -> array[i] = o )
 		).thenApply( unused -> array );
 	}
 
@@ -432,10 +412,9 @@ public abstract class CollectionTypes {
 		return loop(
 				map.entrySet(), entry ->
 						getReplace( elemType, entry.getValue(), resultSnapshot, owner, session, copyCache )
-								.thenCompose( newValue -> {
+								.thenAccept( newValue -> {
 									final Object key = entry.getKey();
 									targetMap.put( key == entry.getValue() ? newValue : key, newValue );
-									return voidFuture();
 								} )
 		).thenApply( v -> (Serializable) targetMap );
 	}
@@ -448,12 +427,8 @@ public abstract class CollectionTypes {
 			SessionImplementor session) {
 		final ArrayList<Object> targetList = new ArrayList<>( list.size() );
 		return loop(
-				list, obj ->
-						getReplace( elemType, obj, owner, session, copyCache )
-								.thenCompose( o -> {
-									targetList.add( o );
-									return voidFuture();
-								} )
+				list, obj -> getReplace( elemType, obj, owner, session, copyCache )
+						.thenAccept( targetList::add )
 		).thenApply( unused -> targetList );
 	}
 
