@@ -236,35 +236,36 @@ public abstract class CollectionTypes {
 				(Collection<Object>) original, o ->
 						getReplace( elemType, o, owner, session, copyCache )
 								.thenCompose( o1 -> {
-												  result.add( o1 );
-												  return completedFuture( result );
+									result.add( o1 );
+									return completedFuture( result );
+								} )
+		)
+				.thenApply( unused -> {
+					// if the original is a PersistentCollection, and that original
+					// was not flagged as dirty, then reset the target's dirty flag
+					// here after the copy operation.
+					// </p>
+					// One thing to be careful of here is a "bare" original collection
+					// in which case we should never ever ever reset the dirty flag
+					// on the target because we simply do not know...
+					if ( original instanceof PersistentCollection<?> originalPersistentCollection
+							&& result instanceof PersistentCollection<?> resultPersistentCollection ) {
+						return preserveSnapshot(
+								originalPersistentCollection, resultPersistentCollection,
+								elemType, owner, copyCache, session
+						)
+								.thenCompose( v -> {
+												  if ( !originalPersistentCollection.isDirty() ) {
+													  resultPersistentCollection.clearDirty();
+												  }
+												  return voidFuture();
 											  }
-								)
-		).thenApply( unused -> {
-			// if the original is a PersistentCollection, and that original
-			// was not flagged as dirty, then reset the target's dirty flag
-			// here after the copy operation.
-			// </p>
-			// One thing to be careful of here is a "bare" original collection
-			// in which case we should never ever ever reset the dirty flag
-			// on the target because we simply do not know...
-			if ( original instanceof PersistentCollection<?> originalPersistentCollection
-					&& result instanceof PersistentCollection<?> resultPersistentCollection ) {
-				return preserveSnapshot(
-						originalPersistentCollection, resultPersistentCollection,
-						elemType, owner, copyCache, session
-				).thenCompose( v -> {
-								   if ( !originalPersistentCollection.isDirty() ) {
-									   resultPersistentCollection.clearDirty();
-								   }
-								   return voidFuture();
-							   }
-				).thenApply( v -> result );
-			}
-			else {
-				return result;
-			}
-		} );
+								).thenApply( v -> result );
+					}
+					else {
+						return result;
+					}
+				} );
 	}
 
 	private static CompletionStage<Object> replaceMaptypeElements(
