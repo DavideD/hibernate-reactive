@@ -69,10 +69,10 @@ public abstract class CollectionTypes {
 			Object owner,
 			Map<Object, Object> copyCache) throws HibernateException {
 		if ( original == null ) {
-			return replaceNullOriginal( target, session );
+			return completedFuture( replaceNullOriginal( target, session ) );
 		}
 		else if ( !Hibernate.isInitialized( original ) ) {
-			return replaceUninitializedOriginal( type, original, target, session, copyCache );
+			return completedFuture( replaceUninitializedOriginal( type, original, target, session, copyCache ) );
 		}
 		else {
 			return replaceOriginal( type, original, target, session, owner, copyCache );
@@ -80,7 +80,7 @@ public abstract class CollectionTypes {
 	}
 
 	// todo: make org.hibernate.type.CollectionType#replaceNullOriginal public ?
-	private static CompletionStage<Object> replaceNullOriginal(
+	private static Object replaceNullOriginal(
 			Object target,
 			SessionImplementor session) {
 		if ( target == null ) {
@@ -88,11 +88,11 @@ public abstract class CollectionTypes {
 		}
 		else if ( target instanceof Collection<?> collection ) {
 			collection.clear();
-			return completedFuture( collection );
+			return collection;
 		}
 		else if ( target instanceof Map<?, ?> map ) {
 			map.clear();
-			return completedFuture( map );
+			return map;
 		}
 		else {
 			final PersistenceContext persistenceContext = session.getPersistenceContext();
@@ -108,15 +108,15 @@ public abstract class CollectionTypes {
 					arrayHolder.endRead();
 					arrayHolder.dirty();
 					persistenceContext.addCollectionHolder( collectionHolder );
-					return completedFuture( arrayHolder.getArray() );
+					return arrayHolder.getArray();
 				}
 			}
 		}
-		return completedFuture( null );
+		return null;
 	}
 
 	// todo: make org.hibernate.type.CollectionType#replaceUninitializedOriginal public
-	private static CompletionStage<Object> replaceUninitializedOriginal(
+	private static Object replaceUninitializedOriginal(
 			CollectionType type,
 			Object original,
 			Object target,
@@ -142,7 +142,7 @@ public abstract class CollectionTypes {
 						collectionInfoString( type.getRole(), persistentCollection.getKey() ) );
 			}
 		}
-		return completedFuture( target );
+		return target;
 	}
 
 	private static CompletionStage<Object> replaceOriginal(
@@ -171,11 +171,11 @@ public abstract class CollectionTypes {
 				//TODO: this is a little inefficient, don't need to do a whole
 				//      deep replaceElements() call
 				return replaceElements( type, result, target, owner, copyCache, session )
-						.thenCompose( unused -> {
+						.thenApply( unused -> {
 							if ( wasClean ) {
 								( (PersistentCollection<?>) target ).clearDirty();
 							}
-							return completedFuture( target );
+							return target;
 						} );
 			}
 			else {
@@ -233,33 +233,30 @@ public abstract class CollectionTypes {
 		return loop(
 				(Collection<Object>) original, o -> getReplace( elemType, o, owner, session, copyCache )
 						.thenAccept( result::add )
-		)
-				// FIXME: Should be thenCompose
-				.thenApply( unused -> {
-					// if the original is a PersistentCollection, and that original
-					// was not flagged as dirty, then reset the target's dirty flag
-					// here after the copy operation.
-					// </p>
-					// One thing to be careful of here is a "bare" original collection
-					// in which case we should never ever ever reset the dirty flag
-					// on the target because we simply do not know...
-					if ( original instanceof PersistentCollection<?> originalPersistentCollection
-							&& result instanceof PersistentCollection<?> resultPersistentCollection ) {
-						return preserveSnapshot(
-								originalPersistentCollection, resultPersistentCollection,
-								elemType, owner, copyCache, session
-						)
-								.thenApply( v -> {
-									if ( !originalPersistentCollection.isDirty() ) {
-										resultPersistentCollection.clearDirty();
-									}
-									return result;
-								} );
+		).thenCompose( unused -> {
+			// if the original is a PersistentCollection, and that original
+			// was not flagged as dirty, then reset the target's dirty flag
+			// here after the copy operation.
+			// </p>
+			// One thing to be careful of here is a "bare" original collection
+			// in which case we should never ever ever reset the dirty flag
+			// on the target because we simply do not know...
+			if ( original instanceof PersistentCollection<?> originalPersistentCollection
+					&& result instanceof PersistentCollection<?> resultPersistentCollection ) {
+				return preserveSnapshot(
+						originalPersistentCollection, resultPersistentCollection,
+						elemType, owner, copyCache, session
+				).thenApply( v -> {
+					if ( !originalPersistentCollection.isDirty() ) {
+						resultPersistentCollection.clearDirty();
 					}
-					else {
-						return result;
-					}
+					return result;
 				} );
+			}
+			else {
+				return completedFuture( result );
+			}
+		} );
 	}
 
 	private static CompletionStage<Object> replaceMapTypeElements(
