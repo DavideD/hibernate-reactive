@@ -209,7 +209,7 @@ public abstract class CollectionTypes {
 			);
 		}
 		else {
-			return replaceCollectinTypeElements(
+			return replaceCollectionTypeElements(
 					type,
 					original,
 					(Collection<Object>) target,
@@ -220,7 +220,7 @@ public abstract class CollectionTypes {
 		}
 	}
 
-	private static CompletionStage<Object> replaceCollectinTypeElements(
+	private static CompletionStage<Object> replaceCollectionTypeElements(
 			CollectionType type,
 			Object original,
 			Collection<Object> target,
