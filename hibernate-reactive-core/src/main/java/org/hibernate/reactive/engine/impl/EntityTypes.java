@@ -160,10 +160,7 @@ public class EntityTypes {
 			final Map<Object, Object> copyCache) {
 		Object[] copied = new Object[original.length];
 		return loop(
-				0, types.length,
-				i ->
-						replace( original, target, types, session, owner, copyCache, i, copied )
-
+				0, types.length, i -> replace( original, target, types, session, owner, copyCache, i, copied )
 		).thenApply( v -> copied );
 	}
 
@@ -182,7 +179,6 @@ public class EntityTypes {
 		return loop(
 				0, types.length,
 				i -> replace( original, target, types, session, owner, copyCache, foreignKeyDirection, i, copied )
-
 		).thenApply( v -> copied );
 	}
 
@@ -418,16 +414,7 @@ public class EntityTypes {
 					session,
 					owner,
 					copyCache
-			).thenCompose( copy -> {
-				if ( copy instanceof CompletionStage ) {
-					return ( (CompletionStage<?>) copy )
-							.thenAccept( nonStageCopy -> copied[i] = nonStageCopy );
-				}
-				else {
-					copied[i] = copy;
-					return voidFuture();
-				}
-			} );
+			).thenAccept( copy -> copied[i] = copy );
 		}
 		else {
 			final Type type = types[i];
@@ -476,16 +463,7 @@ public class EntityTypes {
 					owner,
 					copyCache,
 					foreignKeyDirection
-			).thenCompose( copy -> {
-				if ( copy instanceof CompletionStage ) {
-					// FIXME: Why is `copy` a CompletionStage here? Check LazyUniqueKeyTest#testMergeReference
-					return ( (CompletionStage<?>) copy ).thenAccept( nonStageCopy -> copied[i] = nonStageCopy );
-				}
-				else {
-					copied[i] = copy;
-					return voidFuture();
-				}
-			} );
+			).thenAccept( copy -> copied[i] = copy );
 		}
 		else {
 			copied[i] = types[i].replace(
