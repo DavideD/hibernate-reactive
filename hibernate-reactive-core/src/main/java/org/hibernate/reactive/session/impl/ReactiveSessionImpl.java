@@ -805,13 +805,13 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 			boolean isCascadeDeleteEnabled,
 			DeleteContext transientEntities) {
 		checkOpenOrWaitingForAutoClose();
-		final boolean removingOrphanBeforeUpates = persistenceContext().isRemovingOrphanBeforeUpates();
-		if ( LOG.isTraceEnabled() && removingOrphanBeforeUpates ) {
+		final boolean removingOrphanBeforeUpdates = persistenceContext().isRemovingOrphanBeforeUpdates();
+		if ( LOG.isTraceEnabled() && removingOrphanBeforeUpdates ) {
 			logRemoveOrphanBeforeUpdates( "before continuing", entityName, entityName );
 		}
 
 		return fireRemove(
-				new DeleteEvent( entityName, child, isCascadeDeleteEnabled, removingOrphanBeforeUpates, this ),
+				new DeleteEvent( entityName, child, isCascadeDeleteEnabled, removingOrphanBeforeUpdates, this ),
 				transientEntities
 		);
 	}
