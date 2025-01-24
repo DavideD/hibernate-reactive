@@ -90,7 +90,7 @@ import org.hibernate.reactive.common.AffectedEntities;
 import org.hibernate.reactive.common.InternalStateAssertions;
 import org.hibernate.reactive.common.ResultSetMapping;
 import org.hibernate.reactive.engine.ReactiveActionQueue;
-import org.hibernate.reactive.engine.impl.ReactivePersistenceContextAdapter;
+import org.hibernate.engine.internal.ReactivePersistenceContextAdapter;
 import org.hibernate.reactive.event.ReactiveDeleteEventListener;
 import org.hibernate.reactive.event.ReactiveFlushEventListener;
 import org.hibernate.reactive.event.ReactiveLoadEventListener;
