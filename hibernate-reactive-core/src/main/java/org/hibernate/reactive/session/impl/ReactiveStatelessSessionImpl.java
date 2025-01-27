@@ -133,7 +133,7 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 	public ReactiveStatelessSessionImpl(SessionFactoryImpl factory, SessionCreationOptions options, ReactiveConnection connection) {
 		super( factory, options );
 		reactiveConnection = connection;
-		persistenceContext = new ReactivePersistenceContextAdapter( this );
+		persistenceContext = new ReactivePersistenceContextAdapter( super.getPersistenceContext() );
 		batchingHelperSession = new ReactiveStatelessSessionImpl( factory, options, reactiveConnection, persistenceContext );
 		influencers = new LoadQueryInfluencers( factory );
 	}
