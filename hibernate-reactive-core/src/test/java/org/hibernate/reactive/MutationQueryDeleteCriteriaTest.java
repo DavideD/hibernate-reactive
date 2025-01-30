@@ -43,40 +43,37 @@ public class MutationQueryDeleteCriteriaTest extends BaseReactiveTest {
 
 	@Test
 	public void testDeleteCriteriaQuery(VertxTestContext context) {
-		test(
-				context,
-				openSession()
-						.thenCompose( s -> {
-							CriteriaBuilder criteriaBuilder = s.getFactory().getCriteriaBuilder();
-							CriteriaDelete<Flour> criteriaDelete = criteriaBuilder.createCriteriaDelete( Flour.class );
-							Root<Flour> from = criteriaDelete.from( Flour.class );
-							criteriaDelete.where( criteriaBuilder.equal( from.get( "id" ), rye.getId() ) );
-							return s.createMutationQuery( criteriaDelete ).executeUpdate();
-						} )
-						.thenAccept( resultCount -> assertThat( resultCount ).isEqualTo( 1 ) )
-						.thenCompose( v -> openSession() )
-						.thenCompose( s -> s.find( Flour.class, rye.getId() ) )
-						.thenAccept( result -> assertThat( result ).isNull() )
+		CriteriaBuilder criteriaBuilder = getSessionFactory().getCriteriaBuilder();
+		test( context, getSessionFactory()
+				.withTransaction( s -> s
+						.createMutationQuery( criteriaDelete( criteriaBuilder ) )
+						.executeUpdate() )
+				.thenAccept( resultCount -> assertThat( resultCount ).isEqualTo( 1 ) )
+				.thenCompose( v -> getSessionFactory()
+						.withTransaction( s -> s.find( Flour.class, rye.getId() ) ) )
+				.thenAccept( result -> assertThat( result ).isNull() )
 		);
 	}
 
 	@Test
 	public void testMutinyDeleteCriteriaQuery(VertxTestContext context) {
-		test(
-				context,
-				openMutinySession()
-						.chain( s -> {
-							CriteriaBuilder criteriaBuilder = s.getFactory().getCriteriaBuilder();
-							CriteriaDelete<Flour> criteriaDelete = criteriaBuilder.createCriteriaDelete( Flour.class );
-							Root<Flour> from = criteriaDelete.from( Flour.class );
-							criteriaDelete.where( criteriaBuilder.equal( from.get( "id" ), almond.getId() ) );
-							return s.createMutationQuery( criteriaDelete ).executeUpdate();
-						} )
-						.invoke( resultCount -> assertThat( resultCount ).isEqualTo( 1 ) )
-						.chain( v -> openMutinySession() )
-						.chain( s -> s.find( Flour.class, almond.getId() ) )
-						.invoke( result -> assertThat( result ).isNull() )
+		CriteriaBuilder cb = getMutinySessionFactory().getCriteriaBuilder();
+		test( context, getMutinySessionFactory()
+				.withTransaction( s -> s
+						.createMutationQuery( criteriaDelete( cb ) )
+						.executeUpdate() )
+				.invoke( resultCount -> assertThat( resultCount ).isEqualTo( 1 ) )
+				.chain( v -> getMutinySessionFactory()
+						.withTransaction( s -> s.find( Flour.class, almond.getId() ) ) )
+				.invoke( result -> assertThat( result ).isNull() )
 		);
+	}
+
+	private CriteriaDelete<Flour> criteriaDelete(CriteriaBuilder criteriaBuilder) {
+		CriteriaDelete<Flour> criteriaDelete = criteriaBuilder.createCriteriaDelete( Flour.class );
+		Root<Flour> from = criteriaDelete.from( Flour.class );
+		criteriaDelete.where( criteriaBuilder.equal( from.get( "id" ), rye.getId() ) );
+		return criteriaDelete;
 	}
 
 	@Entity(name = "Flour")
