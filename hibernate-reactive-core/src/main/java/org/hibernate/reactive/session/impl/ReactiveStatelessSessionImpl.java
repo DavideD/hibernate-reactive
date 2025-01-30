@@ -45,6 +45,7 @@ import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.query.IllegalMutationQueryException;
+import org.hibernate.query.criteria.JpaCriteriaInsert;
 import org.hibernate.query.criteria.JpaCriteriaInsertSelect;
 import org.hibernate.query.hql.spi.SqmQueryImplementor;
 import org.hibernate.query.named.NamedResultSetMappingMemento;
@@ -56,6 +57,7 @@ import org.hibernate.query.sqm.internal.SqmUtil;
 import org.hibernate.query.sqm.tree.SqmStatement;
 import org.hibernate.query.sqm.tree.delete.SqmDeleteStatement;
 import org.hibernate.query.sqm.tree.insert.SqmInsertSelectStatement;
+import org.hibernate.query.sqm.tree.insert.SqmInsertStatement;
 import org.hibernate.query.sqm.tree.select.SqmQueryGroup;
 import org.hibernate.query.sqm.tree.select.SqmQuerySpec;
 import org.hibernate.query.sqm.tree.select.SqmSelectStatement;
@@ -1002,6 +1004,17 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 		checkOpen();
 		try {
 			return createReactiveCriteriaQuery( (SqmInsertSelectStatement<R>) insertSelect, null );
+		}
+		catch ( RuntimeException e ) {
+			throw getExceptionConverter().convert( e );
+		}
+	}
+
+	@Override
+	public <R> ReactiveMutationQuery<R> createReactiveMutationQuery(JpaCriteriaInsert<R> insert) {
+		checkOpen();
+		try{
+			return createReactiveCriteriaQuery( (SqmInsertStatement<R>) insert, null );
 		}
 		catch ( RuntimeException e ) {
 			throw getExceptionConverter().convert( e );

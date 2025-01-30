@@ -27,6 +27,8 @@ import org.hibernate.jpa.internal.util.FlushModeTypeHelper;
 import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.query.Order;
 import org.hibernate.query.Page;
+import org.hibernate.query.criteria.JpaCriteriaInsert;
+import org.hibernate.query.criteria.JpaCriteriaInsertSelect;
 import org.hibernate.reactive.common.AffectedEntities;
 import org.hibernate.reactive.common.Identifier;
 import org.hibernate.reactive.common.ResultSetMapping;
@@ -1017,6 +1019,28 @@ public interface Stage {
 		MutationQuery createMutationQuery(@SuppressWarnings("rawtypes") CriteriaDelete deleteQuery);
 
 		/**
+		 * Create a {@link MutationQuery} from the given insert-select criteria tree
+		 *
+		 * @param insertSelect the insert-select criteria query
+		 *
+		 * @return The {@link MutationQuery} instance for manipulation and execution
+		 *
+		 * @see org.hibernate.query.QueryProducer#createMutationQuery(JpaCriteriaInsert)
+		 */
+		MutationQuery createMutationQuery(@SuppressWarnings("rawtypes") JpaCriteriaInsertSelect insertSelect);
+
+		/**
+		 * Create a {@link MutationQuery} from the given insert select criteria tree
+		 *
+		 * @param insert the insert select criteria query
+		 *
+		 * @return The {@link MutationQuery} instance for manipulation and execution
+		 *
+		 * @see org.hibernate.query.QueryProducer#createMutationQuery(JpaCriteriaInsert)
+		 */
+		MutationQuery createMutationQuery(@SuppressWarnings("rawtypes") JpaCriteriaInsert insert);
+
+		/**
 		 * Create an instance of {@link Query} for the given HQL/JPQL query
 		 * string or HQL/JPQL update or delete statement. In the case of an
 		 * update or delete, the returned {@link Query} must be executed using
@@ -1706,6 +1730,28 @@ public interface Stage {
 		 * @see org.hibernate.query.QueryProducer#createMutationQuery(CriteriaDelete)
 		 */
 		MutationQuery createMutationQuery(@SuppressWarnings("rawtypes") CriteriaDelete deleteQuery);
+
+		/**
+		 * Create a {@link MutationQuery} from the given insert-select criteria tree
+		 *
+		 * @param insertSelect the insert-select criteria query
+		 *
+		 * @return The {@link MutationQuery} instance for manipulation and execution
+		 *
+		 * @see org.hibernate.query.QueryProducer#createMutationQuery(JpaCriteriaInsert)
+		 */
+		MutationQuery createMutationQuery(@SuppressWarnings("rawtypes") JpaCriteriaInsertSelect insertSelect);
+
+		/**
+		 * Create a {@link MutationQuery} from the given insert select criteria tree
+		 *
+		 * @param insert the insert select criteria query
+		 *
+		 * @return The {@link MutationQuery} instance for manipulation and execution
+		 *
+		 * @see org.hibernate.query.QueryProducer#createMutationQuery(JpaCriteriaInsert)
+		 */
+		MutationQuery createMutationQuery(@SuppressWarnings("rawtypes") JpaCriteriaInsert insert);
 
 		/**
 		 * Create an instance of {@link Query} for the given SQL query string,
