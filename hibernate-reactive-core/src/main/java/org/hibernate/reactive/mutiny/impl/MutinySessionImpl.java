@@ -106,6 +106,11 @@ public class MutinySessionImpl implements Mutiny.Session {
 	}
 
 	@Override
+	public Object getIdentifier(Object entity) {
+		return delegate.getIdentifier( entity );
+	}
+
+	@Override
 	public LockMode getLockMode(Object entity) {
 		return delegate.getCurrentLockMode( entity );
 	}
@@ -113,102 +118,6 @@ public class MutinySessionImpl implements Mutiny.Session {
 	@Override
 	public boolean contains(Object entity) {
 		return delegate.contains( entity );
-	}
-
-	@Override
-	public <R> SelectionQuery<R> createSelectionQuery(String queryString, Class<R> resultType) {
-		return new MutinySelectionQueryImpl<>( delegate.createReactiveSelectionQuery( queryString, resultType ), factory );
-	}
-
-	@Override
-	public MutationQuery createMutationQuery(String queryString) {
-		return new MutinyMutationQueryImpl<>( delegate.createReactiveQuery( queryString ), factory );
-	}
-
-	@Override
-	public MutationQuery createMutationQuery(CriteriaUpdate<?> updateQuery) {
-		return new MutinyMutationQueryImpl<>( delegate.createReactiveMutationQuery( updateQuery ), factory );
-	}
-
-	@Override
-	public MutationQuery createMutationQuery(CriteriaDelete<?> deleteQuery) {
-		return new MutinyMutationQueryImpl<>( delegate.createReactiveMutationQuery( deleteQuery ), factory );
-	}
-
-	@Override
-	public MutationQuery createMutationQuery(JpaCriteriaInsert<?> insert) {
-		return new MutinyMutationQueryImpl<>( delegate.createReactiveMutationQuery( insert ), factory  );
-	}
-
-	@Override @Deprecated
-	public <R> Query<R> createQuery(String queryString) {
-		return new MutinyQueryImpl<>( delegate.createReactiveQuery( queryString ), factory );
-	}
-
-	@Override
-	public <R> SelectionQuery<R> createQuery(String queryString, Class<R> resultType) {
-		return new MutinySelectionQueryImpl<>( delegate.createReactiveQuery( queryString, resultType ), factory );
-	}
-
-	@Override
-	public <R> SelectionQuery<R> createQuery(CriteriaQuery<R> criteriaQuery) {
-		return new MutinySelectionQueryImpl<>( delegate.createReactiveQuery( criteriaQuery ), factory );
-	}
-
-	@Override
-	public <R> MutationQuery createQuery(CriteriaUpdate<R> criteriaUpdate) {
-		return new MutinyMutationQueryImpl<>(
-				delegate.createReactiveMutationQuery( criteriaUpdate ),
-				factory
-		);
-	}
-
-	@Override
-	public <R> MutationQuery createQuery(CriteriaDelete<R> criteriaDelete) {
-		return new MutinyMutationQueryImpl<>(
-				delegate.createReactiveMutationQuery( criteriaDelete ),
-				factory
-		);
-	}
-
-	@Override
-	public <R> Query<R> createNamedQuery(String queryName) {
-		return new MutinyQueryImpl<>( delegate.createReactiveNamedQuery( queryName, null ), factory );
-	}
-
-	@Override
-	public <R> SelectionQuery<R> createNamedQuery(String queryName, Class<R> resultType) {
-		return new MutinySelectionQueryImpl<>( delegate.createReactiveNamedQuery( queryName, resultType ), factory );
-	}
-
-	@Override
-	public <R> Query<R> createNativeQuery(String queryString) {
-		return new MutinyQueryImpl<>( delegate.createReactiveNativeQuery( queryString ), factory );
-	}
-
-	@Override
-	public <R> Query<R> createNativeQuery(String queryString, AffectedEntities affectedEntities) {
-		return new MutinyQueryImpl<>( delegate.createReactiveNativeQuery( queryString, affectedEntities ), factory );
-	}
-
-	@Override
-	public <R> SelectionQuery<R> createNativeQuery(String queryString, Class<R> resultType) {
-		return new MutinySelectionQueryImpl<>( delegate.createReactiveNativeQuery( queryString, resultType ), factory );
-	}
-
-	@Override
-	public <R> SelectionQuery<R> createNativeQuery(String queryString, Class<R> resultType, AffectedEntities affectedEntities) {
-		return new MutinySelectionQueryImpl<>( delegate.createReactiveNativeQuery( queryString, resultType, affectedEntities ), factory );
-	}
-
-	@Override
-	public <R> SelectionQuery<R> createNativeQuery(String queryString, ResultSetMapping<R> resultSetMapping) {
-		return new MutinySelectionQueryImpl<>( delegate.createReactiveNativeQuery( queryString, resultSetMapping ), factory );
-	}
-
-	@Override
-	public <R> SelectionQuery<R> createNativeQuery(String queryString, ResultSetMapping<R> resultSetMapping, AffectedEntities affectedEntities) {
-		return new MutinySelectionQueryImpl<>( delegate.createReactiveNativeQuery( queryString, resultSetMapping, affectedEntities ), factory );
 	}
 
 	@Override
@@ -567,6 +476,97 @@ public class MutinySessionImpl implements Mutiny.Session {
 	@Override
 	public Mutiny.SessionFactory getFactory() {
 		return factory;
+	}
+
+
+	@Override
+	public <R> SelectionQuery<R> createSelectionQuery(String queryString, Class<R> resultType) {
+		return new MutinySelectionQueryImpl<>( delegate.createReactiveSelectionQuery( queryString, resultType ), factory );
+	}
+
+	@Override
+	public MutationQuery createMutationQuery(String queryString) {
+		return new MutinyMutationQueryImpl<>( delegate.createReactiveQuery( queryString ), factory );
+	}
+
+	@Override
+	public MutationQuery createMutationQuery(CriteriaUpdate<?> updateQuery) {
+		return new MutinyMutationQueryImpl<>( delegate.createReactiveMutationQuery( updateQuery ), factory );
+	}
+
+	@Override
+	public MutationQuery createMutationQuery(CriteriaDelete<?> deleteQuery) {
+		return new MutinyMutationQueryImpl<>( delegate.createReactiveMutationQuery( deleteQuery ), factory );
+	}
+
+	@Override
+	public MutationQuery createMutationQuery(JpaCriteriaInsert<?> insert) {
+		return new MutinyMutationQueryImpl<>( delegate.createReactiveMutationQuery( insert ), factory  );
+	}
+
+	@Override @Deprecated
+	public <R> Query<R> createQuery(String queryString) {
+		return new MutinyQueryImpl<>( delegate.createReactiveQuery( queryString ), factory );
+	}
+
+	@Override
+	public <R> SelectionQuery<R> createQuery(String queryString, Class<R> resultType) {
+		return new MutinySelectionQueryImpl<>( delegate.createReactiveQuery( queryString, resultType ), factory );
+	}
+
+	@Override
+	public <R> SelectionQuery<R> createQuery(CriteriaQuery<R> criteriaQuery) {
+		return new MutinySelectionQueryImpl<>( delegate.createReactiveQuery( criteriaQuery ), factory );
+	}
+
+	@Override
+	public <R> MutationQuery createQuery(CriteriaUpdate<R> criteriaUpdate) {
+		return new MutinyMutationQueryImpl<>( delegate.createReactiveMutationQuery( criteriaUpdate ), factory );
+	}
+
+	@Override
+	public <R> MutationQuery createQuery(CriteriaDelete<R> criteriaDelete) {
+		return new MutinyMutationQueryImpl<>( delegate.createReactiveMutationQuery( criteriaDelete ), factory );
+	}
+
+	@Override
+	public <R> Query<R> createNamedQuery(String queryName) {
+		return new MutinyQueryImpl<>( delegate.createReactiveNamedQuery( queryName, null ), factory );
+	}
+
+	@Override
+	public <R> SelectionQuery<R> createNamedQuery(String queryName, Class<R> resultType) {
+		return new MutinySelectionQueryImpl<>( delegate.createReactiveNamedQuery( queryName, resultType ), factory );
+	}
+
+	@Override
+	public <R> Query<R> createNativeQuery(String queryString) {
+		return new MutinyQueryImpl<>( delegate.createReactiveNativeQuery( queryString ), factory );
+	}
+
+	@Override
+	public <R> Query<R> createNativeQuery(String queryString, AffectedEntities affectedEntities) {
+		return new MutinyQueryImpl<>( delegate.createReactiveNativeQuery( queryString, affectedEntities ), factory );
+	}
+
+	@Override
+	public <R> SelectionQuery<R> createNativeQuery(String queryString, Class<R> resultType) {
+		return new MutinySelectionQueryImpl<>( delegate.createReactiveNativeQuery( queryString, resultType ), factory );
+	}
+
+	@Override
+	public <R> SelectionQuery<R> createNativeQuery(String queryString, Class<R> resultType, AffectedEntities affectedEntities) {
+		return new MutinySelectionQueryImpl<>( delegate.createReactiveNativeQuery( queryString, resultType, affectedEntities ), factory );
+	}
+
+	@Override
+	public <R> SelectionQuery<R> createNativeQuery(String queryString, ResultSetMapping<R> resultSetMapping) {
+		return new MutinySelectionQueryImpl<>( delegate.createReactiveNativeQuery( queryString, resultSetMapping ), factory );
+	}
+
+	@Override
+	public <R> SelectionQuery<R> createNativeQuery(String queryString, ResultSetMapping<R> resultSetMapping, AffectedEntities affectedEntities) {
+		return new MutinySelectionQueryImpl<>( delegate.createReactiveNativeQuery( queryString, resultSetMapping, affectedEntities ), factory );
 	}
 
 	@Override

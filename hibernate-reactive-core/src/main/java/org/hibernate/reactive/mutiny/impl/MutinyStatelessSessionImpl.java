@@ -7,9 +7,14 @@ package org.hibernate.reactive.mutiny.impl;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.persistence.EntityGraph;
+import jakarta.persistence.criteria.CriteriaDelete;
 import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.CriteriaUpdate;
+
 import org.hibernate.LockMode;
 import org.hibernate.graph.spi.RootGraphImplementor;
+import org.hibernate.query.criteria.JpaCriteriaInsert;
+import org.hibernate.reactive.common.AffectedEntities;
 import org.hibernate.reactive.common.ResultSetMapping;
 import org.hibernate.reactive.mutiny.Mutiny;
 import org.hibernate.reactive.mutiny.Mutiny.Query;
@@ -85,6 +90,21 @@ public class MutinyStatelessSessionImpl implements Mutiny.StatelessSession {
 	}
 
 	@Override
+	public Mutiny.MutationQuery createMutationQuery(CriteriaUpdate<?> updateQuery) {
+		return new MutinyMutationQueryImpl<>( delegate.createReactiveMutationQuery( updateQuery ), factory );
+	}
+
+	@Override
+	public Mutiny.MutationQuery createMutationQuery(CriteriaDelete<?> deleteQuery) {
+		return new MutinyMutationQueryImpl<>( delegate.createReactiveMutationQuery( deleteQuery ), factory );
+	}
+
+	@Override
+	public Mutiny.MutationQuery createMutationQuery(JpaCriteriaInsert<?> insert) {
+		return new MutinyMutationQueryImpl<>( delegate.createReactiveMutationQuery( insert ), factory  );
+	}
+
+	@Override
 	public <R> Query<R> createNamedQuery(String queryName) {
 		return new MutinyQueryImpl<>( delegate.createReactiveNamedQuery( queryName, null ), factory );
 	}
@@ -100,8 +120,18 @@ public class MutinyStatelessSessionImpl implements Mutiny.StatelessSession {
 	}
 
 	@Override
+	public <R> Query<R> createNativeQuery(String queryString, AffectedEntities affectedEntities) {
+		return null;
+	}
+
+	@Override
 	public <R> SelectionQuery<R> createNativeQuery(String queryString, Class<R> resultType) {
 		return new MutinySelectionQueryImpl<>( delegate.createReactiveNativeQuery( queryString, resultType ), factory );
+	}
+
+	@Override
+	public <R> SelectionQuery<R> createNativeQuery(String queryString, Class<R> resultType, AffectedEntities affectedEntities) {
+		return null;
 	}
 
 	@Override
@@ -110,8 +140,23 @@ public class MutinyStatelessSessionImpl implements Mutiny.StatelessSession {
 	}
 
 	@Override
+	public <R> SelectionQuery<R> createNativeQuery(String queryString, ResultSetMapping<R> resultSetMapping, AffectedEntities affectedEntities) {
+		return null;
+	}
+
+	@Override
 	public <R> SelectionQuery<R> createQuery(CriteriaQuery<R> criteriaQuery) {
 		return new MutinySelectionQueryImpl<>( delegate.createReactiveQuery( criteriaQuery ), factory );
+	}
+
+	@Override
+	public <R> Mutiny.MutationQuery createQuery(CriteriaUpdate<R> criteriaUpdate) {
+		return new MutinyMutationQueryImpl<>( delegate.createReactiveMutationQuery( criteriaUpdate ), factory );
+	}
+
+	@Override
+	public <R> Mutiny.MutationQuery createQuery(CriteriaDelete<R> criteriaDelete) {
+		return new MutinyMutationQueryImpl<>( delegate.createReactiveMutationQuery( criteriaDelete ), factory );
 	}
 
 	@Override
@@ -216,28 +261,8 @@ public class MutinyStatelessSessionImpl implements Mutiny.StatelessSession {
 
 	@Override
 	public Object getIdentifier(Object entity) {
-		return delegate.getIdentifier(entity);
+		return delegate.getIdentifier( entity );
 	}
-
-//	@Override
-//	public <T> ResultSetMapping<T> getResultSetMapping(Class<T> resultType, String mappingName) {
-//		return delegate.getResultSetMapping( resultType, mappingName );
-//	}
-//
-//	@Override
-//	public <T> EntityGraph<T> getEntityGraph(Class<T> entity, String name) {
-//		return delegate.getEntityGraph( entity, name );
-//	}
-//
-//	@Override
-//	public <T> EntityGraph<T> createEntityGraph(Class<T> entity) {
-//		return delegate.createEntityGraph( entity );
-//	}
-//
-//	@Override
-//	public <T> EntityGraph<T> createEntityGraph(Class<T> entity, String name) {
-//		return delegate.createEntityGraph( entity, name );
-//	}
 
 	@Override
 	public <T> Uni<T> withTransaction(Function<Mutiny.Transaction, Uni<T>> work) {
