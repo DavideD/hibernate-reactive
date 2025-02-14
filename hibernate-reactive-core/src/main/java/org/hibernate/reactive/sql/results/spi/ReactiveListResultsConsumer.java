@@ -135,16 +135,14 @@ public class ReactiveListResultsConsumer<R> implements ReactiveResultsConsumer<L
 			SharedSessionContractImplementor session,
 			JdbcValuesSourceProcessingStateStandardImpl jdbcValuesSourceProcessingState) {
 		jdbcValuesSourceProcessingState.finishLoadingCollections();
-
 		return ( (ReactivePersistenceContextAdapter) session.getPersistenceContextInternal() )
 				.reactivePostLoad(
 						jdbcValuesSourceProcessingState,
-						registerSubselects ?
-								jdbcValuesSourceProcessingState.getExecutionContext()::registerLoadingEntityHolder :
-								null
+						registerSubselects
+								? jdbcValuesSourceProcessingState.getExecutionContext()::registerLoadingEntityHolder
+								: null
 				);
 	}
-
 
 	/**
 	 * The boolean in the CompletionStage is true if the element has been added to the results
