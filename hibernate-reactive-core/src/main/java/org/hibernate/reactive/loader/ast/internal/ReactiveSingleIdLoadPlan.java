@@ -23,6 +23,7 @@ import org.hibernate.query.spi.QueryParameterBindings;
 import org.hibernate.reactive.engine.impl.ReactiveCallbackImpl;
 import org.hibernate.reactive.sql.exec.internal.StandardReactiveSelectExecutor;
 import org.hibernate.reactive.sql.results.spi.ReactiveListResultsConsumer;
+import org.hibernate.reactive.util.impl.CompletionStages;
 import org.hibernate.resource.jdbc.spi.LogicalConnectionImplementor;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
 import org.hibernate.sql.exec.internal.JdbcParameterBindingsImpl;
@@ -30,7 +31,10 @@ import org.hibernate.sql.exec.spi.Callback;
 import org.hibernate.sql.exec.spi.ExecutionContext;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.exec.spi.JdbcParametersList;
+import org.hibernate.sql.results.internal.RowTransformerStandardImpl;
+import org.hibernate.sql.results.spi.RowTransformer;
 
+import static org.hibernate.reactive.util.impl.CompletionStages.nullFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
 public class ReactiveSingleIdLoadPlan<T> extends SingleIdLoadPlan<CompletionStage<T>> {
@@ -75,23 +79,27 @@ public class ReactiveSingleIdLoadPlan<T> extends SingleIdLoadPlan<CompletionStag
 		);
 		// FIXME: Should we get this from jdbcServices.getSelectExecutor()?
 		return StandardReactiveSelectExecutor.INSTANCE
-				.list( getJdbcSelect(), jdbcParameterBindings, executionContext, getRowTransformer(), resultConsumer( singleResultExpected ) )
-				.thenCompose( list -> {
-								  Object entity = extractEntity( list );
-								  return invokeAfterLoadActions( callback, session, entity )
-										  .thenApply( v -> (T) entity );
-							  }
-				);
+				.list( getJdbcSelect(), jdbcParameterBindings, executionContext, rowTransformer(), resultConsumer( singleResultExpected ) )
+				.thenApply( this::extractEntity )
+				.thenCompose( entity -> invokeAfterLoadActions( callback, session, entity ) );
 	}
 
-	private <G> CompletionStage<Void> invokeAfterLoadActions(ReactiveCallbackImpl callback, SharedSessionContractImplementor session, G entity) {
+	private RowTransformer<T> rowTransformer() {
+		// At the moment, I'm not sure how to refactor the code so that getRowTransformer()
+		// returns RowTransformer<T> instead of RowTransformer<CompletionStage<T>>.
+		return (RowTransformer<T>) getRowTransformer()
+	}
+
+	private CompletionStage<T> invokeAfterLoadActions(ReactiveCallbackImpl callback, SharedSessionContractImplementor session, T entity) {
 		if ( entity != null && getLoadable() != null ) {
-			return callback.invokeReactiveLoadActions( entity, (EntityMappingType) getLoadable(), session );
+			return callback
+					.invokeReactiveLoadActions( entity, (EntityMappingType) getLoadable(), session )
+					.thenApply( v -> entity );
 		}
-		return voidFuture();
+		return nullFuture();
 	}
 
-	private Object extractEntity(List<?> list) {
+	private T extractEntity(List<T> list) {
 		return list.isEmpty() ? null : list.get( 0 );
 	}
 
