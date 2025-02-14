@@ -23,7 +23,6 @@ import org.hibernate.query.spi.QueryParameterBindings;
 import org.hibernate.reactive.engine.impl.ReactiveCallbackImpl;
 import org.hibernate.reactive.sql.exec.internal.StandardReactiveSelectExecutor;
 import org.hibernate.reactive.sql.results.spi.ReactiveListResultsConsumer;
-import org.hibernate.reactive.util.impl.CompletionStages;
 import org.hibernate.resource.jdbc.spi.LogicalConnectionImplementor;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
 import org.hibernate.sql.exec.internal.JdbcParameterBindingsImpl;
@@ -31,11 +30,9 @@ import org.hibernate.sql.exec.spi.Callback;
 import org.hibernate.sql.exec.spi.ExecutionContext;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.exec.spi.JdbcParametersList;
-import org.hibernate.sql.results.internal.RowTransformerStandardImpl;
 import org.hibernate.sql.results.spi.RowTransformer;
 
 import static org.hibernate.reactive.util.impl.CompletionStages.nullFuture;
-import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
 public class ReactiveSingleIdLoadPlan<T> extends SingleIdLoadPlan<CompletionStage<T>> {
 
@@ -87,7 +84,7 @@ public class ReactiveSingleIdLoadPlan<T> extends SingleIdLoadPlan<CompletionStag
 	private RowTransformer<T> rowTransformer() {
 		// At the moment, I'm not sure how to refactor the code so that getRowTransformer()
 		// returns RowTransformer<T> instead of RowTransformer<CompletionStage<T>>.
-		return (RowTransformer<T>) getRowTransformer()
+		return (RowTransformer<T>) getRowTransformer();
 	}
 
 	private CompletionStage<T> invokeAfterLoadActions(ReactiveCallbackImpl callback, SharedSessionContractImplementor session, T entity) {
@@ -168,7 +165,7 @@ public class ReactiveSingleIdLoadPlan<T> extends SingleIdLoadPlan<CompletionStag
 
 			@Override
 			public QueryParameterBindings getQueryParameterBindings() {
-				return QueryParameterBindings.NO_PARAM_BINDINGS;
+				return QueryParameterBindings.empty();
 			}
 
 			@Override
