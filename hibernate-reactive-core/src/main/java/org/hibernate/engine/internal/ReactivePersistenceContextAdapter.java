@@ -7,6 +7,7 @@ package org.hibernate.engine.internal;
 
 import java.io.Serializable;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
@@ -719,37 +720,43 @@ public class ReactivePersistenceContextAdapter implements PersistenceContext {
 
 	/**
 	 * Reactive version of {@link StatefulPersistenceContext#postLoad(JdbcValuesSourceProcessingState, Consumer)}
-	 *
 	 */
-	public CompletionStage<Void> reactivePostLoad(JdbcValuesSourceProcessingState processingState, Consumer<EntityHolder> holderConsumer) {
-		final ReactiveCallbackImpl callback = (ReactiveCallbackImpl) processingState.getExecutionContext().getCallback();
+	public CompletionStage<Void> reactivePostLoad(
+			JdbcValuesSourceProcessingState processingState,
+			Consumer<EntityHolder> holderConsumer) {
+		final ReactiveCallbackImpl callback = (ReactiveCallbackImpl) processingState
+				.getExecutionContext().getCallback();
+		return processHolders(
+				holderConsumer,
+				processingState.getLoadingEntityHolders(),
+				getSession().getFactory().getEventListenerGroups().eventListenerGroup_POST_LOAD,
+				processingState.getPostLoadEvent(),
+				callback
+		).thenCompose( v -> processHolders(
+				holderConsumer,
+				processingState.getReloadedEntityHolders(),
+				null,
+				null,
+				callback
+		) );
+	}
 
-		if ( processingState.getLoadingEntityHolders() != null ) {
-			final EventListenerGroup<PostLoadEventListener> listenerGroup =
-					getSession().getFactory().getEventListenerGroups().eventListenerGroup_POST_LOAD;
-			final PostLoadEvent postLoadEvent = processingState.getPostLoadEvent();
-			return loop(
-					processingState.getLoadingEntityHolders(), entityHolder ->
-							processLoadedEntityHolder(
-									entityHolder,
-									listenerGroup,
-									postLoadEvent,
-									callback,
-									holderConsumer
-							))
-					.thenAccept( v -> processingState.getLoadingEntityHolders().clear() );
-		}
-		if ( processingState.getReloadedEntityHolders() != null ) {
-			return loop(
-					processingState.getLoadingEntityHolders(), entityHolder ->
-							processLoadedEntityHolder(
-									entityHolder,
-									null,
-									null,
-									callback,
-									holderConsumer
-							))
-					.thenAccept( v -> processingState.getLoadingEntityHolders().clear() );
+	private CompletionStage<Void> processHolders(
+			Consumer<EntityHolder> holderConsumer,
+			List<EntityHolder> loadingEntityHolders,
+			EventListenerGroup<PostLoadEventListener> listenerGroup,
+			PostLoadEvent postLoadEvent,
+			ReactiveCallbackImpl callback) {
+		if ( loadingEntityHolders != null ) {
+			return loop( loadingEntityHolders,
+						 holder -> processLoadedEntityHolder(
+								 holder,
+								 listenerGroup,
+								 postLoadEvent,
+								 callback,
+								 holderConsumer
+						 )
+			).thenAccept( v -> loadingEntityHolders.clear() );
 		}
 		return voidFuture();
 	}
