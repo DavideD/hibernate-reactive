@@ -163,7 +163,7 @@ public class MutinyStatelessSessionImpl implements Mutiny.StatelessSession {
 
 	@Override
 	public Uni<Void> deleteAll(int batchSize, Object... entities) {
-		return uni( () -> delegate.reactiveDeleteAll( entities ) );
+		return uni( () -> delegate.reactiveDeleteAll( batchSize, entities ) );
 	}
 
 	@Override
