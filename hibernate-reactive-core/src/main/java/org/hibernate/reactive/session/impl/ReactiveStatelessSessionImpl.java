@@ -128,7 +128,7 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 
 	private final ReactiveConnection reactiveConnection;
 
-	private final ReactiveStatelessSession batchingHelperSession;
+	private final ReactiveStatelessSessionImpl batchingHelperSession;
 
 	private final PersistenceContext persistenceContext;
 
@@ -150,12 +150,8 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 			PersistenceContext persistenceContext) {
 		super( factory, options );
 		this.persistenceContext = persistenceContext;
-		// Don't know why ORM set the batch size to 0 in the super constructor,
-		// but the default should be the one in the factory options
-		int defaultBatchSize = factory.getSessionFactoryOptions().getJdbcBatchSize();
-		setJdbcBatchSize( defaultBatchSize );
 		// BatchingConnection will use the original connection if defaultBatchSize <= 1
-		reactiveConnection = new BatchingConnection( connection, defaultBatchSize );
+		reactiveConnection = new BatchingConnection( connection, 0 );
 		batchingHelperSession = this;
 		influencers = new LoadQueryInfluencers( factory );
 	}

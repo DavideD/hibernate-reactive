@@ -77,8 +77,4 @@ public interface ReactiveStatelessSession extends ReactiveQueryProducer, Reactiv
 	void close(CompletableFuture<Void> closing);
 
 	Object getIdentifier(Object entity);
-
-	void setJdbcBatchSize(Integer jdbcBatchSize);
-
-	Integer getJdbcBatchSize();
 }
