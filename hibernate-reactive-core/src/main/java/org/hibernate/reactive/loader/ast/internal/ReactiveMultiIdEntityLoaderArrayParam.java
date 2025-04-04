@@ -18,6 +18,7 @@ import org.hibernate.engine.spi.EntityEntry;
 import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.engine.spi.PersistenceContext;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.engine.spi.SubselectFetch;
 import org.hibernate.event.spi.EventSource;
 import org.hibernate.loader.ast.internal.LoaderSelectBuilder;
@@ -30,6 +31,7 @@ import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.query.spi.QueryOptions;
+import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.sql.exec.internal.StandardReactiveSelectExecutor;
 import org.hibernate.reactive.sql.results.spi.ReactiveListResultsConsumer;
 import org.hibernate.sql.ast.tree.expression.JdbcParameter;
@@ -42,19 +44,18 @@ import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.exec.spi.JdbcParametersList;
 import org.hibernate.sql.results.internal.RowTransformerStandardImpl;
 
+import static java.lang.invoke.MethodHandles.lookup;
 import static org.hibernate.event.spi.LoadEventListener.GET;
 import static org.hibernate.internal.util.collections.CollectionHelper.arrayList;
 import static org.hibernate.internal.util.collections.CollectionHelper.isEmpty;
 import static org.hibernate.loader.ast.internal.MultiKeyLoadHelper.resolveArrayJdbcMapping;
 import static org.hibernate.loader.internal.CacheLoadHelper.loadFromSessionCache;
 import static org.hibernate.reactive.loader.ast.internal.ReactiveLoaderHelper.loadByArrayParameter;
+import static org.hibernate.reactive.logging.impl.LoggerFactory.make;
 import static org.hibernate.reactive.util.impl.CompletionStages.completedFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.loop;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
-/**
- * @see org.hibernate.loader.ast.internal.MultiIdEntityLoaderArrayParam
- */
 public class ReactiveMultiIdEntityLoaderArrayParam<E> extends ReactiveAbstractMultiIdEntityLoader<E> {
 
 	private final JdbcMapping arrayJdbcMapping;
@@ -71,6 +72,11 @@ public class ReactiveMultiIdEntityLoaderArrayParam<E> extends ReactiveAbstractMu
 				getSessionFactory()
 		);
 		jdbcParameter = new JdbcParameterImpl( arrayJdbcMapping );
+	}
+
+	@Override
+	public <K> List<E> load(K[] ids, MultiIdLoadOptions options, SharedSessionContractImplementor session) {
+		throw make( Log.class, lookup() ).nonReactiveMethodCall( "reactiveLoad" );
 	}
 
 	@Override

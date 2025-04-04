@@ -46,16 +46,15 @@ import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.exec.spi.JdbcParametersList;
 import org.hibernate.sql.results.internal.RowTransformerStandardImpl;
 
+import static java.lang.invoke.MethodHandles.lookup;
 import static org.hibernate.event.spi.LoadEventListener.GET;
 import static org.hibernate.loader.internal.CacheLoadHelper.loadFromSessionCache;
+import static org.hibernate.reactive.logging.impl.LoggerFactory.make;
 import static org.hibernate.reactive.util.impl.CompletionStages.completedFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.loop;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.whileLoop;
 
-/**
- * @see org.hibernate.loader.ast.internal.MultiIdEntityLoaderStandard
- */
 public class ReactiveMultiIdEntityLoaderStandard<T> extends ReactiveAbstractMultiIdEntityLoader<T> {
 
 	private static final Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
@@ -69,6 +68,11 @@ public class ReactiveMultiIdEntityLoaderStandard<T> extends ReactiveAbstractMult
 		super( entityDescriptor, sessionFactory );
 		this.idJdbcTypeCount = bootDescriptor.getIdentifier().getColumnSpan();
 		assert idJdbcTypeCount > 0;
+	}
+
+	@Override
+	public <K> List<T> load(K[] ids, MultiIdLoadOptions options, SharedSessionContractImplementor session) {
+		throw make( Log.class, lookup() ).nonReactiveMethodCall( "reactiveLoad" );
 	}
 
 	@Override
