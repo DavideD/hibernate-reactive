@@ -64,6 +64,14 @@ public class ReactiveEmbeddableInitializerImpl extends EmbeddableInitializerImpl
 
 	@Override
 	public CompletionStage<Void> reactiveResolveInstance(EmbeddableInitializerData data) {
+		if ( data.getState() != State.KEY_RESOLVED ) {
+			return voidFuture();
+		}
+
+		data.setState( State.RESOLVED );
+		reextractRowState( data );
+		prepareCompositeInstance( data );
+
 		super.resolveInstance( data );
 		return voidFuture();
 	}

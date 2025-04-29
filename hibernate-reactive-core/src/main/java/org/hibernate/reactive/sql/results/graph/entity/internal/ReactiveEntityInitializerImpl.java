@@ -26,6 +26,7 @@ import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.proxy.map.MapProxy;
 import org.hibernate.reactive.session.ReactiveQueryProducer;
 import org.hibernate.reactive.sql.exec.spi.ReactiveRowProcessingState;
+import org.hibernate.reactive.sql.results.graph.ReactiveDomainResultsAssembler;
 import org.hibernate.reactive.sql.results.graph.ReactiveInitializer;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
 import org.hibernate.sql.results.graph.DomainResult;
@@ -50,6 +51,7 @@ import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
 import static org.hibernate.reactive.util.impl.CompletionStages.completedFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.falseFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.loop;
+import static org.hibernate.reactive.util.impl.CompletionStages.nullFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.trueFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
@@ -253,48 +255,81 @@ public class ReactiveEntityInitializerImpl extends EntityInitializerImpl
 		}
 		final RowProcessingState rowProcessingState = data.getRowProcessingState();
 		data.setState( State.RESOLVED );
-		if ( data.getEntityKey() == null ) {
-			assert getIdentifierAssembler() != null;
- 			final Object id = getIdentifierAssembler().assemble( rowProcessingState );
-			if ( id == null ) {
-				setMissing( data );
-				return voidFuture();
-			}
-			resolveEntityKey( data, id );
-		}
-		final PersistenceContext persistenceContext = rowProcessingState.getSession()
-				.getPersistenceContextInternal();
-		data.setEntityHolder( persistenceContext.claimEntityHolderIfPossible(
-				data.getEntityKey(),
-				null,
-				rowProcessingState.getJdbcValuesSourceProcessingState(),
-				this
-		) );
+		return assembleId( data, rowProcessingState )
+				.thenCompose( id -> {
+					if ( id == null && data.getEntityKey() == null ) {
+						return nullFuture();
+					}
+					else {
+						final PersistenceContext persistenceContext = rowProcessingState
+								.getSession().getPersistenceContextInternal();
+						data.setEntityHolder( persistenceContext.claimEntityHolderIfPossible(
+								data.getEntityKey(),
+								null,
+								rowProcessingState.getJdbcValuesSourceProcessingState(),
+								this
+						) );
 
-		if ( useEmbeddedIdentifierInstanceAsEntity( data ) ) {
-			data.setEntityInstanceForNotify( rowProcessingState.getEntityId() );
-			data.setInstance( data.getEntityInstanceForNotify() );
-		}
-		else {
-			return reactiveResolveEntityInstance1( data )
-					.thenAccept( v -> {
-						if ( data.getUniqueKeyAttributePath() != null ) {
-							final SharedSessionContractImplementor session = rowProcessingState.getSession();
-							final EntityPersister concreteDescriptor = getConcreteDescriptor( data );
-							final EntityUniqueKey euk = new EntityUniqueKey(
-									concreteDescriptor.getEntityName(),
-									data.getUniqueKeyAttributePath(),
-									rowProcessingState.getEntityUniqueKey(),
-									data.getUniqueKeyPropertyTypes()[concreteDescriptor.getSubclassId()],
-									session.getFactory()
-							);
-							session.getPersistenceContextInternal().addEntity( euk, data.getInstance() );
+						if ( useEmbeddedIdentifierInstanceAsEntity( data ) ) {
+							data.setEntityInstanceForNotify( rowProcessingState.getEntityId() );
+							data.setInstance( data.getEntityInstanceForNotify() );
+						}
+						else {
+							return reactiveResolveEntityInstance1( data )
+									.thenAccept( v -> {
+										if ( data.getUniqueKeyAttributePath() != null ) {
+											final SharedSessionContractImplementor session = rowProcessingState.getSession();
+											final EntityPersister concreteDescriptor = getConcreteDescriptor( data );
+											final EntityUniqueKey euk = new EntityUniqueKey(
+													concreteDescriptor.getEntityName(),
+													data.getUniqueKeyAttributePath(),
+													rowProcessingState.getEntityUniqueKey(),
+													data.getUniqueKeyPropertyTypes()[concreteDescriptor.getSubclassId()],
+													session.getFactory()
+											);
+											session.getPersistenceContextInternal().addEntity(
+													euk,
+													data.getInstance()
+											);
+										}
+										postResolveInstance( data );
+									} );
 						}
 						postResolveInstance( data );
-					} );
+						return voidFuture();
+					}
+				} );
+	}
+
+	private CompletionStage<Object> assembleId(
+			ReactiveEntityInitializerData data,
+			RowProcessingState rowProcessingState) {
+		if ( data.getEntityKey() == null ) {
+			DomainResultAssembler<?> identifierAssembler = getIdentifierAssembler();
+			assert identifierAssembler != null;
+			if ( identifierAssembler instanceof ReactiveDomainResultsAssembler<?> reactiveAssembler ) {
+				return reactiveAssembler
+						.reactiveAssemble( (ReactiveRowProcessingState) rowProcessingState )
+						.thenApply( id -> {
+							if ( id == null ) {
+								setMissing( data );
+								return null;
+							}
+							resolveEntityKey( data, id );
+							return id;
+						} );
+			}
+			else {
+				final Object id = identifierAssembler.assemble( rowProcessingState );
+				if ( id == null ) {
+					setMissing( data );
+					return nullFuture();
+				}
+				resolveEntityKey( data, id );
+				return completedFuture( id );
+			}
 		}
-		postResolveInstance( data );
-		return voidFuture();
+		return nullFuture();
 	}
 
 	private void postResolveInstance(ReactiveEntityInitializerData data) {
