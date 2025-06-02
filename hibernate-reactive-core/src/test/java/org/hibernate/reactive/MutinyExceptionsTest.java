@@ -11,24 +11,25 @@ import java.util.List;
 
 import org.hibernate.exception.ConstraintViolationException;
 import org.hibernate.reactive.mutiny.Mutiny;
+import org.hibernate.reactive.util.impl.CompletionStages;
 
 import org.junit.jupiter.api.Test;
 
-import io.vertx.junit5.Timeout;
+import io.smallrye.mutiny.Uni;
 import io.vertx.junit5.VertxTestContext;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.SQLSERVER;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
 import static org.hibernate.reactive.testing.ReactiveAssertions.assertThrown;
+import static org.hibernate.reactive.util.impl.CompletionStages.completedFuture;
+import static org.hibernate.reactive.util.impl.CompletionStages.loop;
 
-@Timeout(value = 10, timeUnit = MINUTES)
 
 public class MutinyExceptionsTest extends BaseReactiveTest {
 
@@ -70,6 +71,36 @@ public class MutinyExceptionsTest extends BaseReactiveTest {
 					.as( "Failed constraint name should not be null" )
 					.isNotNull();
 		}
+	}
+
+	@Test
+	public void testExceptionPropagationWithLoop(VertxTestContext context) {
+		test( context, getMutinySessionFactory()
+				.withTransaction( session -> Uni.createFrom().completionStage( loop(
+						0, 50000, i -> true, i -> {
+							System.out.println( i );
+							return completedFuture( i );
+						}
+				) ) )
+				.invoke( () -> System.out.println("End") )
+		);
+	}
+
+	@Test
+	public void testExceptionPropagation(VertxTestContext context) {
+		test( context, getMutinySessionFactory()
+				.withTransaction( session -> {
+					int loop = 5000;
+					Uni<?> uni = Uni.createFrom().voidItem();
+					for ( int i = 0; i < loop; i++ ) {
+						final int index = i;
+						uni = uni.invoke( () -> System.out.println( index ) );
+					}
+					System.out.println("Finished chaining uni");
+					return uni;
+				} )
+				.invoke( () -> System.out.println("End") )
+		);
 	}
 
 	@Entity(name = "Person")
