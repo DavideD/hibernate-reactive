@@ -67,7 +67,12 @@ public class MutinySessionFactoryImpl implements Mutiny.SessionFactory, Implemen
 	}
 
 	<T> Uni<T> uni(Supplier<CompletionStage<T>> stageSupplier) {
-		return Uni.createFrom().completionStage( stageSupplier ).runSubscriptionOn( context );
+		try {
+			return Uni.createFrom().completionStage( stageSupplier ).runSubscriptionOn( context );
+		}
+		catch (Throwable t) {
+			return Uni.createFrom().failure( t );
+		}
 	}
 
 	@Override
@@ -212,7 +217,8 @@ public class MutinySessionFactoryImpl implements Mutiny.SessionFactory, Implemen
 			Uni<S> sessionUni,
 			Function<S, Uni<T>> work,
 			Context.Key<S> contextKey) {
-		return sessionUni.chain( session -> Uni.createFrom().voidItem()
+		return sessionUni
+				.chain( session -> Uni.createFrom().voidItem()
 				.invoke( () -> context.put( contextKey, session ) )
 				.chain( () -> work.apply( session ) )
 				.onTermination().invoke( () -> context.remove( contextKey ) )

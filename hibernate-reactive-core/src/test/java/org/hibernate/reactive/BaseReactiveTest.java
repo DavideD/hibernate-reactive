@@ -144,7 +144,9 @@ public abstract class BaseReactiveTest {
 	}
 
 	public static void test(VertxTestContext context, Uni<?> uni) {
-		uni.subscribe().with( res -> context.completeNow(), context::failNow );
+		uni
+				.subscribe()
+				.with( res -> context.completeNow(), context::failNow );
 	}
 
 	private static boolean doneTablespace;
