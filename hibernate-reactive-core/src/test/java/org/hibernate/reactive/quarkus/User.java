@@ -29,4 +29,28 @@ public class User {
 	// non-owning side, so we can add more credentials later
 	@OneToOne(mappedBy = "user")
 	public WebAuthnCredential webAuthnCredential;
+
+	public Long getId() {
+		return id;
+	}
+
+	public void setId(Long id) {
+		this.id = id;
+	}
+
+	public String getUsername() {
+		return username;
+	}
+
+	public void setUsername(String username) {
+		this.username = username;
+	}
+
+	public WebAuthnCredential getWebAuthnCredential() {
+		return webAuthnCredential;
+	}
+
+	public void setWebAuthnCredential(WebAuthnCredential webAuthnCredential) {
+		this.webAuthnCredential = webAuthnCredential;
+	}
 }
