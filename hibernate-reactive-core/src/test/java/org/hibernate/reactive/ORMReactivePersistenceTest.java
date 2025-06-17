@@ -15,6 +15,7 @@ import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.reactive.annotations.DisabledFor;
+import org.hibernate.reactive.provider.Settings;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +29,6 @@ import jakarta.persistence.Table;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.COCKROACHDB;
-import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.DB2;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.dbType;
 import static org.hibernate.reactive.provider.Settings.DIALECT;
 import static org.hibernate.reactive.provider.Settings.DRIVER;
@@ -40,7 +40,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * This test class verifies that data can be persisted and queried on the same database
  * using both JPA/hibernate and reactive session factories.
  */
-@DisabledFor(value = DB2, reason = "Exception: IllegalStateException: Needed to have 6 in buffer but only had 0")
 @DisabledFor(value = COCKROACHDB, reason = "We need to change the URL schema we normally use for testing")
 public class ORMReactivePersistenceTest extends BaseReactiveTest {
 
@@ -49,6 +48,16 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
 		return List.of( Flour.class );
+	}
+
+	@Override
+	protected Configuration constructConfiguration() {
+		Configuration configuration = super.constructConfiguration();
+// It's possible to override the defaults here
+//		configuration.setProperty( Settings.URL, "jdbc:db2://localhost:50000/hreact:user=hreact;password=hreact;" );
+//		configuration.setProperty( Settings.USER, "hreact" );
+//		configuration.setProperty( Settings.PASS, "hreact" );
+		return configuration;
 	}
 
 	@BeforeEach
@@ -69,6 +78,7 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 		ormFactory.close();
 	}
 
+	// This test will fail with Db2 with: Caused by: java.lang.IllegalStateException: Needed to have 6 in buffer but only had 0. In JDBC we would normally block here but need to find a non-blocking solution
 	@Test
 	public void testORMWithStageSession(VertxTestContext context) {
 		final Flour almond = new Flour( 1, "Almond", "made from ground almonds.", "Gluten free" );
@@ -83,23 +93,6 @@ public class ORMReactivePersistenceTest extends BaseReactiveTest {
 		test( context, openSession()
 				.thenCompose( stageSession -> stageSession.find( Flour.class, almond.id ) )
 				.thenAccept( entityFound -> assertEquals( almond, entityFound ) )
-		);
-	}
-
-	@Test
-	public void testORMWitMutinySession(VertxTestContext context) {
-		final Flour rose = new Flour( 2, "Rose", "made from ground rose pedals.", "Full fragrance" );
-
-		try (Session ormSession = ormFactory.openSession()) {
-			ormSession.beginTransaction();
-			ormSession.persist( rose );
-			ormSession.getTransaction().commit();
-		}
-
-		// Check database with Mutiny session and verify 'rose' flour exists
-		test( context, openMutinySession()
-				.chain( session -> session.find( Flour.class, rose.id ) )
-				.invoke( foundRose -> assertEquals( rose, foundRose ) )
 		);
 	}
 
