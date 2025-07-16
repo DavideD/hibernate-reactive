@@ -11,16 +11,12 @@ import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.event.spi.LoadEventListener;
 import org.hibernate.loader.internal.CacheLoadHelper;
-import org.hibernate.persister.entity.EntityPersister;
 
 import java.util.concurrent.CompletionStage;
 
-import static org.hibernate.loader.internal.CacheLoadHelper.PersistenceContextEntry.EntityStatus.INCONSISTENT_RTN_CLASS_MARKER;
 import static org.hibernate.loader.internal.CacheLoadHelper.PersistenceContextEntry.EntityStatus.MANAGED;
-import static org.hibernate.loader.internal.CacheLoadHelper.PersistenceContextEntry.EntityStatus.REMOVED_ENTITY_MARKER;
 import static org.hibernate.reactive.loader.ast.internal.ReactiveLoaderHelper.upgradeLock;
 import static org.hibernate.reactive.util.impl.CompletionStages.completedFuture;
-import static org.hibernate.sql.results.LoadingLogger.LOADING_LOGGER;
 
 /**
  * A reactive implementation of {@link  CacheLoadHelper}
@@ -33,28 +29,17 @@ public class ReactiveCacheLoadHelper {
 			LoadEventListener.LoadType options,
 			SharedSessionContractImplementor session) {
 		final Object old = session.getEntityUsingInterceptor( keyToLoad );
+		CacheLoadHelper.PersistenceContextEntry.EntityStatus entityStatus = MANAGED;
 		if ( old != null ) {
 			// this object was already loaded
 			final EntityEntry oldEntry = session.getPersistenceContext().getEntry( old );
-			if ( options.isCheckDeleted() ) {
-				if ( oldEntry.getStatus().isDeletedOrGone() ) {
-					LOADING_LOGGER.foundEntityScheduledForRemoval();
-					return completedFuture( new CacheLoadHelper.PersistenceContextEntry( old, REMOVED_ENTITY_MARKER ) );
-				}
+			entityStatus = CacheLoadHelper.entityStatus( keyToLoad, options, session, oldEntry, old );
+			if ( entityStatus == MANAGED ) {
+				return upgradeLock( old, oldEntry, lockOptions, session )
+						.thenApply( v -> new CacheLoadHelper.PersistenceContextEntry( old, MANAGED ) );
 			}
-			if ( options.isAllowNulls() ) {
-				final EntityPersister persister =
-						session.getFactory().getMappingMetamodel()
-								.getEntityDescriptor( keyToLoad.getEntityName() );
-				if ( !persister.isInstance( old ) ) {
-					LOADING_LOGGER.foundEntityWrongType();
-					return completedFuture(new CacheLoadHelper.PersistenceContextEntry( old, INCONSISTENT_RTN_CLASS_MARKER ) );
-				}
-			}
-			return upgradeLock( old, oldEntry, lockOptions, session )
-					.thenApply(v -> new CacheLoadHelper.PersistenceContextEntry( old, MANAGED ) );
 		}
-		return completedFuture( new CacheLoadHelper.PersistenceContextEntry( old, MANAGED ) );
+		return completedFuture( new CacheLoadHelper.PersistenceContextEntry( old, entityStatus ) );
 	}
 
 }
