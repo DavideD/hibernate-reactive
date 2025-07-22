@@ -23,6 +23,7 @@ import org.hibernate.engine.spi.EntityEntry;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.values.GeneratedValues;
+import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.id.IdentityGenerator;
 import org.hibernate.loader.ast.spi.MultiIdEntityLoader;
 import org.hibernate.loader.ast.spi.MultiIdLoadOptions;
@@ -32,7 +33,6 @@ import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.ManagedMappingType;
-import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.NaturalIdMapping;
 import org.hibernate.metamodel.mapping.SingularAttributeMapping;
 import org.hibernate.metamodel.mapping.internal.MappingModelCreationProcess;
@@ -439,12 +439,12 @@ public class ReactiveUnionSubclassEntityPersister extends UnionSubclassEntityPer
 	}
 
 	@Override
-	public ReactiveSingleIdArrayLoadPlan reactiveGetOrCreateLazyLoadPlan(String fieldName, List<ModelPart> partsToSelect) {
-		return reactiveDelegate.getOrCreateLazyLoadPlan( fieldName, partsToSelect );
+	public GeneratedValuesMutationDelegate createInsertDelegate() {
+		return ReactiveAbstractEntityPersister.super.createReactiveInsertDelegate();
 	}
 
 	@Override
-	public boolean isNonLazyPropertyName(String fieldName) {
-		return super.isNonLazyPropertyName( fieldName );
+	protected GeneratedValuesMutationDelegate createUpdateDelegate() {
+		return ReactiveAbstractEntityPersister.super.createReactiveUpdateDelegate();
 	}
 }
