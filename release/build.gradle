@@ -1,5 +1,22 @@
 import java.nio.charset.StandardCharsets
 
+plugins {
+    id "hr-java-library"
+}
+ext {
+    // Select which repository to use for publishing the documentation
+    // Example:
+    // ./gradlew uploadDocumentation \
+    //           -PdocPublishRepoUri="git@github.com:DavideD/hibernate.org.git" \
+    //           -PdocPublishBranch="staging"
+    if ( !project.hasProperty('docPublishRepoUri') ) {
+        docPublishRepoUri = 'git@github.com:hibernate/hibernate.org.git'
+    }
+    if ( !project.hasProperty('docPublishBranch') ) {
+        docPublishBranch = 'staging'
+    }
+}
+
 description = 'Release module'
 // (Optional) before uploading the documentation, you can check
 // the generated website under release/build/hibernate.org with:
