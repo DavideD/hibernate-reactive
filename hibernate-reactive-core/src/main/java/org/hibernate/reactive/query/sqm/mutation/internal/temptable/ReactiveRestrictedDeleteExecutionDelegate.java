@@ -85,7 +85,10 @@ public class ReactiveRestrictedDeleteExecutionDelegate extends AbstractDeleteExe
 			DomainParameterXref domainParameterXref, QueryOptions queryOptions, LoadQueryInfluencers loadQueryInfluencers, QueryParameterBindings queryParameterBindings,
 			Function<SharedSessionContractImplementor, String> sessionUidAccess, SessionFactoryImplementor sessionFactory
 	) {
-		super( entityDescriptor, idTable, temporaryTableStrategy, forceDropAfterUse, sqmDelete, domainParameterXref, queryOptions, loadQueryInfluencers, queryParameterBindings, sessionUidAccess, sessionFactory );
+		super(
+				entityDescriptor, idTable, temporaryTableStrategy, forceDropAfterUse, sqmDelete, domainParameterXref, queryOptions, loadQueryInfluencers, queryParameterBindings, sessionUidAccess,
+				sessionFactory
+		);
 	}
 
 
