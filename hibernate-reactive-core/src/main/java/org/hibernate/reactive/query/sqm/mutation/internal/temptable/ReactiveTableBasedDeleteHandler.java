@@ -56,17 +56,26 @@ public class ReactiveTableBasedDeleteHandler extends TableBasedDeleteHandler imp
 	@Override
 	public CompletionStage<Integer> reactiveExecute(DomainQueryExecutionContext executionContext) {
 		if ( LOG.isTraceEnabled() ) {
-			LOG.tracef(
-					"Starting multi-table delete execution - %s",
-					getSqmDeleteOrUpdateStatement().getRoot().getModel().getName()
-			);
+			LOG.tracef( "Starting multi-table delete execution - %s", getSqmDeleteOrUpdateStatement().getRoot().getModel().getName() );
 		}
 		return resolveDelegate( executionContext ).reactiveExecute( executionContext );
 	}
 
 	protected ReactiveExecutionDelegate resolveDelegate(DomainQueryExecutionContext executionContext) {
 		if ( getEntityDescriptor().getSoftDeleteMapping() != null ) {
-			// TODO : implement a reactive version of SoftDeleteExecutionDelegate
+			return new ReactiveSoftDeleteExecutionDelegate(
+					getEntityDescriptor(),
+					getIdTable(),
+					getTemporaryTableStrategy(),
+					isForceDropAfterUse(),
+					getSqmDeleteOrUpdateStatement(),
+					getDomainParameterXref(),
+					executionContext.getQueryOptions(),
+					executionContext.getSession().getLoadQueryInfluencers(),
+					executionContext.getQueryParameterBindings(),
+					getSessionUidAccess(),
+					getSessionFactory()
+			);
 		}
 		return new ReactiveRestrictedDeleteExecutionDelegate(
 				getEntityDescriptor(),
@@ -75,10 +84,10 @@ public class ReactiveTableBasedDeleteHandler extends TableBasedDeleteHandler imp
 				isForceDropAfterUse(),
 				getSqmDeleteOrUpdateStatement(),
 				getDomainParameterXref(),
-				getSessionUidAccess(),
 				executionContext.getQueryOptions(),
 				executionContext.getSession().getLoadQueryInfluencers(),
 				executionContext.getQueryParameterBindings(),
+				getSessionUidAccess(),
 				getSessionFactory()
 		);
 	}
