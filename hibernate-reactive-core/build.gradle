@@ -68,7 +68,7 @@ dependencies {
     testRuntimeOnly ("org.hibernate.orm:hibernate-jcache:${hibernateOrmVersion}")
 
     // log4j
-    testRuntimeOnly 'org.apache.logging.log4j:log4j-core:2.20.0'
+    testRuntimeOnly 'org.apache.logging.log4j:log4j-core:2.25.1'
 
     // Testcontainers
     testImplementation "org.testcontainers:postgresql:${testcontainersVersion}"
