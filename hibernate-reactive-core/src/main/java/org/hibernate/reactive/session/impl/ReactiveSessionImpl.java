@@ -146,7 +146,6 @@ import static org.hibernate.reactive.util.impl.CompletionStages.failedFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.nullFuture;
 import static org.hibernate.reactive.util.impl.CompletionStages.rethrow;
 import static org.hibernate.reactive.util.impl.CompletionStages.returnNullorRethrow;
-import static org.hibernate.reactive.util.impl.CompletionStages.returnOrRethrow;
 import static org.hibernate.reactive.util.impl.CompletionStages.supplyStage;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
@@ -166,9 +165,7 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 	//Lazily initialized
 	private transient ExceptionConverter exceptionConverter;
 
-	public ReactiveSessionImpl(
-			SessionFactoryImpl delegate, SessionCreationOptions options,
-			ReactiveConnection connection) {
+	public ReactiveSessionImpl(SessionFactoryImpl delegate, SessionCreationOptions options, ReactiveConnection connection) {
 		super( delegate, options );
 		InternalStateAssertions.assertUseOnEventLoop();
 		this.associatedWorkThread = Thread.currentThread();
@@ -953,20 +950,13 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 
 		return getFactory().getEventListenerGroups().eventListenerGroup_DELETE
 				.fireEventOnEachListener( event, (ReactiveDeleteEventListener l) -> l::reactiveOnDelete )
-				.handle( (v, e) -> {
+				.handle( CompletionStages::handle )
+				.thenCompose( handler -> {
 					delayedAfterCompletion();
-
-					if ( e instanceof ObjectDeletedException ) {
-						throw getExceptionConverter().convert( new IllegalArgumentException( e ) );
-					}
-					else if ( e instanceof MappingException ) {
-						throw getExceptionConverter().convert( new IllegalArgumentException( e.getMessage(), e ) );
-					}
-					else if ( e instanceof RuntimeException ) {
-						//including HibernateException
-						throw getExceptionConverter().convert( (RuntimeException) e );
-					}
-					return returnNullorRethrow( e );
+					final Throwable e = handler.getThrowable();
+					return e != null
+							? failedFuture( convertException( e ) )
+							: voidFuture();
 				} );
 	}
 
@@ -975,20 +965,13 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 
 		return getFactory().getEventListenerGroups().eventListenerGroup_DELETE
 				.fireEventOnEachListener( event, transientEntities, (ReactiveDeleteEventListener l) -> l::reactiveOnDelete )
-				.handle( (v, e) -> {
+				.handle( CompletionStages::handle )
+				.thenCompose( handler -> {
 					delayedAfterCompletion();
-
-					if ( e instanceof ObjectDeletedException ) {
-						throw getExceptionConverter().convert( new IllegalArgumentException( e ) );
-					}
-					else if ( e instanceof MappingException ) {
-						throw getExceptionConverter().convert( new IllegalArgumentException( e.getMessage(), e ) );
-					}
-					else if ( e instanceof RuntimeException ) {
-						//including HibernateException
-						throw getExceptionConverter().convert( (RuntimeException) e );
-					}
-					return returnNullorRethrow( e );
+					final Throwable e = handler.getThrowable();
+					return e != null
+							? failedFuture( convertException( e ) )
+							: voidFuture();
 				} );
 	}
 
@@ -1012,21 +995,31 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 
 		return getFactory().getEventListenerGroups().eventListenerGroup_MERGE
 				.fireEventOnEachListener( event, (ReactiveMergeEventListener l) -> l::reactiveOnMerge )
-				.handle( (v, e) -> {
+				.handle( CompletionStages::handle )
+				.thenCompose( handler -> {
 					checkNoUnresolvedActionsAfterOperation();
-
-					if ( e instanceof ObjectDeletedException ) {
-						throw getExceptionConverter().convert( new IllegalArgumentException( e ) );
-					}
-					else if ( e instanceof MappingException ) {
-						throw getExceptionConverter().convert( new IllegalArgumentException( e.getMessage(), e ) );
-					}
-					else if ( e instanceof RuntimeException ) {
-						//including HibernateException
-						throw getExceptionConverter().convert( (RuntimeException) e );
-					}
-					return returnOrRethrow( e, (T) event.getResult() );
+					final Throwable e = handler.getThrowable();
+					return e != null
+							? failedFuture( convertException( e ) )
+							: completedFuture( (T) event.getResult() );
 				} );
+	}
+
+	private Throwable convertException(Throwable e) {
+		if ( e instanceof CompletionException) {
+			return convertException( e.getCause() );
+		}
+		if ( e instanceof ObjectDeletedException ) {
+			return getExceptionConverter().convert( new IllegalArgumentException( e ) );
+		}
+		if ( e instanceof MappingException ) {
+			return getExceptionConverter().convert( new IllegalArgumentException( e.getMessage(), e ) );
+		}
+		if ( e instanceof RuntimeException ) {
+			//including HibernateException
+			return getExceptionConverter().convert( (RuntimeException) e );
+		}
+		return e;
 	}
 
 	private CompletionStage<Void> fireMerge(MergeContext copiedAlready, MergeEvent event) {
@@ -1034,20 +1027,13 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 
 		return getFactory().getEventListenerGroups().eventListenerGroup_MERGE
 				.fireEventOnEachListener( event, copiedAlready,(ReactiveMergeEventListener l) -> l::reactiveOnMerge )
-				.handle( (v, e) -> {
+				.handle( CompletionStages::handle )
+				.thenCompose( handler -> {
 					delayedAfterCompletion();
-
-					if ( e instanceof ObjectDeletedException ) {
-						throw getExceptionConverter().convert( new IllegalArgumentException( e ) );
-					}
-					else if ( e instanceof MappingException ) {
-						throw getExceptionConverter().convert( new IllegalArgumentException( e.getMessage(), e ) );
-					}
-					else if ( e instanceof RuntimeException ) {
-						//including HibernateException
-						throw getExceptionConverter().convert( (RuntimeException) e );
-					}
-					return returnNullorRethrow( e );
+					final Throwable e = handler.getThrowable();
+					return e != null
+							? failedFuture( convertException( e ) )
+							: voidFuture();
 				} );
 	}
 

@@ -10,9 +10,11 @@ import java.util.Set;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
+import org.hibernate.HibernateException;
 import org.hibernate.LockMode;
 import org.hibernate.reactive.common.AffectedEntities;
 import org.hibernate.reactive.stage.Stage;
+import org.hibernate.reactive.testing.ReactiveAssertions;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -29,6 +31,7 @@ import jakarta.persistence.metamodel.EntityType;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hibernate.reactive.testing.ReactiveAssertions.assertThrown;
 import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -621,14 +624,12 @@ public class ReactiveSessionTest extends BaseReactiveTest {
 				.thenCompose( v -> selectNameFromId( 5 ) )
 				.thenAccept( result -> assertThat( result ).isNotNull() )
 				.thenCompose( v -> openSession() )
-				.thenCompose( session -> session.remove( new GuineaPig( 5, "Aloi" ) )
-						.thenCompose( v -> session.flush() )
-						.thenCompose( v -> session.close() )
+				.thenCompose( session -> assertThrown( HibernateException.class, session.remove( new GuineaPig( 5, "Aloi" ) ) )
 				)
-				.handle( (r, e) -> {
-					assertNotNull( e );
-					return r;
-				} )
+				.thenAccept( t -> assertThat( t )
+						.hasCauseInstanceOf( IllegalArgumentException.class )
+						.hasMessageContaining( "unmanaged instance" )
+				)
 		);
 	}
 
