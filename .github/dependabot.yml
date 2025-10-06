@@ -163,7 +163,7 @@ updates:
 
   - package-ecosystem: "docker"
     directory: "/tooling/docker"
-    target-branch: "3.1"
+    target-branch: "4.1"
     schedule:
       interval: "weekly"
     allow:
@@ -269,7 +269,7 @@ updates:
   # Dockerfiles in tooling/docker/, and database services we use for examples (MySQL and PostgreSQL)
   - package-ecosystem: "docker"
     directory: "/tooling/docker"
-    target-branch: "main"
+    target-branch: "2.4"
     schedule:
       interval: "weekly"
     allow:
