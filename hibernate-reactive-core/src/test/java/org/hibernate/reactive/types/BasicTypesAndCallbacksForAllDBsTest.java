@@ -479,7 +479,7 @@ public class BasicTypesAndCallbacksForAllDBsTest extends BaseReactiveTest {
 	enum Cover {HARDER, HARD, SOFT}
 
 	@Embeddable
-	static class Embed {
+	public static class Embed {
 		String one;
 		String two;
 
