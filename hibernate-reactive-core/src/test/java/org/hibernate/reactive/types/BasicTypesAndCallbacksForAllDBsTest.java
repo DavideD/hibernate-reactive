@@ -210,8 +210,8 @@ public class BasicTypesAndCallbacksForAllDBsTest extends BaseReactiveTest {
 		basic.dateAsTimestamp = date;
 
 		testField( context, basic, found -> {
-			assertThat( found.dateAsTimestamp instanceof Timestamp ).isTrue();
-			assertThat( found.dateAsTimestamp ).isEqualTo( date );
+			assertThat( found.dateAsTimestamp ).isInstanceOf( Timestamp.class );
+			assertThat( found.dateAsTimestamp ).isEqualTo( new Timestamp( date.getTime() ) );
 		} );
 	}
 
