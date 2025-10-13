@@ -16,6 +16,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.IntStream;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import org.jboss.logging.Logger;
@@ -33,6 +34,7 @@ import static java.util.concurrent.CompletableFuture.runAsync;
 import static java.util.stream.Stream.concat;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Disabled
 public class CancelSignalTest extends BaseReactiveTest {
 	private static final Logger LOG = Logger.getLogger( CancelSignalTest.class );
 

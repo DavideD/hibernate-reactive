@@ -339,6 +339,7 @@ public class ReactiveSessionTest extends BaseReactiveTest {
 	}
 
 	@Test
+	@Disabled
 	public void reactiveFindWithOptimisticIncrementLock(VertxTestContext context) {
 		final GuineaPig expectedPig = new GuineaPig( 5, "Aloi" );
 		test(

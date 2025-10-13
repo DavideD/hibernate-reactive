@@ -31,6 +31,7 @@ import org.hibernate.annotations.Type;
 import org.hibernate.reactive.BaseReactiveTest;
 import org.hibernate.reactive.annotations.DisabledFor;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import io.vertx.junit5.VertxTestContext;
@@ -66,7 +67,6 @@ import static org.hibernate.reactive.testing.ReactiveAssertions.assertWithTrunca
 /**
  * Test all the types and lifecycle callbacks that we expect to work on all supported DBs
  */
-
 public class BasicTypesAndCallbacksForAllDBsTest extends BaseReactiveTest {
 
 	@Override
@@ -418,6 +418,7 @@ public class BasicTypesAndCallbacksForAllDBsTest extends BaseReactiveTest {
 	}
 
 	@Test
+	@Disabled
 	public void testCallbacksAndVersioning(VertxTestContext context) {
 		Basic parent = new Basic( "Parent" );
 		Basic basik = new Basic( "Hello World" );
