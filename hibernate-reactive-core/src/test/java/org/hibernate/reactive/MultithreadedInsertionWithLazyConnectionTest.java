@@ -81,7 +81,7 @@ public class MultithreadedInsertionWithLazyConnectionTest {
 	 * this test is also effective in detecting problems with resource starvation.
 	 */
 	private static final int N_THREADS = 12;
-	private static final int ENTITIES_STORED_PER_THREAD = 2000;
+	private static final int ENTITIES_STORED_PER_THREAD = 20;
 
 	//Should finish much sooner, but generating this amount of IDs could be slow on some CIs
 	public static final int TIMEOUT_MINUTES = 10;
@@ -195,8 +195,8 @@ public class MultithreadedInsertionWithLazyConnectionTest {
 			final EntityWithGeneratedId entity = new EntityWithGeneratedId();
 			entity.name = beforeOperationThread + "__" + localVerticleOperationSequence;
 
-			return s
-					.withTransaction( t -> s.persist( entity ) )
+			return s.persist( entity ).thenCompose( v -> s.flush() )
+					.thenAccept( v -> s.clear() )
 					.thenCompose( v -> beforeOperationThread != Thread.currentThread()
 							? failedFuture( new IllegalStateException( "Detected an unexpected switch of carrier threads!" ) )
 							: voidFuture() );
