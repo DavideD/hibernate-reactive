@@ -27,6 +27,7 @@ import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.logging.impl.LoggerFactory;
 import org.hibernate.reactive.pool.ReactiveConnection;
 import org.hibernate.reactive.pool.ReactiveConnectionPool;
+import org.hibernate.reactive.session.ReactiveStatelessSession;
 import org.hibernate.reactive.session.impl.ReactiveSessionImpl;
 import org.hibernate.reactive.session.impl.ReactiveStatelessSessionImpl;
 import org.hibernate.reactive.stage.Stage;
@@ -75,6 +76,32 @@ public class StageSessionFactoryImpl implements Stage.SessionFactory, Implemento
 	@Override
 	public Context getContext() {
 		return context;
+	}
+
+	@Override
+	public Stage.Session openSessionWithLazyConnection() {
+		return openSessionWithLazyConnection( getTenantIdentifier( options() ) );
+	}
+
+	@Override
+	public Stage.Session openSessionWithLazyConnection(String tenantId) {
+		final SessionCreationOptions options = options();
+		ReactiveConnectionPool pool = delegate.getServiceRegistry().getService( ReactiveConnectionPool.class );
+		ReactiveSessionImpl sessionImpl = new ReactiveSessionImpl( delegate, options, pool.getProxyConnection( tenantId ) );
+		return new StageSessionImpl( sessionImpl );
+	}
+
+	@Override
+	public Stage.StatelessSession openStatelessSessionWithLazyConnection() {
+		return openStatelessSessionWithLazyConnection( getTenantIdentifier( options() ) );
+	}
+
+	@Override
+	public Stage.StatelessSession openStatelessSessionWithLazyConnection(String tenantId) {
+		final SessionCreationOptions options = options();
+		ReactiveConnectionPool pool = delegate.getServiceRegistry().getService( ReactiveConnectionPool.class );
+		ReactiveStatelessSession sessionImpl = new ReactiveStatelessSessionImpl( delegate, options, pool.getProxyConnection( tenantId ) );
+		return new StageStatelessSessionImpl( sessionImpl );
 	}
 
 	@Override
@@ -307,7 +334,8 @@ public class StageSessionFactoryImpl implements Stage.SessionFactory, Implemento
 	}
 
 	private String getTenantIdentifier(SessionCreationOptions options) {
-		return options.getTenantIdentifierValue() == null ? null : delegate.getTenantIdentifierJavaType().toString(
-				options.getTenantIdentifierValue() );
+		return options.getTenantIdentifierValue() == null
+				? null
+				: delegate.getTenantIdentifierJavaType().toString( options.getTenantIdentifierValue() );
 	}
 }
