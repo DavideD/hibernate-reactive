@@ -198,7 +198,8 @@ public class MultithreadedInsertionWithLazyConnectionTest {
 			entity.name = beforeOperationThread + "__" + localVerticleOperationSequence;
 
 			return s
-					.withTransaction( t -> s.persist( entity ) )
+					.persist( entity ).thenCompose( v -> s.flush() )
+					.thenAccept( v -> s.clear() )
 					.thenCompose( v -> beforeOperationThread != Thread.currentThread()
 							? failedFuture( new IllegalStateException( "Detected an unexpected switch of carrier threads!" ) )
 							: voidFuture() );
