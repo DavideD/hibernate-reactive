@@ -165,10 +165,15 @@ public class MultithreadedInsertionWithLazyConnectionTest {
 			final Stage.Session session = stageSessionFactory.createSession();
 			storeMultipleEntities( session )
 					.handle( CompletionStages::handle )
-					.thenCompose( handler -> session
-							.close()
-							.thenCompose( handler::getResultAsCompletionStage )
-					)
+					.thenCompose( handler -> {
+						if ( !initialThreadName.equals( Thread.currentThread().getName() ) ) {
+							prettyOut( "Thread switch detected. Expecting " + initialThreadName + ", actual " + Thread.currentThread().getName() );
+							startPromise.fail( "Thread switch detected before closing the session" );
+						}
+						return session
+								.close()
+								.thenCompose( handler::getResultAsCompletionStage );
+					} )
 					.whenComplete( (o, throwable) -> {
 						endLatch.reached();
 						if ( throwable != null ) {
