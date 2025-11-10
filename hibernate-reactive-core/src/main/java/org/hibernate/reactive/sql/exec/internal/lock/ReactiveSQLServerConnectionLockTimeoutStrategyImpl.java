@@ -16,7 +16,6 @@ import java.util.concurrent.CompletionStage;
 import static org.hibernate.Timeouts.NO_WAIT;
 import static org.hibernate.Timeouts.SKIP_LOCKED_MILLI;
 import static org.hibernate.Timeouts.WAIT_FOREVER;
-import static org.hibernate.reactive.util.impl.CompletionStages.completedFuture;
 
 /**
  * Reactive version of {@link org.hibernate.dialect.lock.internal.TransactSQLLockingSupport.SQLServerImpl}
@@ -36,17 +35,19 @@ public class ReactiveSQLServerConnectionLockTimeoutStrategyImpl implements React
 			SessionFactoryImplementor factory) {
 		return LockHelper.getLockTimeout(
 				"select @@lock_timeout",
-				(resultSet) -> {
-					// see https://dev.mysql.com/doc/refman/8.4/en/innodb-parameters.html#sysvar_innodb_lock_wait_timeout
-					final int millis = (int) resultSet.next()[0];
-					return switch ( millis ) {
-						case -1 -> completedFuture( WAIT_FOREVER );
-						case 0 -> completedFuture( NO_WAIT );
-						default -> completedFuture( Timeout.milliseconds( millis ) );
-					};
-				},
+				ReactiveSQLServerConnectionLockTimeoutStrategyImpl::getTimeout,
 				connection
 		);
+	}
+
+	private static Timeout getTimeout(ReactiveConnection.Result resultSet) {
+		// see https://dev.mysql.com/doc/refman/8.4/en/innodb-parameters.html#sysvar_innodb_lock_wait_timeout
+		final int millis = (int) resultSet.next()[0];
+		return switch ( millis ) {
+			case -1 -> WAIT_FOREVER;
+			case 0 -> NO_WAIT;
+			default -> Timeout.milliseconds( millis );
+		};
 	}
 
 	public CompletionStage<Void> setReactiveLockTimeout(

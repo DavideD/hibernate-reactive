@@ -17,7 +17,6 @@ import static org.hibernate.Timeouts.NO_WAIT_MILLI;
 import static org.hibernate.Timeouts.SKIP_LOCKED_MILLI;
 import static org.hibernate.Timeouts.WAIT_FOREVER;
 import static org.hibernate.Timeouts.WAIT_FOREVER_MILLI;
-import static org.hibernate.reactive.util.impl.CompletionStages.completedFuture;
 
 public class ReactiveCockroachConnectionLockTimeoutStrategyImpl
 		implements ReactiveConnectionLockTimeoutStrategy {
@@ -35,16 +34,18 @@ public class ReactiveCockroachConnectionLockTimeoutStrategyImpl
 			SessionFactoryImplementor factory) {
 		return LockHelper.getLockTimeout(
 				"show lock_timeout",
-				(resultSet) -> {
-					// see https://dev.mysql.com/doc/refman/8.4/en/innodb-parameters.html#sysvar_innodb_lock_wait_timeout
-					int millis = Integer.parseInt( (String) resultSet.next()[0] );
-					return switch ( millis ) {
-						case 0 -> completedFuture( WAIT_FOREVER );
-						default -> completedFuture( Timeout.milliseconds( millis ) );
-					};
-				},
+				ReactiveCockroachConnectionLockTimeoutStrategyImpl::getTimeout,
 				connection
 		);
+	}
+
+	private static Timeout getTimeout(ReactiveConnection.Result resultSet) {
+		// see https://dev.mysql.com/doc/refman/8.4/en/innodb-parameters.html#sysvar_innodb_lock_wait_timeout
+		int millis = Integer.parseInt( (String) resultSet.next()[0] );
+		return switch ( millis ) {
+			case 0 -> WAIT_FOREVER;
+			default -> Timeout.milliseconds( millis );
+		};
 	}
 
 	public CompletionStage<Void> setReactiveLockTimeout(

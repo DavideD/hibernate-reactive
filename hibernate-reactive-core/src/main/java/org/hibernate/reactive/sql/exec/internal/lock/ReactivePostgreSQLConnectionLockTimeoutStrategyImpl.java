@@ -17,7 +17,6 @@ import java.util.concurrent.CompletionStage;
 import static org.hibernate.Timeouts.NO_WAIT_MILLI;
 import static org.hibernate.Timeouts.SKIP_LOCKED_MILLI;
 import static org.hibernate.Timeouts.WAIT_FOREVER_MILLI;
-import static org.hibernate.reactive.util.impl.CompletionStages.completedFuture;
 
 /**
  * Reactive version of {@link org.hibernate.dialect.lock.internal.PostgreSQLLockingSupport}
@@ -37,18 +36,20 @@ public class ReactivePostgreSQLConnectionLockTimeoutStrategyImpl implements Reac
 			SessionFactoryImplementor factory) {
 		return LockHelper.getLockTimeout(
 				"select current_setting('lock_timeout', true)",
-				(resultSet) -> {
-					// see https://dev.mysql.com/doc/refman/8.4/en/innodb-parameters.html#sysvar_innodb_lock_wait_timeout
-					final String value = (String) resultSet.next()[0];
-					if ( "0".equals( value ) ) {
-						return completedFuture( Timeouts.WAIT_FOREVER );
-					}
-					assert value.endsWith( "s" );
-					final int secondsValue = Integer.parseInt( value.substring( 0, value.length() - 1 ) );
-					return completedFuture( Timeout.seconds( secondsValue ) );
-				},
+				ReactivePostgreSQLConnectionLockTimeoutStrategyImpl::getTimeout,
 				connection
 		);
+	}
+
+	private static Timeout getTimeout(ReactiveConnection.Result resultSet) {
+		// see https://dev.mysql.com/doc/refman/8.4/en/innodb-parameters.html#sysvar_innodb_lock_wait_timeout
+		final String value = (String) resultSet.next()[0];
+		if ( "0".equals( value ) ) {
+			return Timeouts.WAIT_FOREVER;
+		}
+		assert value.endsWith( "s" );
+		final int secondsValue = Integer.parseInt( value.substring( 0, value.length() - 1 ) );
+		return Timeout.seconds( secondsValue );
 	}
 
 	public CompletionStage<Void> setReactiveLockTimeout(

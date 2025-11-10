@@ -17,16 +17,12 @@ import java.util.function.Function;
  */
 public class LockHelper {
 
-	public static CompletionStage<Timeout> getLockTimeout(
-			String sql,
-			TimeoutExtractor extractor,
-			ReactiveConnection connection) {
-		return connection.select( sql )
-				.thenCompose( resultset -> {
+	public static CompletionStage<Timeout> getLockTimeout(String sql, TimeoutExtractor extractor, ReactiveConnection connection) {
+		return connection
+				.select( sql )
+				.thenApply( resultset -> {
 					if ( !resultset.hasNext() ) {
-						throw new HibernateException(
-								"Unable to query JDBC Connection for current lock-timeout setting (no result)" );
-
+						throw new HibernateException( "Unable to query JDBC Connection for current lock-timeout setting (no result)" );
 					}
 					return extractor.extractFrom( resultset );
 				} );
@@ -75,6 +71,6 @@ public class LockHelper {
 
 	@FunctionalInterface
 	public interface TimeoutExtractor {
-		CompletionStage<Timeout> extractFrom(ReactiveConnection.Result resultSet);
+		Timeout extractFrom(ReactiveConnection.Result resultSet);
 	}
 }
