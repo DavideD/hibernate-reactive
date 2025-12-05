@@ -1,0 +1,70 @@
+name: Auto Rebase Work Branches
+
+on:
+  push:
+    branches:
+      - main
+      - "4.1"
+      - "3.1"
+      - "3.2"
+      - "2.4"
+  workflow_dispatch:
+
+jobs:
+  auto-rebase:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        mapping:
+          - base: main
+            branch: wip/4.2
+          - base: 4.1
+            branch: wip/4.1
+          - base: 3.1
+            branch: wip/3.1
+          - base: 3.2
+            branch: wip/3.2
+          - base: 2.4
+            branch: wip/2.4
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install GitHub CLI
+        uses: cli/cli-action@v2
+
+      - name: Set up Git
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+      - name: Fetch branches
+        run: |
+          git fetch origin ${ {matrix.mapping.base} }
+          git fetch origin ${ {matrix.mapping.branch} }
+
+      - name: Rebase work branch on base branch
+        run: |
+          BASE=${{ matrix.mapping.base }}
+          BRANCH=${{ matrix.mapping.branch }}
+
+          echo "Rebasing $BRANCH onto $BASE"
+
+          git checkout $BRANCH
+          git rebase origin/$BASE || {
+            echo "Rebase conflict detected on $BRANCH. Aborting."
+            git rebase --abort
+            exit 1
+          }
+
+      - name: Push rebased branch
+        run: |
+          BRANCH=${{ matrix.mapping.branch }}
+          echo "Pushing updated branch: $BRANCH"
+          git push --force-with-lease origin $BRANCH
+
