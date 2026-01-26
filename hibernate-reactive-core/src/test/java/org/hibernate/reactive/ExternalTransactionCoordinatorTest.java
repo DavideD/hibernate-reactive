@@ -7,6 +7,7 @@ package org.hibernate.reactive;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionStage;
 
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.reactive.pool.ReactiveConnectionPool;
@@ -55,16 +56,9 @@ public class ExternalTransactionCoordinatorTest extends BaseReactiveTest {
 
 							// External manager begins transaction
 							return connection.beginTransaction()
-									// Open session using this externally-managed connection
-									.thenCompose( v -> getMutinySessionFactory()
-											.openSession()
-											.chain( session -> session
-													.persist( beneath )
-													.call( session::flush )
-													// Close session (should NOT throw exception, should NOT rollback)
-													.call( session::close )
-											).subscribeAsCompletionStage()
-									)
+									// Because transactions are managed externally, closing the session with an active
+									// transaction shouldn't cause any failure
+									.thenCompose( v -> persistAndCloseSession( beneath ) )
 									// External manager commits after session is closed
 									.thenCompose( v -> connection.commitTransaction() )
 									// External manager closes connection
@@ -82,6 +76,18 @@ public class ExternalTransactionCoordinatorTest extends BaseReactiveTest {
 								} )
 						)
 		);
+	}
+
+	private CompletionStage<Void> persistAndCloseSession(Comic comic) {
+		return getMutinySessionFactory()
+				.openSession()
+				.chain( session -> session
+						.persist( comic )
+						.call( session::flush )
+						// We are closing the session with an active transaction, it shouldn't cause any error because
+						// transactions are managed externally
+						.call( session::close )
+				).subscribeAsCompletionStage();
 	}
 
 	/**

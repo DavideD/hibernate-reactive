@@ -25,6 +25,9 @@ import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 /**
  * Tests for transaction coordination abstraction when using the resource-local (default)
  * transaction coordinator.
+ * <p>
+ *     We expect a validation error if the transaction is still active when closing the session.
+ * </p>
  *
  * @see ExternalTransactionCoordinatorTest
  */
@@ -77,12 +80,13 @@ public class ResourceLocalTransactionCoordinatorTest extends BaseReactiveTest {
 									.as( "Should use resource-local coordinator" )
 									.isFalse();
 
-							return assertThrown( IllegalStateException.class, connection.beginTransaction()
+							return assertThrown( IllegalStateException.class, connection
+									.beginTransaction()
 									.thenCompose( v -> session.persist( beneath ) )
 									.thenCompose( v -> session.flush() )
 									.thenCompose( v -> connection.close() ) )
 									.thenAccept( error -> assertThat( error )
-											.as( "Closing with active transaction should throw error for resource-local" )
+											.as( "Closing with active transaction should throw an error for resource-local" )
 											.isNotNull()
 											.hasMessageContaining( "HR000090" )
 											.hasMessageContaining( "closing the connection" )
@@ -118,3 +122,4 @@ public class ResourceLocalTransactionCoordinatorTest extends BaseReactiveTest {
 		}
 	}
 }
+
