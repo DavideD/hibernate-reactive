@@ -525,7 +525,7 @@ public class BasicTypesAndCallbacksForAllDBsTest extends BaseReactiveTest {
 			this.two = two;
 		}
 
-		Embed() {
+		protected Embed() {
 		}
 
 		public String getOne() {
