@@ -1,7 +1,7 @@
-import org.asciidoctor.gradle.jvm.AsciidoctorTask
-
 import java.time.Year
-import java.util.regex.Matcher
+
+import org.asciidoctor.gradle.jvm.AsciidoctorTask
+import org.ysb33r.grolifant.api.core.jvm.ExecutionMode
 
 plugins {
 	id "org.asciidoctor.jvm.convert"
@@ -83,7 +83,7 @@ def aggregateJavadocsTask = tasks.register( 'aggregateJavadocs', Javadoc ) {
 		options.encoding = 'UTF-8'
 
 		def matcher = libs.versions.hibernateOrmVersion =~ /\d+\.\d+/
-		def ormMinorVersion = matcher.find() ? matcher.group() : "5.6";
+		def ormMinorVersion = matcher.find() ? matcher.group() : "5.6"
 
 		links = [
 				'https://docs.oracle.com/en/java/javase/17/docs/api/',
@@ -193,7 +193,7 @@ def renderReferenceDocumentationTask = tasks.register( "renderReferenceDocumenta
 	)
 
 	// See https://docs.asciidoctor.org/gradle-plugin/latest/common-task-configuration/#choosing-an-execution-mode-for-asciidoctorj
-	executionMode = org.ysb33r.grolifant.api.core.jvm.ExecutionMode.JAVA_EXEC
+	executionMode = ExecutionMode.JAVA_EXEC
 
 	dependsOn( tasks.named( "unpackTheme" ) )
 }
