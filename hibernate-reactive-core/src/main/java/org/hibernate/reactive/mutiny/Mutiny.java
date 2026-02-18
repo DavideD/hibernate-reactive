@@ -1513,11 +1513,6 @@ public interface Mutiny {
 		Transaction currentTransaction();
 
 		/**
-		 * @return false if {@link #close()} has been called
-		 */
-		boolean isOpen();
-
-		/**
 		 * The {@link SessionFactory} which created this session.
 		 */
 		SessionFactory getFactory();
@@ -1904,17 +1899,6 @@ public interface Mutiny {
 		 * @see SessionFactory#withTransaction(BiFunction)
 		 */
 		Transaction currentTransaction();
-
-		/**
-		 * @return false if {@link #close()} has been called
-		 */
-		boolean isOpen();
-
-		/**
-		 * Close the reactive session and release the underlying database
-		 * connection.
-		 */
-		Uni<Void> close();
 
 		/**
 		 * The {@link SessionFactory} which created this session.
@@ -2371,7 +2355,14 @@ public interface Mutiny {
 	 * An object whose {@link #close()} method returns a {@link Uni}.
 	 */
 	interface Closeable {
+		/**
+		 * Destroy the object and release any underlying database resources.
+		 */
 		Uni<Void> close();
+		/**
+		 * @return false if {@link #close()} has been called
+		 */
+		boolean isOpen();
 	}
 
 	/**
