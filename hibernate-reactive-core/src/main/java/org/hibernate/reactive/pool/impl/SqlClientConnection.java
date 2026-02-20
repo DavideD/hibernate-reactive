@@ -61,8 +61,6 @@ public class SqlClientConnection implements ReactiveConnection {
 
 	private final Pool pool;
 	private final SqlConnection connection;
-	// The context associated to the connection. We expect the connection to be executed in this context.
-	private final ContextInternal connectionContext;
 
 	// The close operation could be called multiple times if an error occurs,
 	// if we execute it every time, we will have several useless messages in the log
@@ -75,18 +73,8 @@ public class SqlClientConnection implements ReactiveConnection {
 			Pool pool,
 			SqlStatementLogger sqlStatementLogger,
 			SqlExceptionHelper sqlExceptionHelper,
-			ContextInternal connectionContext) {
-		this( connection, pool, sqlStatementLogger, sqlExceptionHelper, connectionContext, ResourceLocalTransactionCoordinator.INSTANCE );
-	}
-
-	SqlClientConnection(
-			SqlConnection connection,
-			Pool pool,
-			SqlStatementLogger sqlStatementLogger,
-			SqlExceptionHelper sqlExceptionHelper,
 			ContextInternal connectionContext,
 			ReactiveTransactionCoordinator transactionCoordinator) {
-		this.connectionContext = connectionContext;
 		this.pool = pool;
 		this.sqlStatementLogger = sqlStatementLogger;
 		this.connection = connection;
