@@ -312,6 +312,16 @@ public class ReactivePersistenceContextAdapter implements PersistenceContext {
 	}
 
 	@Override
+	public Object unproxyLoadingIfNecessary(Object o) {
+		return delegate.unproxyLoadingIfNecessary( o );
+	}
+
+	@Override
+	public boolean isUninitializedProxy(Object o) {
+		return delegate.isUninitializedProxy( o );
+	}
+
+	@Override
 	public Object unproxyAndReassociate(Object maybeProxy) {
 		return delegate.unproxyAndReassociate( maybeProxy );
 	}
