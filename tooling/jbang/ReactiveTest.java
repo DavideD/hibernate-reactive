@@ -5,14 +5,14 @@
  */
 
 ///usr/bin/env jbang "$0" "$@" ; exit $?
-//DEPS io.vertx:vertx-pg-client:${vertx.version:4.5.16}
-//DEPS com.ongres.scram:client:2.1
-//DEPS io.vertx:vertx-db2-client:${vertx.version:4.5.16}
-//DEPS io.vertx:vertx-mysql-client:${vertx.version:4.5.16}
-//DEPS io.vertx:vertx-unit:${vertx.version:4.5.16}
-//DEPS org.hibernate.reactive:hibernate-reactive-core:${hibernate-reactive.version:3.0.0.Final}
+//DEPS io.vertx:vertx-pg-client:${vertx.version:4.5.25}
+//DEPS com.ongres.scram:scram-client:3.2
+//DEPS io.vertx:vertx-db2-client:${vertx.version:4.5.25}
+//DEPS io.vertx:vertx-mysql-client:${vertx.version:4.5.25}
+//DEPS io.vertx:vertx-unit:${vertx.version:4.5.25}
+//DEPS org.hibernate.reactive:hibernate-reactive-core:${hibernate-reactive.version:3.3.0.CR1}
 //DEPS org.assertj:assertj-core:3.27.3
-//DEPS junit:junit:4.13.2
+//DEPS junit:junit:6.0.3
 //DEPS org.testcontainers:postgresql:1.21.3
 //DEPS org.testcontainers:mysql:1.21.3
 //DEPS org.testcontainers:db2:1.21.3
