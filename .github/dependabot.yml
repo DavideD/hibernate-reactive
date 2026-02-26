@@ -383,6 +383,9 @@ updates:
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "io.smallrye.reactive*"
         update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      # Keep Gradle on version 8.x (Hibernate ORM 6.6 gradle plugin does not support 9)
+      - dependency-name: "gradle-wrapper"
+        update-types: ["version-update:semver-major"]
 
   # Dockerfiles in tooling/docker/, and database services we use for examples (MySQL and PostgreSQL)
   - package-ecosystem: "docker"
