@@ -386,6 +386,9 @@ updates:
       # Keep Gradle on version 8.x (Hibernate ORM 6.6 gradle plugin does not support 9)
       - dependency-name: "gradle-wrapper"
         update-types: ["version-update:semver-major"]
+      # Spotless 8 requires Java 17, but 2.4 branch uses Java 11
+      - dependency-name: "com.diffplug.spotless*"
+        update-types: ["version-update:semver-major"]
 
   # Dockerfiles in tooling/docker/, and database services we use for examples (MySQL and PostgreSQL)
   - package-ecosystem: "docker"
