@@ -14,7 +14,7 @@ jobs:
     name: Rebase WIP branch
     runs-on: ubuntu-latest
     # Only run on the upstream repository, not on forks
-    if: github.repository == 'hibernate/hibernate-reactive'
+    if: github.repository == 'DavideD/hibernate-reactive'
 
     steps:
       - name: Checkout repository
