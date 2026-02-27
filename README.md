@@ -94,6 +94,8 @@ Panache Reactive, an active record-style API based on Hibernate Reactive.
 aslkfhjafslkhaksflhals
 
 The directory [`examples`][examples] contains several small projects showing
+psaolkjhdj;lashf;lsadhl;fahsl;kfahaf;shlh
+aosfhaslk
 different features of Hibernate Reactive:
 
   - [CRUD operations using the session](https://github.com/hibernate/hibernate-reactive/tree/main/examples/session-example)
