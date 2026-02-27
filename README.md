@@ -91,6 +91,7 @@ Panache Reactive, an active record-style API based on Hibernate Reactive.
 [reactive-panache]: https://quarkus.io/guides/hibernate-reactive-panache
 
 ## Examples
+aslkfhjafslkhaksflhals
 
 The directory [`examples`][examples] contains several small projects showing
 different features of Hibernate Reactive:
