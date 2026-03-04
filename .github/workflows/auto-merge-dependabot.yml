@@ -12,7 +12,7 @@ jobs:
   dependabot-auto-merge:
     runs-on: ubuntu-latest
     # Enable it if the PR is from dependabot and we are not on a fork
-    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'hibernate/hibernate-reactive'
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'DavideD/hibernate-reactive'
     steps:
       - name: Dependabot metadata
         id: metadata
