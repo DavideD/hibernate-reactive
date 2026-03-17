@@ -4,6 +4,9 @@
  */
 package org.hibernate.reactive.persister.state.internal;
 
+/**
+ * @see org.hibernate.persister.state.internal.StandardStateManagement
+ */
 public class RactiveStandardStateManagemt extends ReactiveAbstractStateManagement {
 	public static final RactiveStandardStateManagemt INSTANCE = new RactiveStandardStateManagemt();
 }

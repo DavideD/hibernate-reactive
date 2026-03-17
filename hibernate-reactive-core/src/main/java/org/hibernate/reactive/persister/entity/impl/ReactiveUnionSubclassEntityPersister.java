@@ -40,8 +40,9 @@ import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
 import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.entity.UnionSubclassEntityPersister;
-import org.hibernate.persister.state.internal.SoftDeleteStateManagement;
-import org.hibernate.persister.state.internal.StandardStateManagement;
+import org.hibernate.persister.entity.mutation.DeleteCoordinator;
+import org.hibernate.persister.entity.mutation.InsertCoordinator;
+import org.hibernate.persister.entity.mutation.UpdateCoordinator;
 import org.hibernate.persister.state.spi.StateManagement;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.reactive.bythecode.spi.ReactiveBytecodeEnhancementMetadataPojoImplAdapter;
@@ -53,8 +54,6 @@ import org.hibernate.reactive.metamodel.mapping.internal.ReactiveRuntimeModelCre
 import org.hibernate.reactive.persister.entity.mutation.ReactiveDeleteCoordinatorStandard;
 import org.hibernate.reactive.persister.entity.mutation.ReactiveInsertCoordinatorStandard;
 import org.hibernate.reactive.persister.entity.mutation.ReactiveUpdateCoordinator;
-import org.hibernate.reactive.persister.state.internal.RactiveStandardStateManagemt;
-import org.hibernate.reactive.persister.state.internal.ReactiveSoftDeleteStateManagement;
 import org.hibernate.reactive.util.impl.CompletionStages;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.tree.from.TableGroup;
@@ -163,6 +162,26 @@ public class ReactiveUnionSubclassEntityPersister extends UnionSubclassEntityPer
 	@Override
 	public NaturalIdMapping generateNaturalIdMapping(MappingModelCreationProcess creationProcess, PersistentClass bootEntityDescriptor) {
 		return ReactiveAbstractEntityPersister.super.generateNaturalIdMapping(creationProcess, bootEntityDescriptor);
+	}
+
+	@Override
+	protected UpdateCoordinator buildUpdateCoordinator(StateManagement stateManagement) {
+		return ReactiveCoordinatorFactory.buildUpdateCoordinator( this );
+	}
+
+	@Override
+	protected InsertCoordinator buildInsertCoordinator(StateManagement stateManagement) {
+		return ReactiveCoordinatorFactory.buildInsertCoordinator( this );
+	}
+
+	@Override
+	protected DeleteCoordinator buildDeleteCoordinator(StateManagement stateManagement) {
+		return ReactiveCoordinatorFactory.buildDeleteCoordinator( super.getSoftDeleteMapping(), this, getFactory() );
+	}
+
+	@Override
+	protected UpdateCoordinator buildMergeCoordinator(StateManagement stateManagement) {
+		return ReactiveCoordinatorFactory.buildMergeCoordinator( this );
 	}
 
 	@Override
@@ -426,23 +445,5 @@ public class ReactiveUnionSubclassEntityPersister extends UnionSubclassEntityPer
 	@Override
 	protected GeneratedValuesMutationDelegate createUpdateDelegate() {
 		return ReactiveAbstractEntityPersister.super.createReactiveUpdateDelegate();
-	}
-
-	@Override
-	protected void createCoordinators(StateManagement stateManagement) {
-		final StateManagement reactiveStateManagement;
-		if ( stateManagement instanceof SoftDeleteStateManagement ) {
-			reactiveStateManagement = ReactiveSoftDeleteStateManagement.INSTANCE;
-		}
-		else if ( stateManagement instanceof StandardStateManagement ) {
-			reactiveStateManagement = RactiveStandardStateManagemt.INSTANCE;
-		}
-		else {
-			throw LOG.notYetImplemented( );
-		}
-		insertCoordinator = reactiveStateManagement.createInsertCoordinator( this );
-		updateCoordinator = reactiveStateManagement.createUpdateCoordinator( this );
-		deleteCoordinator = reactiveStateManagement.createDeleteCoordinator( this );
-		mergeCoordinator = reactiveStateManagement.createMergeCoordinator( this );
 	}
 }

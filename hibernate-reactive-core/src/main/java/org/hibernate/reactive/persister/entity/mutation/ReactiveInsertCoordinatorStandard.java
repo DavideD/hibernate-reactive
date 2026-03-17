@@ -27,7 +27,6 @@ import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.AttributeMappingsList;
 import org.hibernate.metamodel.mapping.PluralAttributeMapping;
-import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.entity.mutation.AbstractMutationCoordinator;
 import org.hibernate.persister.entity.mutation.EntityTableMapping;
@@ -427,10 +426,9 @@ public class ReactiveInsertCoordinatorStandard extends AbstractMutationCoordinat
 					}
 					for ( int i = 0; i < keyColumnCount; i++ ) {
 						if ( columnInclusions[i] ) {
-							final String valueExpression =
-									columnValues == null
-											? keyMapping.getKeyColumn( i ).getWriteExpression()
-											: columnValues[i];
+							final String valueExpression = columnValues == null
+									? keyMapping.getKeyColumn( i ).getWriteExpression()
+									: columnValues[i];
 							tableInsertBuilder.addKeyColumn( valueExpression, keyMapping.getKeyColumn( i ) );
 						}
 					}
@@ -448,6 +446,7 @@ public class ReactiveInsertCoordinatorStandard extends AbstractMutationCoordinat
 			}
 		} );
 	}
+
 	private static boolean needsValueBinding(OnExecutionGenerator generator, Dialect dialect) {
 		if ( generator.generatesOnInsert() ) {
 			final boolean[] columnInclusions = generator.getColumnInclusions( dialect, EventType.INSERT );
@@ -469,7 +468,6 @@ public class ReactiveInsertCoordinatorStandard extends AbstractMutationCoordinat
 			return false;
 		}
 	}
-
 
 	protected void breakDownJdbcValue(
 			Object id,
