@@ -42,8 +42,6 @@ import org.hibernate.persister.entity.SingleTableEntityPersister;
 import org.hibernate.persister.entity.mutation.DeleteCoordinator;
 import org.hibernate.persister.entity.mutation.InsertCoordinator;
 import org.hibernate.persister.entity.mutation.UpdateCoordinator;
-import org.hibernate.persister.state.internal.SoftDeleteStateManagement;
-import org.hibernate.persister.state.internal.StandardStateManagement;
 import org.hibernate.persister.state.spi.StateManagement;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.reactive.bythecode.spi.ReactiveBytecodeEnhancementMetadataPojoImplAdapter;
@@ -51,11 +49,9 @@ import org.hibernate.reactive.loader.ast.internal.ReactiveSingleIdArrayLoadPlan;
 import org.hibernate.reactive.loader.ast.spi.ReactiveSingleUniqueKeyEntityLoader;
 import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.metamodel.mapping.internal.ReactiveRuntimeModelCreationContext;
-import org.hibernate.reactive.persister.entity.mutation.ReactiveAbstractDeleteCoordinator;
+import org.hibernate.reactive.persister.entity.mutation.ReactiveDeleteCoordinator;
 import org.hibernate.reactive.persister.entity.mutation.ReactiveInsertCoordinatorStandard;
 import org.hibernate.reactive.persister.entity.mutation.ReactiveUpdateCoordinator;
-import org.hibernate.reactive.persister.state.internal.RactiveStandardStateManagemt;
-import org.hibernate.reactive.persister.state.internal.ReactiveSoftDeleteStateManagement;
 import org.hibernate.reactive.util.impl.CompletionStages;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.tree.from.TableGroup;
@@ -129,17 +125,17 @@ public class ReactiveSingleTableEntityPersister extends SingleTableEntityPersist
 	}
 
 	@Override
-	protected InsertCoordinator buildInsertCoordinator() {
+	protected InsertCoordinator buildInsertCoordinator(StateManagement stateManagement) {
 		return ReactiveCoordinatorFactory.buildInsertCoordinator( this, getFactory() );
 	}
 
 	@Override
-	protected DeleteCoordinator buildDeleteCoordinator() {
+	protected DeleteCoordinator buildDeleteCoordinator(StateManagement stateManagement) {
 		return ReactiveCoordinatorFactory.buildDeleteCoordinator( super.getSoftDeleteMapping(), this, getFactory() );
 	}
 
 	@Override
-	protected UpdateCoordinator buildMergeCoordinator() {
+	protected UpdateCoordinator buildMergeCoordinator(StateManagement stateManagement) {
 		return ReactiveCoordinatorFactory.buildMergeCoordinator( this, getFactory() );
 	}
 
@@ -347,7 +343,7 @@ public class ReactiveSingleTableEntityPersister extends SingleTableEntityPersist
 
 	@Override
 	public CompletionStage<Void> deleteReactive(Object id, Object version, Object entity, SharedSessionContractImplementor session) {
-		return ( (ReactiveAbstractDeleteCoordinator) getDeleteCoordinator() ).reactiveDelete( entity, id, version, session );
+		return ( (ReactiveDeleteCoordinator) getDeleteCoordinator() ).reactiveDelete( entity, id, version, session );
 	}
 
 	/**
