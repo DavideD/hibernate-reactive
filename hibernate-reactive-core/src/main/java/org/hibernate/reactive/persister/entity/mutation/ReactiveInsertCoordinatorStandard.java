@@ -28,6 +28,7 @@ import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.AttributeMappingsList;
 import org.hibernate.metamodel.mapping.PluralAttributeMapping;
 import org.hibernate.persister.entity.AbstractEntityPersister;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.entity.mutation.AbstractMutationCoordinator;
 import org.hibernate.persister.entity.mutation.EntityTableMapping;
 import org.hibernate.persister.entity.mutation.InsertCoordinator;
@@ -53,14 +54,13 @@ import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
  * @see InsertCoordinatorStandard
  */
 @Internal
-public class ReactiveInsertCoordinatorStandard extends AbstractMutationCoordinator implements ReactiveInsertCoordinator,
-		InsertCoordinator {
+public class ReactiveInsertCoordinatorStandard extends AbstractMutationCoordinator implements ReactiveInsertCoordinator, InsertCoordinator {
 	private final MutationOperationGroup staticInsertGroup;
 	private final BasicBatchKey batchKey;
 
 	private static final Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
-	public ReactiveInsertCoordinatorStandard(AbstractEntityPersister entityPersister, SessionFactoryImplementor factory) {
+	public ReactiveInsertCoordinatorStandard(EntityPersister entityPersister, SessionFactoryImplementor factory) {
 		super( entityPersister, factory );
 
 		if ( entityPersister.isIdentifierAssignedByInsert() || entityPersister.hasInsertGeneratedProperties() ) {
@@ -71,7 +71,7 @@ public class ReactiveInsertCoordinatorStandard extends AbstractMutationCoordinat
 			batchKey = new BasicBatchKey( entityPersister.getEntityName() + "#INSERT" );
 		}
 
-		if ( entityPersister.getEntityMetamodel().isDynamicInsert() ) {
+		if ( entityPersister.isDynamicInsert() ) {
 			// the entity specified dynamic-insert - skip generating the
 			// static inserts as we will create them every time
 			staticInsertGroup = null;

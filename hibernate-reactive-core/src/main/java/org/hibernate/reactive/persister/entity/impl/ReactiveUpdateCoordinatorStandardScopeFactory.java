@@ -6,6 +6,7 @@ package org.hibernate.reactive.persister.entity.impl;
 
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.persister.entity.AbstractEntityPersister;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.entity.mutation.UpdateCoordinatorStandard;
 import org.hibernate.reactive.persister.entity.mutation.ReactiveScopedUpdateCoordinator;
 import org.hibernate.reactive.persister.entity.mutation.ReactiveUpdateCoordinator;
@@ -14,7 +15,7 @@ import org.hibernate.reactive.persister.entity.mutation.ReactiveUpdateCoordinato
 public final class ReactiveUpdateCoordinatorStandardScopeFactory extends UpdateCoordinatorStandard implements ReactiveUpdateCoordinator {
 
 	public ReactiveUpdateCoordinatorStandardScopeFactory(
-			AbstractEntityPersister entityPersister,
+			EntityPersister entityPersister,
 			SessionFactoryImplementor factory) {
 		super( entityPersister, factory );
 	}
