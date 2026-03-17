@@ -77,9 +77,9 @@ public class ReactivePersistenceContextAdapter implements PersistenceContext {
 		@Override
 		public void accept(PersistentCollection<?> nonLazyCollection) {
 			if ( !nonLazyCollection.wasInitialized() ) {
-				stage = stage.thenCompose( v ->
-						( (ReactiveSharedSessionContractImplementor) getSession() )
-								.reactiveInitializeCollection( nonLazyCollection, false ) );
+				stage = stage
+						.thenCompose( v -> ( (ReactiveSharedSessionContractImplementor) getSession() )
+						.reactiveInitializeCollection( nonLazyCollection, false ) );
 			}
 		}
 	}

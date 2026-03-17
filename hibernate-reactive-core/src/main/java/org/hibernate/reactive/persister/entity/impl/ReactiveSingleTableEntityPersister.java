@@ -121,12 +121,12 @@ public class ReactiveSingleTableEntityPersister extends SingleTableEntityPersist
 
 	@Override
 	protected UpdateCoordinator buildUpdateCoordinator(StateManagement stateManagement) {
-		return ReactiveCoordinatorFactory.buildUpdateCoordinator( this, getFactory() );
+		return ReactiveCoordinatorFactory.buildUpdateCoordinator( this );
 	}
 
 	@Override
 	protected InsertCoordinator buildInsertCoordinator(StateManagement stateManagement) {
-		return ReactiveCoordinatorFactory.buildInsertCoordinator( this, getFactory() );
+		return ReactiveCoordinatorFactory.buildInsertCoordinator( this );
 	}
 
 	@Override
@@ -136,7 +136,7 @@ public class ReactiveSingleTableEntityPersister extends SingleTableEntityPersist
 
 	@Override
 	protected UpdateCoordinator buildMergeCoordinator(StateManagement stateManagement) {
-		return ReactiveCoordinatorFactory.buildMergeCoordinator( this, getFactory() );
+		return ReactiveCoordinatorFactory.buildMergeCoordinator( this );
 	}
 
 	@Override
