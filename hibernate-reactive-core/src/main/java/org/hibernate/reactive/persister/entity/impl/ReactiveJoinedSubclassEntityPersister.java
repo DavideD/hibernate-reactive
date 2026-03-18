@@ -73,7 +73,13 @@ public class ReactiveJoinedSubclassEntityPersister extends JoinedSubclassEntityP
 			final EntityDataAccess cacheAccessStrategy,
 			final NaturalIdDataAccess naturalIdRegionAccessStrategy,
 			final RuntimeModelCreationContext creationContext) throws HibernateException {
-		super( persistentClass, cacheAccessStrategy, naturalIdRegionAccessStrategy, new ReactiveRuntimeModelCreationContext( creationContext ) );
+		super(
+				persistentClass,
+				cacheAccessStrategy,
+				naturalIdRegionAccessStrategy,
+				new ReactiveRuntimeModelCreationContext( creationContext ),
+				ReactiveAbstractEntityPersister::createReactiveStateManagement
+		);
 		reactiveDelegate = new ReactiveAbstractPersisterDelegate( this, persistentClass, new ReactiveRuntimeModelCreationContext( creationContext ) );
 	}
 

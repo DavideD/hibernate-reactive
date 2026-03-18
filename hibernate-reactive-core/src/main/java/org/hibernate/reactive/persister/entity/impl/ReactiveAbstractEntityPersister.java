@@ -53,6 +53,9 @@ import org.hibernate.metamodel.mapping.NaturalIdMapping;
 import org.hibernate.metamodel.mapping.SingularAttributeMapping;
 import org.hibernate.metamodel.mapping.internal.MappingModelCreationProcess;
 import org.hibernate.persister.entity.AbstractEntityPersister;
+import org.hibernate.persister.state.internal.SoftDeleteStateManagement;
+import org.hibernate.persister.state.internal.StandardStateManagement;
+import org.hibernate.persister.state.spi.StateManagement;
 import org.hibernate.reactive.adaptor.impl.PreparedStatementAdaptor;
 import org.hibernate.reactive.engine.spi.ReactiveSharedSessionContractImplementor;
 import org.hibernate.reactive.generator.values.internal.ReactiveGeneratedValuesHelper;
@@ -61,6 +64,8 @@ import org.hibernate.reactive.loader.ast.spi.ReactiveSingleIdEntityLoader;
 import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.metamodel.mapping.internal.ReactiveCompoundNaturalIdMapping;
 import org.hibernate.reactive.metamodel.mapping.internal.ReactiveSimpleNaturalIdMapping;
+import org.hibernate.reactive.persister.state.internal.ReactiveSoftDeleteStateManagement;
+import org.hibernate.reactive.persister.state.internal.ReactiveStandardStateManagement;
 import org.hibernate.reactive.pool.ReactiveConnection;
 import org.hibernate.reactive.session.impl.ReactiveQueryExecutorLookup;
 import org.hibernate.sql.SimpleSelect;
@@ -648,5 +653,16 @@ public interface ReactiveAbstractEntityPersister extends ReactiveEntityPersister
 
 	default int getSubclassPropertyIndex(String propertyName,  String[] subclassPropertyNameClosure ) {
 		return ArrayHelper.indexOf( subclassPropertyNameClosure, propertyName );
+	}
+
+	static StateManagement createReactiveStateManagement(PersistentClass persistentClass) {
+		final StateManagement stateManagement = persistentClass.getRootClass().getStateManagement();
+		if ( stateManagement == StandardStateManagement.INSTANCE ) {
+			return ReactiveStandardStateManagement.INSTANCE;
+		}
+		if ( stateManagement == SoftDeleteStateManagement.INSTANCE ) {
+			return ReactiveSoftDeleteStateManagement.INSTANCE;
+		}
+		throw new IllegalArgumentException( "Unsupported StateManagement [" + stateManagement + "]" );
 	}
 }
