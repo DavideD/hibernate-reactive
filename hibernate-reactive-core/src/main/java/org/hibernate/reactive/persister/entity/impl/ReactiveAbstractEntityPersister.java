@@ -655,14 +655,13 @@ public interface ReactiveAbstractEntityPersister extends ReactiveEntityPersister
 		return ArrayHelper.indexOf( subclassPropertyNameClosure, propertyName );
 	}
 
-	static StateManagement createReactiveStateManagement(PersistentClass persistentClass) {
-		final StateManagement stateManagement = persistentClass.getRootClass().getStateManagement();
+	static StateManagement reactiveStateManagement(StateManagement stateManagement) {
 		if ( stateManagement == StandardStateManagement.INSTANCE ) {
 			return ReactiveStandardStateManagement.INSTANCE;
 		}
 		if ( stateManagement == SoftDeleteStateManagement.INSTANCE ) {
 			return ReactiveSoftDeleteStateManagement.INSTANCE;
 		}
-		throw new IllegalArgumentException( "Unsupported StateManagement [" + stateManagement + "]" );
+		throw new IllegalArgumentException( "StateManagement not recognized: " + stateManagement );
 	}
 }
