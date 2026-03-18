@@ -52,6 +52,7 @@ import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
 
 /**
  * Add reactive methods to a {@link PersistenceContext}.
+ * See {@code org.hibernate.engine.internal.StatefulPersistenceContext}
  */
 public class ReactivePersistenceContextAdapter implements PersistenceContext {
 
@@ -124,11 +125,9 @@ public class ReactivePersistenceContextAdapter implements PersistenceContext {
 	public CompletionStage<Object[]> reactiveGetDatabaseSnapshot(Object id, EntityPersister persister) throws HibernateException {
 		SessionImplementor session = (SessionImplementor) getSession();
 		final EntityKey key = session.generateEntityKey( id, persister );
-		final Object[] cached = getEntitySnapshotsByKey() == null
-				? null
-				: (Object[]) getEntitySnapshotsByKey().get( key );
+		final Object cached = getEntitySnapshotsByKey() == null ? null : getEntitySnapshotsByKey().get( key );
 		if ( cached != null ) {
-			return completedFuture( cached == NO_ROW ? null : cached );
+			return completedFuture( cached == NO_ROW ? null : (Object[]) cached );
 		}
 		else {
 			return ( (ReactiveEntityPersister) persister )

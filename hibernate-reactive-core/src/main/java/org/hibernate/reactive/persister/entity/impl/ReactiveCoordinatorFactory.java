@@ -13,16 +13,16 @@ import org.hibernate.reactive.persister.entity.mutation.ReactiveDeleteCoordinato
 import org.hibernate.reactive.persister.entity.mutation.ReactiveDeleteCoordinatorSoft;
 import org.hibernate.reactive.persister.entity.mutation.ReactiveInsertCoordinatorStandard;
 import org.hibernate.reactive.persister.entity.mutation.ReactiveUpdateCoordinator;
-import org.hibernate.reactive.persister.state.internal.RactiveStandardStateManagemt;
+import org.hibernate.reactive.persister.state.internal.ReactiveStandardStateManagement;
 
 public final class ReactiveCoordinatorFactory {
 
 	public static ReactiveInsertCoordinatorStandard buildInsertCoordinator(EntityPersister entityPersister) {
-		return RactiveStandardStateManagemt.INSTANCE.createInsertCoordinator( entityPersister );
+		return ReactiveStandardStateManagement.INSTANCE.createInsertCoordinator( entityPersister );
 	}
 
 	public static ReactiveUpdateCoordinator buildUpdateCoordinator(EntityPersister entityPersister) {
-		return RactiveStandardStateManagemt.INSTANCE.createUpdateCoordinator( entityPersister );
+		return ReactiveStandardStateManagement.INSTANCE.createUpdateCoordinator( entityPersister );
 	}
 
 	public static DeleteCoordinator buildDeleteCoordinator(SoftDeleteMapping softDeleteMapping, AbstractEntityPersister entityPersister, SessionFactoryImplementor factory) {
@@ -32,6 +32,6 @@ public final class ReactiveCoordinatorFactory {
 	}
 
 	public static ReactiveUpdateCoordinator buildMergeCoordinator(AbstractEntityPersister entityPersister) {
-		return RactiveStandardStateManagemt.INSTANCE.createMergeCoordinator( entityPersister );
+		return ReactiveStandardStateManagement.INSTANCE.createMergeCoordinator( entityPersister );
 	}
 }
