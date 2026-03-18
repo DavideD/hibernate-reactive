@@ -4,6 +4,7 @@
  */
 package org.hibernate.reactive.engine.impl;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Iterator;
 import java.util.List;
@@ -104,7 +105,21 @@ public class ReactivePersistenceContextAdapter implements PersistenceContext {
 		throw LOG.nonReactiveMethodCall( "reactiveGetDatabaseSnapshot" );
 	}
 
-	private static final Object[] NO_ROW = new Object[] { PersistenceContext.NO_ROW};
+	/**
+	 * Marker object used to indicate (via reference checking) that no row was returned.
+	 * See org.hibernate.engine.internal.StatefulPersistenceContext#NO_ROW
+	 */
+	private static final Serializable NO_ROW = new Serializable() {
+		@Override
+		public String toString() {
+			return "NO_ROW";
+		}
+
+		@Serial
+		public Object readResolve() {
+			return NO_ROW;
+		}
+	};
 
 	public CompletionStage<Object[]> reactiveGetDatabaseSnapshot(Object id, EntityPersister persister) throws HibernateException {
 		SessionImplementor session = (SessionImplementor) getSession();
@@ -119,7 +134,7 @@ public class ReactivePersistenceContextAdapter implements PersistenceContext {
 			return ( (ReactiveEntityPersister) persister )
 					.reactiveGetDatabaseSnapshot( id, session )
 					.thenApply( snapshot -> {
-						getOrInitializeEntitySnapshotsByKey().put( key, snapshot );
+						getOrInitializeEntitySnapshotsByKey().put( key, snapshot == null ? NO_ROW : snapshot );
 						return snapshot;
 					} );
 		}
@@ -707,7 +722,7 @@ public class ReactivePersistenceContextAdapter implements PersistenceContext {
 
 	@Internal
 	@Override
-	public Map<EntityKey,Object> getEntitySnapshotsByKey() {
+	public Map<EntityKey, Object> getEntitySnapshotsByKey() {
 		return delegate.getEntitySnapshotsByKey();
 	}
 
