@@ -31,11 +31,11 @@ Learn more at <http://hibernate.org/reactive>.
 Hibernate Reactive has been tested with:
 
 - Java 17, 21, 24
-- PostgreSQL 17
+- PostgreSQL 18
 - MySQL 9
-- MariaDB 11
+- MariaDB 12
 - Db2 12
-- CockroachDB v25
+- CockroachDB v26
 - MS SQL Server 2025
 - Oracle 23
 - [Hibernate ORM][] 7.3

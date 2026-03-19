@@ -36,6 +36,83 @@ tasks.register("testAll", Test) {
     }
 }
 
+tasks.register('updateReadmeVersions') {
+    description = 'Updates README.md with database versions from Dockerfiles'
+    group = 'documentation'
+
+    doLast {
+        def dockerDir = file('tooling/docker')
+        def readmeFile = file('README.md')
+
+        if (!dockerDir.exists()) {
+            throw new GradleException("Docker directory not found: ${dockerDir}")
+        }
+
+        // Extract versions from Dockerfiles
+        def versions = [:]
+
+        // PostgreSQL
+        def pgDockerfile = new File(dockerDir, 'postgresql.Dockerfile')
+        def pgVersion = pgDockerfile.text =~ /FROM.*postgres:(\d+)/
+        if (pgVersion.find()) versions['PostgreSQL'] = pgVersion.group(1)
+
+        // MySQL
+        def mysqlDockerfile = new File(dockerDir, 'mysql.Dockerfile')
+        def mysqlVersion = mysqlDockerfile.text =~ /FROM.*mysql\/community-server:(\d+)/
+        if (mysqlVersion.find()) versions['MySQL'] = mysqlVersion.group(1)
+
+        // MariaDB
+        def mariaDockerfile = new File(dockerDir, 'maria.Dockerfile')
+        def mariaVersion = mariaDockerfile.text =~ /FROM.*mariadb:(\d+)/
+        if (mariaVersion.find()) versions['MariaDB'] = mariaVersion.group(1)
+
+        // DB2
+        def db2Dockerfile = new File(dockerDir, 'db2.Dockerfile')
+        def db2Version = db2Dockerfile.text =~ /FROM.*db2:(\d+)/
+        if (db2Version.find()) versions['Db2'] = db2Version.group(1)
+
+        // SQL Server
+        def sqlserverDockerfile = new File(dockerDir, 'sqlserver.Dockerfile')
+        def sqlserverVersion = sqlserverDockerfile.text =~ /FROM.*mssql\/server:(\d+)/
+        if (sqlserverVersion.find()) versions['MS SQL Server'] = sqlserverVersion.group(1)
+
+        // Oracle
+        def oracleDockerfile = new File(dockerDir, 'oracle.Dockerfile')
+        def oracleVersion = oracleDockerfile.text =~ /FROM.*oracle-free:(\d+)/
+        if (oracleVersion.find()) versions['Oracle'] = oracleVersion.group(1)
+
+        // CockroachDB
+        def cockroachDockerfile = new File(dockerDir, 'cockroachdb.Dockerfile')
+        def cockroachVersion = cockroachDockerfile.text =~ /FROM.*cockroach:v(\d+)/
+        if (cockroachVersion.find()) versions['CockroachDB'] = "v${cockroachVersion.group(1)}"
+
+        // Update README.md
+        def readmeContent = readmeFile.text
+        def oldSection = readmeContent =~ /(?s)(Hibernate Reactive has been tested with:\n\n- Java [^\n]+\n)(- PostgreSQL \d+\n- MySQL \d+\n- MariaDB \d+\n- Db2 \d+\n- CockroachDB v\d+\n- MS SQL Server \d+\n- Oracle \d+)/
+
+        if (oldSection.find()) {
+            def javaLine = oldSection.group(1)
+            def newDbVersions = """- PostgreSQL ${versions['PostgreSQL']}
+- MySQL ${versions['MySQL']}
+- MariaDB ${versions['MariaDB']}
+- Db2 ${versions['Db2']}
+- CockroachDB ${versions['CockroachDB']}
+- MS SQL Server ${versions['MS SQL Server']}
+- Oracle ${versions['Oracle']}"""
+
+            def newContent = readmeContent.replaceFirst(
+                /(?s)(Hibernate Reactive has been tested with:\n\n- Java [^\n]+\n)(- PostgreSQL \d+\n- MySQL \d+\n- MariaDB \d+\n- Db2 \d+\n- CockroachDB v\d+\n- MS SQL Server \d+\n- Oracle \d+)/,
+                "\$1${newDbVersions}"
+            )
+
+            readmeFile.text = newContent
+            logger.lifecycle "Updated README.md with database versions: ${versions}"
+        } else {
+            logger.warn "Could not find version section in README.md"
+        }
+    }
+}
+
 rootProject.afterEvaluate {
     // Workaround since "libs.versions.NAME" notation cannot be used here
     def libs = project.extensions.getByType(VersionCatalogsExtension).named('libs')
