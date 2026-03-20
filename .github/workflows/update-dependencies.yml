@@ -1,0 +1,78 @@
+name: Update dependency versions
+
+on:
+  pull_request:
+    paths:
+      - 'gradle/libs.versions.toml'
+      - 'tooling/docker/*.Dockerfile'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-versions:
+    runs-on: ubuntu-latest
+    # Only run on PRs that aren't from forks (can't push to forks)
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Check if libs.versions.toml changed
+        id: check-catalog
+        run: |
+          if git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | grep -q 'gradle/libs.versions.toml'; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check if Dockerfiles changed
+        id: check-dockerfiles
+        run: |
+          if git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | grep -q 'tooling/docker/.*\.Dockerfile'; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update JBang dependencies
+        if: steps.check-catalog.outputs.changed == 'true'
+        run: ./gradlew updateJBangDependencies
+
+      - name: Update README database versions
+        if: steps.check-dockerfiles.outputs.changed == 'true'
+        run: ./gradlew updateReadmeDatabaseVersions
+
+      - name: Check for changes
+        id: check-changes
+        run: |
+          if git diff --quiet; then
+            echo "has-changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has-changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.check-changes.outputs.has-changes == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Update dependency versions in JBang templates and README
+
+          Auto-updated by GitHub Actions from dependency changes"
+          git push

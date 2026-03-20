@@ -11,6 +11,212 @@ group = "org.hibernate.reactive"
 // leverage the ProjectVersion which comes from the `local.versions` plugin
 version = project.projectVersion.fullName
 
+tasks.register('updateJBangDependencies') {
+    description = 'Updates JBang template dependencies from Gradle version catalog'
+    group = 'build'
+
+    doLast {
+        def catalogFile = file('gradle/libs.versions.toml')
+        def jbangDir = file('tooling/jbang')
+
+        if (!jbangDir.exists()) {
+            throw new GradleException("JBang directory not found: ${jbangDir}")
+        }
+
+        // Parse versions from libs.versions.toml
+        def catalogText = catalogFile.text
+        def versions = [:]
+
+        catalogText.eachLine { line ->
+            def matcher = line =~ /^(\w+)\s*=\s*"([^"]+)"/
+            if (matcher.find()) {
+                versions[matcher.group(1)] = matcher.group(2)
+            }
+        }
+
+        // Parse library versions
+        def libraries = [:]
+        catalogText.eachLine { line ->
+            def matcher = line =~ /^([\w-]+)\s*=\s*\{\s*group\s*=\s*"([^"]+)",\s*name\s*=\s*"([^"]+)",\s*version\s*=\s*"([^"]+)"/
+            if (matcher.find()) {
+                def key = matcher.group(1)
+                def version = matcher.group(4)
+                libraries[key] = version
+            }
+        }
+
+        def vertxVersion = versions.vertxSqlClientVersion
+        def testcontainersVersion = versions.testcontainersVersion
+        def assertjVersion = versions.assertjVersion
+        def mysqlConnectorVersion = libraries['com-mysql-mysql-connector-j']
+
+        logger.lifecycle "Updating JBang templates with versions:"
+        logger.lifecycle "  - Vert.x: ${vertxVersion}"
+        logger.lifecycle "  - Testcontainers: ${testcontainersVersion}"
+        logger.lifecycle "  - AssertJ: ${assertjVersion}"
+        logger.lifecycle "  - MySQL Connector: ${mysqlConnectorVersion}"
+
+        // Update all JBang template files
+        fileTree(jbangDir).matching {
+            include '*.java', '*.java.qute'
+        }.each { file ->
+            def content = file.text
+            def originalContent = content
+
+            // Update versions in //DEPS declarations (with escaped $ for .qute files)
+            content = content.replaceAll(/(\/\/DEPS io\.vertx:vertx-[^:]+:\$\\\{vertx\.version:)[\d.]+(\})/) {
+                it[1] + vertxVersion + it[2]
+            }
+            // Update versions in //DEPS declarations (with regular $ for .java files)
+            content = content.replaceAll(/(\/\/DEPS io\.vertx:vertx-[^:]+:\$\{vertx\.version:)[\d.]+(\})/) {
+                it[1] + vertxVersion + it[2]
+            }
+            content = content.replaceAll(/(\/\/DEPS org\.testcontainers:[^:]+:)[\d.]+/) {
+                it[1] + testcontainersVersion
+            }
+            content = content.replaceAll(/(\/\/DEPS org\.assertj:assertj-core:)[\d.]+/) {
+                it[1] + assertjVersion
+            }
+            content = content.replaceAll(/(\/\/DEPS com\.mysql:mysql-connector-j:)[\d.]+/) {
+                it[1] + mysqlConnectorVersion
+            }
+
+            if (content != originalContent) {
+                file.text = content
+                logger.lifecycle "Updated: ${file.name}"
+            }
+        }
+    }
+}
+
+tasks.register('updateReadmeDatabaseVersions') {
+    description = 'Updates README.md with database versions from Dockerfiles'
+    group = 'documentation'
+
+    doLast {
+        def dockerDir = file('tooling/docker')
+        def readmeFile = file('README.md')
+
+        if (!dockerDir.exists()) {
+            throw new GradleException("Docker directory not found: ${dockerDir}")
+        }
+        if (!readmeFile.exists()) {
+            throw new GradleException("README.md not found")
+        }
+
+        // Extract versions from Dockerfiles (major version only)
+        def versions = [:]
+
+        // PostgreSQL - extract major from postgres:X.Y
+        def pgDockerfile = new File(dockerDir, 'postgresql.Dockerfile')
+        def pgVersion = pgDockerfile.text =~ /FROM.*postgres:(\d+)/
+        if (pgVersion.find()) versions['PostgreSQL'] = pgVersion.group(1)
+
+        // MySQL - extract major from mysql/community-server:X.Y.Z
+        def mysqlDockerfile = new File(dockerDir, 'mysql.Dockerfile')
+        def mysqlVersion = mysqlDockerfile.text =~ /FROM.*mysql\/community-server:(\d+)/
+        if (mysqlVersion.find()) versions['MySQL'] = mysqlVersion.group(1)
+
+        // MariaDB - extract major from mariadb:X.Y
+        def mariaDockerfile = new File(dockerDir, 'maria.Dockerfile')
+        def mariaVersion = mariaDockerfile.text =~ /FROM.*mariadb:(\d+)/
+        if (mariaVersion.find()) versions['MariaDB'] = mariaVersion.group(1)
+
+        // DB2 - extract major from db2:X.Y
+        def db2Dockerfile = new File(dockerDir, 'db2.Dockerfile')
+        def db2Version = db2Dockerfile.text =~ /FROM.*db2:(\d+)/
+        if (db2Version.find()) versions['Db2'] = db2Version.group(1)
+
+        // SQL Server - extract year from mssql/server:YYYY
+        def sqlserverDockerfile = new File(dockerDir, 'sqlserver.Dockerfile')
+        def sqlserverVersion = sqlserverDockerfile.text =~ /FROM.*mssql\/server:(\d+)/
+        if (sqlserverVersion.find()) versions['MS SQL Server'] = sqlserverVersion.group(1)
+
+        // Oracle - extract version from oracle-free:X
+        def oracleDockerfile = new File(dockerDir, 'oracle.Dockerfile')
+        def oracleVersion = oracleDockerfile.text =~ /FROM.*oracle-free:(\d+)/
+        if (oracleVersion.find()) versions['Oracle'] = oracleVersion.group(1)
+
+        // CockroachDB - extract major from cockroach:vX.Y
+        def cockroachDockerfile = new File(dockerDir, 'cockroachdb.Dockerfile')
+        def cockroachVersion = cockroachDockerfile.text =~ /FROM.*cockroach:v(\d+)/
+        if (cockroachVersion.find()) versions['CockroachDB'] = "v${cockroachVersion.group(1)}"
+
+        logger.lifecycle "Database versions from Dockerfiles:"
+        versions.each { db, ver -> logger.lifecycle "  - ${db}: ${ver}" }
+
+        // Update README.md
+        def content = readmeFile.text
+        def originalContent = content
+
+        content = content.replaceAll(
+            /(?m)^- PostgreSQL [\d.]+$/,
+            "- PostgreSQL ${versions['PostgreSQL']}"
+        )
+        content = content.replaceAll(
+            /(?m)^- MySQL [\d.]+$/,
+            "- MySQL ${versions['MySQL']}"
+        )
+        content = content.replaceAll(
+            /(?m)^- MariaDB [\d.]+$/,
+            "- MariaDB ${versions['MariaDB']}"
+        )
+        content = content.replaceAll(
+            /(?m)^- Db2 [\d.]+$/,
+            "- Db2 ${versions['Db2']}"
+        )
+        content = content.replaceAll(
+            /(?m)^- CockroachDB v[\d.]+$/,
+            "- CockroachDB ${versions['CockroachDB']}"
+        )
+        content = content.replaceAll(
+            /(?m)^- MS SQL Server \d+$/,
+            "- MS SQL Server ${versions['MS SQL Server']}"
+        )
+        content = content.replaceAll(
+            /(?m)^- Oracle \d+$/,
+            "- Oracle ${versions['Oracle']}"
+        )
+
+        // Also handle linked format (in case it was previously updated with links)
+        content = content.replaceAll(
+            /(?m)^- \[PostgreSQL\]\([^)]+\)$/,
+            "- PostgreSQL ${versions['PostgreSQL']}"
+        )
+        content = content.replaceAll(
+            /(?m)^- \[MySQL\]\([^)]+\)$/,
+            "- MySQL ${versions['MySQL']}"
+        )
+        content = content.replaceAll(
+            /(?m)^- \[MariaDB\]\([^)]+\)$/,
+            "- MariaDB ${versions['MariaDB']}"
+        )
+        content = content.replaceAll(
+            /(?m)^- \[Db2\]\([^)]+\)$/,
+            "- Db2 ${versions['Db2']}"
+        )
+        content = content.replaceAll(
+            /(?m)^- \[CockroachDB\]\([^)]+\)$/,
+            "- CockroachDB ${versions['CockroachDB']}"
+        )
+        content = content.replaceAll(
+            /(?m)^- \[MS SQL Server\]\([^)]+\)$/,
+            "- MS SQL Server ${versions['MS SQL Server']}"
+        )
+        content = content.replaceAll(
+            /(?m)^- \[Oracle\]\([^)]+\)$/,
+            "- Oracle ${versions['Oracle']}"
+        )
+
+        if (content != originalContent) {
+            readmeFile.text = content
+            logger.lifecycle "Updated README.md with database versions"
+        } else {
+            logger.lifecycle "README.md already up to date"
+        }
+    }
+}
+
 rootProject.afterEvaluate {
     // Workaround since "libs.versions.NAME" notation cannot be used here
     def libs = project.extensions.getByType(VersionCatalogsExtension).named('libs')
