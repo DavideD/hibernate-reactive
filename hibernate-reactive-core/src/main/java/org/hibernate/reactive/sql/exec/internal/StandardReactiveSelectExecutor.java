@@ -378,11 +378,11 @@ public class StandardReactiveSelectExecutor implements ReactiveSelectExecutor {
 
 		final LoadQueryInfluencers loadQueryInfluencers = session.getLoadQueryInfluencers();
 
-		final ReactiveValuesMappingProducer mappingProducer =
-				(ReactiveValuesMappingProducer) jdbcSelect.getJdbcValuesMappingProducer();
+		final ReactiveValuesMappingProducer mappingProducer = (ReactiveValuesMappingProducer) jdbcSelect.getJdbcValuesMappingProducer();
 		if ( cachedResults == null ) {
 			if ( queryResultsCacheKey == null ) {
-				return mappingProducer.reactiveResolve( resultSetAccess, loadQueryInfluencers, factory )
+				return mappingProducer
+						.reactiveResolve( resultSetAccess, loadQueryInfluencers, factory )
 						.thenApply( jdbcValuesMapping -> new ReactiveValuesResultSet(
 								resultSetAccess,
 								null,
@@ -397,7 +397,8 @@ public class StandardReactiveSelectExecutor implements ReactiveSelectExecutor {
 			else {
 				// If we need to put the values into the cache, we need to be able to capture the JdbcValuesMetadata
 				final CapturingJdbcValuesMetadata capturingMetadata = new CapturingJdbcValuesMetadata( resultSetAccess );
-				return mappingProducer.reactiveResolve( resultSetAccess, loadQueryInfluencers, factory )
+				return mappingProducer
+						.reactiveResolve( resultSetAccess, loadQueryInfluencers, factory )
 						.thenApply( jdbcValuesMapping -> new ReactiveValuesResultSet(
 								resultSetAccess,
 								queryResultsCacheKey,
@@ -405,7 +406,7 @@ public class StandardReactiveSelectExecutor implements ReactiveSelectExecutor {
 								queryOptions,
 								false,
 								jdbcValuesMapping,
-								capturingMetadata.resolveMetadataForCache(),
+								capturingMetadata.resolveMetadataForCache( jdbcValuesMapping ),
 								executionContext
 						) );
 			}
@@ -426,7 +427,7 @@ public class StandardReactiveSelectExecutor implements ReactiveSelectExecutor {
 					queryOptions,
 					false,
 					jdbcValuesMapping,
-					capturingMetadata.resolveMetadataForCache(),
+					capturingMetadata.resolveMetadataForCache( jdbcValuesMapping ),
 					executionContext
 			) );
         }
@@ -522,11 +523,19 @@ public class StandardReactiveSelectExecutor implements ReactiveSelectExecutor {
 			return basicType;
 		}
 
-		public CachedJdbcValuesMetadata resolveMetadataForCache() {
+		public CachedJdbcValuesMetadata resolveMetadataForCache(JdbcValuesMapping jdbcValuesMapping) {
 			if ( columnNames == null ) {
 				return null;
 			}
-			return new CachedJdbcValuesMetadata( columnNames, types );
+			// Fill in types from the mapping's SqlSelections for positions that
+			// were not captured during mapping resolution (e.g. entity results)
+			for ( var selection : jdbcValuesMapping.getSqlSelections() ) {
+				final int pos = selection.getValuesArrayPosition();
+				if ( types[pos] == null && selection.getExpressionType() != null ) {
+					types[pos] = (BasicType<?>) selection.getExpressionType().getSingleJdbcMapping();
+				}
+			}
+			return new CachedJdbcValuesMetadata( columnNames, types, jdbcValuesMapping.getValueIndexesToCacheIndexes() );
 		}
 	}
 
