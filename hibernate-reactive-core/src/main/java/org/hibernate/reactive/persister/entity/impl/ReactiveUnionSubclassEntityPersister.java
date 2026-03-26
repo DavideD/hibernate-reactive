@@ -40,6 +40,10 @@ import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
 import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.entity.UnionSubclassEntityPersister;
+<<<<<<< HEAD
+=======
+import org.hibernate.persister.state.spi.StateManagement;
+>>>>>>> 3cd3cb98f ([#3417] Upgrade Hibernate ORM to 7.4)
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.reactive.bythecode.spi.ReactiveBytecodeEnhancementMetadataPojoImplAdapter;
 import org.hibernate.reactive.loader.ast.internal.ReactiveSingleIdArrayLoadPlan;
@@ -58,6 +62,7 @@ import org.hibernate.sql.results.graph.DomainResultCreationState;
 import org.hibernate.type.CompositeType;
 import org.hibernate.type.EntityType;
 
+import static org.hibernate.reactive.persister.entity.impl.ReactiveAbstractEntityPersister.reactiveStateManagement;
 
 /**
  * An {@link ReactiveEntityPersister} backed by {@link UnionSubclassEntityPersister}
@@ -82,6 +87,10 @@ public class ReactiveUnionSubclassEntityPersister extends UnionSubclassEntityPer
 				ReactiveAbstractEntityPersister::reactiveStateManagement
 		);
 		reactiveDelegate = new ReactiveAbstractPersisterDelegate( this, persistentClass, new ReactiveRuntimeModelCreationContext( creationContext ) );
+	}
+
+	private static StateManagement createReactiveStateManagement(PersistentClass pc) {
+		return reactiveStateManagement( AbstractEntityPersister.createStateManagement( pc ) );
 	}
 
 	@Override

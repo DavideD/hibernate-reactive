@@ -49,10 +49,17 @@ public class StandardReactiveJdbcMutationExecutor implements ReactiveJdbcMutatio
 			Function<String, PreparedStatement> statementCreator,
 			BiConsumer<Integer, PreparedStatement> expectationCheck,
 			ExecutionContext executionContext) {
-		final AtomicInteger rows = new AtomicInteger(0);
-		return loop(jdbcMutations, jdbcMutation ->
-			 executeReactive( jdbcMutation, jdbcParameterBindings, statementCreator, expectationCheck, executionContext )
-					 .thenAccept( rows::addAndGet ) ).thenApply( unused -> rows.get() );
+		final AtomicInteger rows = new AtomicInteger( 0 );
+		return loop(
+				jdbcMutations, jdbcMutation -> executeReactive(
+						jdbcMutation,
+						jdbcParameterBindings,
+						statementCreator,
+						expectationCheck,
+						executionContext
+				)
+						.thenAccept( rows::addAndGet )
+		).thenApply( unused -> rows.get() );
 	}
 
 	@Override

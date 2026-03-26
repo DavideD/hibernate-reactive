@@ -43,8 +43,8 @@ import org.hibernate.reactive.provider.service.ReactiveValuesMappingProducerProv
 import org.hibernate.reactive.vertx.impl.VertxInstanceInitiator;
 import org.hibernate.resource.beans.spi.ManagedBeanRegistryInitiator;
 import org.hibernate.resource.transaction.internal.TransactionCoordinatorBuilderInitiator;
-import org.hibernate.service.internal.SessionFactoryServiceRegistryFactoryInitiator;
 import org.hibernate.service.internal.ChangesetCoordinatorInitiator;
+import org.hibernate.service.internal.SessionFactoryServiceRegistryFactoryInitiator;
 import org.hibernate.tool.schema.internal.script.SqlScriptExtractorInitiator;
 
 import static java.util.Collections.unmodifiableList;
