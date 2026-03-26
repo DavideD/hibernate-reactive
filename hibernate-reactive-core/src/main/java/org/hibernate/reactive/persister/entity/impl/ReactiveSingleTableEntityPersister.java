@@ -39,10 +39,6 @@ import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
 import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.entity.SingleTableEntityPersister;
-<<<<<<< HEAD
-=======
-import org.hibernate.persister.state.spi.StateManagement;
->>>>>>> 3cd3cb98f ([#3417] Upgrade Hibernate ORM to 7.4)
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.reactive.bythecode.spi.ReactiveBytecodeEnhancementMetadataPojoImplAdapter;
 import org.hibernate.reactive.loader.ast.internal.ReactiveSingleIdArrayLoadPlan;
@@ -62,7 +58,6 @@ import org.hibernate.type.EntityType;
 
 import static java.lang.invoke.MethodHandles.lookup;
 import static org.hibernate.reactive.logging.impl.LoggerFactory.make;
-import static org.hibernate.reactive.persister.entity.impl.ReactiveAbstractEntityPersister.reactiveStateManagement;
 
 
 /**
