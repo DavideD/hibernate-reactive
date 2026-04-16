@@ -25,6 +25,10 @@ on:
       branch:
         required: true
         type: string
+      ormBranch:
+        required: false
+        type: string
+        description: 'Branch of hibernate/hibernate-orm to clone and use via composite build (wip branches only)'
   # Allow running this workflow against a specific branch/tag
   workflow_dispatch:
 
@@ -86,6 +90,21 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.branch }}
+      - name: Checkout Hibernate ORM '${{ inputs.ormBranch }}'
+        if: ${{ inputs.ormBranch != '' }}
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: hibernate/hibernate-orm
+          ref: ${{ inputs.ormBranch }}
+          path: hibernate-orm
+      - name: Set ORM path flag
+        id: orm-flag
+        run: |
+          if [ -n "${{ inputs.ormBranch }}" ]; then
+            echo "value=-PlocalHibernateOrmPath=../hibernate-orm" >> $GITHUB_OUTPUT
+          else
+            echo "value=" >> $GITHUB_OUTPUT
+          fi
       - name: Get year/month for cache key
         id: get-date
         run: |
@@ -122,9 +141,9 @@ jobs:
           distribution: 'temurin'
           java-version: 17
       - name: Print the effective ORM version used
-        run: ./gradlew :${{ matrix.example }}:dependencyInsight --dependency org.hibernate.orm:hibernate-core
+        run: ./gradlew :${{ matrix.example }}:dependencyInsight --dependency org.hibernate.orm:hibernate-core ${{ steps.orm-flag.outputs.value }}
       - name: Run examples in '${{ matrix.example }}' on ${{ matrix.db }}
-        run: ./gradlew :${{ matrix.example }}:runAllExamplesOn${{ matrix.db }}
+        run: ./gradlew :${{ matrix.example }}:runAllExamplesOn${{ matrix.db }} ${{ steps.orm-flag.outputs.value }}
       - name: Upload reports (if build failed)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()
@@ -143,6 +162,21 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.branch }}
+      - name: Checkout Hibernate ORM '${{ inputs.ormBranch }}'
+        if: ${{ inputs.ormBranch != '' }}
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: hibernate/hibernate-orm
+          ref: ${{ inputs.ormBranch }}
+          path: hibernate-orm
+      - name: Set ORM path flag
+        id: orm-flag
+        run: |
+          if [ -n "${{ inputs.ormBranch }}" ]; then
+            echo "value=-PlocalHibernateOrmPath=../hibernate-orm" >> $GITHUB_OUTPUT
+          else
+            echo "value=" >> $GITHUB_OUTPUT
+          fi
       - name: Get year/month for cache key
         id: get-date
         run: |
@@ -180,9 +214,9 @@ jobs:
           distribution: 'temurin'
           java-version: 17
       - name: Print the effective ORM version used
-        run: ./gradlew :hibernate-reactive-core:dependencyInsight --dependency org.hibernate.orm:hibernate-core
+        run: ./gradlew :hibernate-reactive-core:dependencyInsight --dependency org.hibernate.orm:hibernate-core ${{ steps.orm-flag.outputs.value }}
       - name: Build and Test with ${{ matrix.db }}
-        run: ./gradlew build -PshowStandardOutput -Pdb=${{ matrix.db }}
+        run: ./gradlew build -PshowStandardOutput -Pdb=${{ matrix.db }} ${{ steps.orm-flag.outputs.value }}
       - name: Upload reports (if build failed)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()
@@ -224,6 +258,21 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.branch }}
+      - name: Checkout Hibernate ORM '${{ inputs.ormBranch }}'
+        if: ${{ inputs.ormBranch != '' }}
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: hibernate/hibernate-orm
+          ref: ${{ inputs.ormBranch }}
+          path: hibernate-orm
+      - name: Set ORM path flag
+        id: orm-flag
+        run: |
+          if [ -n "${{ inputs.ormBranch }}" ]; then
+            echo "value=-PlocalHibernateOrmPath=../hibernate-orm" >> $GITHUB_OUTPUT
+          else
+            echo "value=" >> $GITHUB_OUTPUT
+          fi
       - name: Get year/month for cache key
         id: get-date
         run: |
@@ -317,12 +366,13 @@ jobs:
         run: |
           ${{ steps.testjdk-exportpath.outputs.path }}/bin/java -version
       - name: Print the effective ORM version used
-        run: ./gradlew :hibernate-reactive-core:dependencyInsight --dependency org.hibernate.orm:hibernate-core
+        run: ./gradlew :hibernate-reactive-core:dependencyInsight --dependency org.hibernate.orm:hibernate-core ${{ steps.orm-flag.outputs.value }}
       - name: Build and Test with Java ${{ matrix.java.name }}
         run: |
           ./gradlew build -PshowStandardOutput -Ptest.jdk.version=${{ matrix.java.java_version_numeric }} \
               -Porg.gradle.java.installations.paths=${{ steps.mainjdk-exportpath.outputs.path }},${{ steps.testjdk-exportpath.outputs.path }} \
-              ${{ matrix.java.jvm_args && '-Ptest.jdk.launcher.args=' }}${{ matrix.java.jvm_args }}
+              ${{ matrix.java.jvm_args && '-Ptest.jdk.launcher.args=' }}${{ matrix.java.jvm_args }} \
+              ${{ steps.orm-flag.outputs.value }}
       - name: Upload reports (if build failed)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()
