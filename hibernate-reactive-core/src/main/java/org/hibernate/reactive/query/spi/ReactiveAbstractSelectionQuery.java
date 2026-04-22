@@ -14,7 +14,6 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
 
 import org.hibernate.HibernateException;
 import org.hibernate.LockOptions;
@@ -80,36 +79,6 @@ public class ReactiveAbstractSelectionQuery<R> {
 	private final InterpretationsKeySource interpretationsKeySource;
 
 	private Callback callback;
-
-	// I'm sure we can avoid some of this by making some methods public in ORM,
-	// but this allows me to prototype faster. We can refactor the code later.
-	public ReactiveAbstractSelectionQuery(
-			InterpretationsKeySource interpretationKeySource,
-			SharedSessionContractImplementor session,
-			Supplier<CompletionStage<List<R>>> doList,
-			Supplier<SqmStatement<?>> getStatement,
-			Supplier<TupleMetadata> getTupleMetadata,
-			Supplier<DomainParameterXref> getDomainParameterXref,
-			Supplier<Class<?>> getResultType,
-			Supplier<String> getQueryString,
-			Supplier<CompletionStage<Void>> beforeQuery,
-			Consumer<Boolean> afterQuery,
-			Function<List<R>, R> uniqueElement) {
-		this(
-				interpretationKeySource::getQueryOptions,
-				session,
-				doList,
-				getStatement,
-				getTupleMetadata,
-				getDomainParameterXref,
-				getResultType,
-				getQueryString,
-				beforeQuery,
-				afterQuery,
-				uniqueElement,
-				interpretationKeySource
-		);
-	}
 
 	public ReactiveAbstractSelectionQuery(
 			Supplier<QueryOptions> queryOptionsSupplier,
@@ -332,10 +301,6 @@ public class ReactiveAbstractSelectionQuery<R> {
 
 	public List<R> list() {
 		throw LOG.nonReactiveMethodCall( "reactiveList" );
-	}
-
-	public Stream<R> getResultStream() {
-		throw LOG.nonReactiveMethodCall( "<no alternative>" );
 	}
 
 	public R uniqueResult() {
