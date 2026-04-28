@@ -27,7 +27,6 @@ import org.hibernate.sql.exec.ExecutionException;
 import org.hibernate.sql.exec.spi.ExecutionContext;
 import org.hibernate.sql.results.caching.QueryCachePutManager;
 import org.hibernate.sql.results.caching.internal.QueryCachePutManagerEnabledImpl;
-import org.hibernate.sql.results.graph.DomainResult;
 import org.hibernate.sql.results.jdbc.internal.CachedJdbcValuesMetadata;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMapping;
 import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
@@ -93,38 +92,20 @@ public class ReactiveValuesResultSet {
 			this.rowToCacheSize = -1;
 		}
 		else {
-			final BitSet valueIndexesToCache = new BitSet( rowSize );
-			for ( DomainResult<?> domainResult : valuesMapping.getDomainResults() ) {
-				domainResult.collectValueIndexesToCache( valueIndexesToCache );
-			}
-			if ( valueIndexesToCache.nextClearBit( 0 ) == -1 ) {
-				this.valueIndexesToCacheIndexes = null;
-				this.rowToCacheSize = -1;
-			}
-			else {
-				final int[] valueIndexesToCacheIndexes = new int[rowSize];
-				int cacheIndex = 0;
+			this.valueIndexesToCacheIndexes = valuesMapping.getValueIndexesToCacheIndexes();
+			final int rowToCacheSize = valuesMapping.getRowToCacheSize();
+			assert rowToCacheSize > 0;
+			int cacheIndex = rowToCacheSize;
+			if ( rowToCacheSize == 1 ) {
+				// Special case. Set the rowToCacheSize to the inverted index of the single element to cache
 				for ( int i = 0; i < valueIndexesToCacheIndexes.length; i++ ) {
-					if ( valueIndexesToCache.get( i ) ) {
-						valueIndexesToCacheIndexes[i] = cacheIndex++;
-					}
-					else {
-						valueIndexesToCacheIndexes[i] = -1;
+					if ( valueIndexesToCacheIndexes[i] != -1 ) {
+						cacheIndex = -i;
+						break;
 					}
 				}
-
-				this.valueIndexesToCacheIndexes = valueIndexesToCacheIndexes;
-				if ( cacheIndex == 1 ) {
-					// Special case. Set the rowToCacheSize to the inverted index of the single element to cache
-					for ( int i = 0; i < valueIndexesToCacheIndexes.length; i++ ) {
-						if ( valueIndexesToCacheIndexes[i] != -1 ) {
-							cacheIndex = -i;
-							break;
-						}
-					}
-				}
-				this.rowToCacheSize = cacheIndex;
 			}
+			this.rowToCacheSize = cacheIndex;
 		}
 	}
 
@@ -169,10 +150,7 @@ public class ReactiveValuesResultSet {
 	}
 
 	protected final CompletionStage<Boolean> processNext() {
-		return advance( () -> resultSetAccess
-				.getReactiveResultSet()
-				.thenCompose( this::doNext )
-		);
+		return advance( () -> resultSetAccess.getReactiveResultSet().thenCompose( this::doNext ) );
 	}
 
 	private CompletionStage<Boolean> doNext(ResultSet resultSet) {
@@ -267,14 +245,19 @@ public class ReactiveValuesResultSet {
 		return resultSetAccess.getReactiveResultSet()
 				.thenApply( resultSet -> {
 					final SharedSessionContractImplementor session = executionContext.getSession();
+					initializedIndexes.clear();
 					for ( final SqlSelection sqlSelection : sqlSelections ) {
-						try {
-							currentRowJdbcValues[sqlSelection.getValuesArrayPosition()] = sqlSelection
-									.getJdbcValueExtractor()
-									.extract( resultSet, sqlSelection.getJdbcResultSetIndex(), session );
-						}
-						catch (Exception e) {
-							throw new HibernateException( "Unable to extract JDBC value for position `" + sqlSelection.getJdbcResultSetIndex() + "`", e );
+						if ( sqlSelection != null ) {
+							final int position = sqlSelection.getValuesArrayPosition();
+							try {
+								currentRowJdbcValues[sqlSelection.getValuesArrayPosition()] = sqlSelection
+										.getJdbcValueExtractor()
+										.extract( resultSet, sqlSelection.getJdbcResultSetIndex(), session );
+								initializedIndexes.set( position );
+							}
+							catch (Exception e) {
+								throw new HibernateException( "Unable to extract JDBC value for position `" + sqlSelection.getJdbcResultSetIndex() + "`", e );
+							}
 						}
 					}
 					return true;

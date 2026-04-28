@@ -577,14 +577,24 @@ public class QueryTest extends BaseReactiveTest {
 								"select b.* from " + BOOK_TABLE + " b order by b.isbn",
 								Book.class
 						).getResultList()
-						.thenAccept(books -> assertThat(books)
-								.hasSize(3)
-								.allSatisfy(book -> {
-									assertThat(book).returns(true, session::contains);
-									assertThat(book).returns(true, b -> Hibernate.isPropertyInitialized(b, "author"));
-									assertThat(book).returns(false, b -> Hibernate.isInitialized(b.author));
-									assertThat(book.author).returns(true, session::contains);
-								})))
+						.thenAccept( books -> assertThat( books )
+								.containsExactlyInAnyOrder( book1, book2, book3 )
+								.allSatisfy( book -> {
+									assertThat( session.contains( book ) )
+											.as( "Session should contain " + book )
+											.isTrue();
+									assertThat( Hibernate.isPropertyInitialized( book, "author" ) )
+											.as( "author property in book should be initialized" )
+											.isTrue();
+									assertThat( Hibernate.isInitialized( book.author ) )
+											.as( "book.author should be initialized" )
+											.isFalse();
+									assertThat( session.contains( book.author ) )
+											.as( "Session should contain " + book )
+											.isTrue();
+								} )
+						)
+				)
 		);
 	}
 
@@ -602,21 +612,32 @@ public class QueryTest extends BaseReactiveTest {
 		test( context, openSession()
 				.thenCompose( session -> session
 						.persist( author1, author2 )
-						.thenCompose( v -> session.flush() )
-				)
+						.thenCompose( v -> session.flush() ) )
 				.thenCompose( v -> openSession() )
-				.thenCompose(session -> session.createNativeQuery(
+				.thenCompose( session -> session
+						.createNativeQuery(
 								"select b.* from " + BOOK_TABLE + " b order by b.isbn",
-								session.getResultSetMapping(Book.class, Book.RESULT_SET_MAPPING_WITH_AUTHOR)
-						).getResultList()
-						.thenAccept(books -> assertThat(books)
-								.hasSize(3)
-								.allSatisfy(book -> {
-									assertThat(book).returns(true, session::contains);
-									assertThat(book).returns(true, b -> Hibernate.isPropertyInitialized(b, "author"));
-									assertThat(book).returns(false, b -> Hibernate.isInitialized(b.author));
-									assertThat(book.author).returns(true, session::contains);
-								})))
+								session.getResultSetMapping( Book.class, Book.RESULT_SET_MAPPING_WITH_AUTHOR )
+						)
+						.getResultList()
+						.thenAccept( books -> assertThat( books )
+								.containsExactlyInAnyOrder( book1, book2, book3 )
+								.allSatisfy( book -> {
+									assertThat( session.contains( book ) )
+											.as( "Session should contain " + book )
+											.isTrue();
+									assertThat( Hibernate.isPropertyInitialized( book, "author" ) )
+											.as( "author property in book should be initialized" )
+											.isTrue();
+									assertThat( Hibernate.isInitialized( book.author ) )
+											.as( "book.author should be initialized" )
+											.isFalse();
+									assertThat( session.contains( book.author ) )
+											.as( "Session should contain " + book )
+											.isTrue();
+								} )
+						)
+				)
 		);
 	}
 
@@ -637,19 +658,29 @@ public class QueryTest extends BaseReactiveTest {
 						.thenCompose( v -> session.flush() )
 				)
 				.thenCompose( v -> openSession() )
-				.thenCompose(session -> session.createNativeQuery(
-										"select b.*, a.name from " + BOOK_TABLE + " b join " + AUTHOR_TABLE + " a on author_id=a.id order by b.isbn",
-										session.getResultSetMapping(Book.class, Book.RESULT_SET_MAPPING_WITH_AUTHOR)
-								).getResultList()
-								.thenAccept(books -> {
-									assertThat(books).hasSize(3);
-									books.forEach(book -> {
-										assertThat(book).returns(true, session::contains);
-										assertThat(book).returns(true, b -> Hibernate.isPropertyInitialized(b, "author"));
-										assertThat(book).returns(true, b -> Hibernate.isInitialized(b.author));
-										assertThat(book.author).returns(true, session::contains);
-									});
-								})
+				.thenCompose( session -> session
+						.createNativeQuery(
+								"select b.*, a.name from " + BOOK_TABLE + " b join " + AUTHOR_TABLE + " a on author_id=a.id order by b.isbn",
+								session.getResultSetMapping( Book.class, Book.RESULT_SET_MAPPING_WITH_AUTHOR )
+						).getResultList()
+						.thenAccept( books -> {
+							assertThat( books )
+									.containsExactlyInAnyOrder( book1, book2, book3 )
+									.allSatisfy( book -> {
+										assertThat( session.contains( book ) )
+												.as( "Session should contain " + book )
+												.isTrue();
+										assertThat( Hibernate.isPropertyInitialized( book, "author" ) )
+												.as( "author property in book should be initialized" )
+												.isTrue();
+										assertThat( Hibernate.isInitialized( book.author ) )
+												.as( "book.author should be initialized" )
+												.isTrue();
+										assertThat( session.contains( book.author ) )
+												.as( "Session should contain " + book )
+												.isTrue();
+									} );
+						} )
 				)
 		);
 	}
