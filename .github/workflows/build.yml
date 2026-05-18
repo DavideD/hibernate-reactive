@@ -339,6 +339,9 @@ jobs:
       always() && !cancelled()
       && needs.run_examples.result != 'cancelled'
       && needs.test_dbs.result != 'cancelled'
+      && !startsWith(github.ref, 'refs/heads/wip/')
+      && !(github.event_name == 'pull_request' && startsWith(github.head_ref, 'wip/'))
+      && !startsWith(inputs.branch, 'wip/')
     runs-on: ubuntu-latest
 
     steps:
