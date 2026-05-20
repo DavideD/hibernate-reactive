@@ -19,7 +19,7 @@ import java.util.concurrent.CompletionStage;
 import org.hibernate.CacheMode;
 import org.hibernate.FlushMode;
 import org.hibernate.Locking;
-import org.hibernate.query.QueryFlushMode;
+import jakarta.persistence.QueryFlushMode;
 import org.hibernate.HibernateException;
 import org.hibernate.LockMode;
 import org.hibernate.LockOptions;
@@ -498,7 +498,7 @@ public class ReactiveNativeQueryImpl<R> extends NativeQueryImpl<R>
 
 	@Override
 	public ReactiveNativeQueryImpl<R> setHibernateFlushMode(FlushMode flushMode) {
-		setQueryFlushMode( QueryFlushMode.fromHibernateMode( flushMode ) );
+		setQueryFlushMode( flushMode == FlushMode.ALWAYS ? QueryFlushMode.FLUSH : QueryFlushMode.NO_FLUSH );
 		return this;
 	}
 

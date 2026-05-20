@@ -192,4 +192,13 @@ public class ReactiveInsertCoordinatorStandard extends InsertCoordinatorStandard
 
 		return NoBatchKeyAccess.INSTANCE;
 	}
+
+	private static boolean[] getPropertiesToInsert(EntityPersister persister, Object[] fields) {
+		final var notNull = new boolean[fields.length];
+		final var insertable = persister.getPropertyInsertability();
+		for ( int i = 0; i < fields.length; i++ ) {
+			notNull[i] = insertable[i] && fields[i] != null;
+		}
+		return notNull;
+	}
 }
