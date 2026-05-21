@@ -18,7 +18,6 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.metamodel.mapping.PluralAttributeMapping;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.persister.collection.OneToManyPersister;
-import org.hibernate.action.queue.spi.decompose.collection.CollectionMutationTarget;
 import org.hibernate.persister.collection.mutation.RowMutationOperations;
 import org.hibernate.persister.collection.mutation.UpdateRowsCoordinatorOneToMany;
 import org.hibernate.reactive.engine.jdbc.env.internal.ReactiveMutationExecutor;
@@ -45,8 +44,8 @@ public class ReactiveUpdateRowsCoordinatorOneToMany extends UpdateRowsCoordinato
 	private MutationOperationGroup deleteOperationGroup;
 	private MutationOperationGroup insertOperationGroup;
 
-	public ReactiveUpdateRowsCoordinatorOneToMany(CollectionMutationTarget mutationTarget, RowMutationOperations rowMutationOperations, SessionFactoryImplementor sessionFactory) {
-		super( (OneToManyPersister) mutationTarget, rowMutationOperations, sessionFactory );
+	public ReactiveUpdateRowsCoordinatorOneToMany(OneToManyPersister mutationTarget, RowMutationOperations rowMutationOperations, SessionFactoryImplementor sessionFactory) {
+		super( mutationTarget, rowMutationOperations, sessionFactory );
 		this.rowMutationOperations = rowMutationOperations;
 	}
 

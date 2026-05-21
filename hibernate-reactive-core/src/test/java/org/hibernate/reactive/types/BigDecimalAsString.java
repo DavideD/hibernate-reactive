@@ -6,13 +6,9 @@ package org.hibernate.reactive.types;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Objects;
 
-import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.usertype.UserType;
 
 public class BigDecimalAsString implements UserType<BigDecimal> {
@@ -35,22 +31,6 @@ public class BigDecimalAsString implements UserType<BigDecimal> {
 	@Override
 	public int hashCode(BigDecimal x) {
 		return Objects.hashCode( x );
-	}
-
-	@Override
-	public BigDecimal nullSafeGet(ResultSet rs, int position, SharedSessionContractImplementor session, Object owner) throws SQLException {
-		String string = rs.getString( position );
-		return string == null || rs.wasNull() ? null : new BigDecimal( string );
-	}
-
-	@Override
-	public void nullSafeSet(PreparedStatement st, BigDecimal value, int index, SharedSessionContractImplementor session) throws SQLException {
-		if ( value == null ) {
-			st.setNull( index, Types.VARCHAR );
-		}
-		else {
-			st.setString( index, value.toString() );
-		}
 	}
 
 	@Override
