@@ -783,9 +783,9 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 	public <R> ReactiveMutationQuery<R> createReactiveNamedMutationQuery(String queryName) {
 		return (ReactiveMutationQuery<R>) buildNamedQuery(
 				queryName,
-				memento -> createSqmQueryImplementor( null, memento ),
-				memento -> createNativeQueryImplementor( queryName, memento )
-		);
+				memento -> memento.toMutationQuery( this ),
+				memento -> memento.toMutationQuery( this )
+		).asMutationQuery();
 	}
 
 	@Override
