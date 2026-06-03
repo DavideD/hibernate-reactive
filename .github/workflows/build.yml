@@ -83,7 +83,7 @@ jobs:
           - 5432:5432
     steps:
       - name: Checkout ${{ inputs.branch }}
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ inputs.branch }}
       - name: Get year/month for cache key
@@ -140,7 +140,7 @@ jobs:
         db: [ 'MariaDB', 'MySQL', 'PostgreSQL', 'MSSQLServer', 'CockroachDB', 'Db2', 'Oracle' ]
     steps:
       - name: Checkout ${{ inputs.branch }}
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ inputs.branch }}
       - name: Get year/month for cache key
@@ -221,7 +221,7 @@ jobs:
           - { name: "27-ea", java_version_numeric: 27, from: 'jdk.java.net', jvm_args: '--enable-preview' }
     steps:
       - name: Checkout ${{ inputs.branch }}
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ inputs.branch }}
       - name: Get year/month for cache key
@@ -358,7 +358,7 @@ jobs:
           fi
           echo "branch_ref=$BRANCH_REF" >> "$GITHUB_OUTPUT"
       - name: Checkout ${{ steps.determine-branch.outputs.branch_ref }}
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ steps.determine-branch.outputs.branch_ref }}
       - name: Sanitize the branch name
