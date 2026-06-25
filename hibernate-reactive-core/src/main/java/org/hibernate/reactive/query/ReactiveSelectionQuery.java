@@ -4,9 +4,16 @@
  */
 package org.hibernate.reactive.query;
 
-import jakarta.persistence.metamodel.Type;
+import java.time.Instant;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CompletionStage;
+
 import org.hibernate.CacheMode;
-import org.hibernate.FlushMode;
 import org.hibernate.Incubating;
 import org.hibernate.LockMode;
 import org.hibernate.LockOptions;
@@ -23,14 +30,7 @@ import jakarta.persistence.FlushModeType;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.Parameter;
 import jakarta.persistence.TemporalType;
-import java.time.Instant;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.CompletionStage;
+import jakarta.persistence.metamodel.Type;
 
 /**
  * @see org.hibernate.query.SelectionQuery
@@ -65,9 +65,6 @@ public interface ReactiveSelectionQuery<R> extends CommonQueryContract {
 
 	@Override
 	ReactiveSelectionQuery<R> setFlushMode(FlushModeType flushMode);
-
-	@Override
-	ReactiveSelectionQuery<R> setHibernateFlushMode(FlushMode flushMode);
 
 	@Override
 	ReactiveSelectionQuery<R> setTimeout(int timeout);
