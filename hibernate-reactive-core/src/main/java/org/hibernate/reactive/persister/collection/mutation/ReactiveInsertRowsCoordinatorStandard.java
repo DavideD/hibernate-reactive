@@ -19,7 +19,7 @@ import org.hibernate.persister.collection.mutation.InsertRowsCoordinatorStandard
 import org.hibernate.persister.collection.mutation.RowMutationOperations;
 import org.hibernate.reactive.engine.jdbc.env.internal.ReactiveMutationExecutor;
 import org.hibernate.reactive.logging.internal.Log;
-import org.hibernate.sql.model.MutationOperationGroup;
+import org.hibernate.sql.spi.mutation.MutationOperationGroup;
 import org.hibernate.sql.spi.mutation.MutationType;
 import org.hibernate.sql.model.internal.MutationOperationGroupFactory;
 import org.hibernate.sql.spi.mutation.jdbc.JdbcMutationOperation;

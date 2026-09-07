@@ -15,7 +15,7 @@ import org.hibernate.persister.entity.mutation.AttributeInclusionChecker;
 import org.hibernate.persister.entity.mutation.EntityTableMapping;
 import org.hibernate.persister.entity.mutation.TableSet;
 import org.hibernate.sql.spi.mutation.MutationOperation;
-import org.hibernate.sql.model.MutationOperationGroup;
+import org.hibernate.sql.spi.mutation.MutationOperationGroup;
 import org.hibernate.sql.ast.spi.model.builder.AbstractTableUpdateBuilder;
 import org.hibernate.sql.ast.spi.model.builder.TableMergeBuilder;
 import org.hibernate.sql.ast.spi.model.builder.TableUpdateBuilder;

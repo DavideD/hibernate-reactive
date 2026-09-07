@@ -20,7 +20,7 @@ import org.hibernate.reactive.engine.jdbc.mutation.internal.ReactiveMutationExec
 import org.hibernate.reactive.engine.jdbc.mutation.internal.ReactiveMutationExecutorSingleSelfExecuting;
 import org.hibernate.reactive.engine.jdbc.mutation.internal.ReactiveMutationExecutorStandard;
 import org.hibernate.sql.spi.mutation.MutationOperation;
-import org.hibernate.sql.model.MutationOperationGroup;
+import org.hibernate.sql.spi.mutation.MutationOperationGroup;
 import org.hibernate.sql.spi.mutation.jdbc.PreparableMutationOperation;
 import org.hibernate.sql.spi.mutation.SelfExecutingUpdateOperation;
 
