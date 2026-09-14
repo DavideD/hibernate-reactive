@@ -202,7 +202,7 @@ public class ReactiveNativeQueryImpl<R> extends NativeQueryImpl<R>
 	}
 
 	@Override
-	public CompletionStage<Integer> executeReactiveUpdate() {
+	public CompletionStage<Integer> reactiveExecute() {
 		return reactiveResolveNonSelectQueryPlan().executeReactiveUpdate( this );
 	}
 

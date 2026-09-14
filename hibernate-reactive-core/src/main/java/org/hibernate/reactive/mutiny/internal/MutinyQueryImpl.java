@@ -243,6 +243,6 @@ public class MutinyQueryImpl<R> implements Query<R> {
 
 	@Override
 	public Uni<Integer> executeUpdate() {
-		return uni( delegate::executeReactiveUpdate );
+		return uni( delegate::reactiveExecute );
 	}
 }
