@@ -34,7 +34,7 @@ import org.hibernate.query.sqm.tree.select.SqmSelectStatement;
 import org.hibernate.reactive.engine.impl.ReactiveCallbackImpl;
 import org.hibernate.reactive.logging.impl.Log;
 import org.hibernate.reactive.logging.impl.LoggerFactory;
-import org.hibernate.reactive.session.ReactiveSession;
+import org.hibernate.reactive.session.impl.OperationSerializer;
 import org.hibernate.reactive.query.sqm.internal.AggregatedSelectReactiveQueryPlan;
 import org.hibernate.reactive.query.sqm.internal.ConcreteSqmSelectReactiveQueryPlan;
 import org.hibernate.reactive.query.sqm.spi.ReactiveSelectQueryPlan;
@@ -162,8 +162,8 @@ public class ReactiveAbstractSelectionQuery<R> {
 		final Supplier<CompletionStage<Long>> operation = () ->
 				buildConcreteSelectQueryPlan( sqmStatement.createCountQuery(), Long.class, getQueryOptions() )
 						.reactiveExecuteQuery( context, new ReactiveSingleResultConsumer<>() );
-		if ( session instanceof ReactiveSession reactiveSession ) {
-			return reactiveSession.serialized( operation );
+		if ( session instanceof OperationSerializer serializer ) {
+			return serializer.serialized( operation );
 		}
 		return operation.get();
 	}
@@ -201,24 +201,23 @@ public class ReactiveAbstractSelectionQuery<R> {
 	}
 
 	public CompletionStage<List<R>> reactiveList() {
-		final var profiles = applyProfiles();
-		return beforeQuery.get()
-				.thenCompose( v -> serializedDoReactiveList() )
-				.handle( (list, error) -> {
-					handleException( error );
-					return list;
-				} )
-				.whenComplete( (rs, throwable) -> {
-					afterQuery.accept( throwable == null );
-					unapplyProfiles( profiles );
-				} );
-	}
-
-	private CompletionStage<List<R>> serializedDoReactiveList() {
-		if ( session instanceof ReactiveSession reactiveSession ) {
-			return reactiveSession.serialized( this::doReactiveList );
+		final Supplier<CompletionStage<List<R>>> operation = () -> {
+			final var profiles = applyProfiles();
+			return beforeQuery.get()
+					.thenCompose( v -> doReactiveList() )
+					.handle( (list, error) -> {
+						handleException( error );
+						return list;
+					} )
+					.whenComplete( (rs, throwable) -> {
+						afterQuery.accept( throwable == null );
+						unapplyProfiles( profiles );
+					} );
+		};
+		if ( session instanceof OperationSerializer serializer ) {
+			return serializer.serialized( operation );
 		}
-		return doReactiveList();
+		return operation.get();
 	}
 
 	private void unapplyProfiles(HashSet<String> profiles) {

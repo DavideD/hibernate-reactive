@@ -158,13 +158,14 @@ import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
  * preferred to delegation because there are places where
  * Hibernate core compares the identity of session instances.
  */
-public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession, EventSource {
+public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession, EventSource, OperationSerializer {
 	private static final Log LOG = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
 	private transient final ReactiveActionQueue reactiveActionQueue = new ReactiveActionQueue( this );
 	private ReactiveConnection reactiveConnection;
 	private final Thread associatedWorkThread;
 	private CompletionStage<Void> previousOperation = voidFuture();
+	private boolean insideSerialized;
 
 	public ReactiveSessionImpl(SessionFactoryImpl delegate, SessionCreationOptions options, ReactiveConnection connection) {
 		super( delegate, options );
@@ -198,11 +199,25 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 		InternalStateAssertions.assertCurrentThreadMatches( associatedWorkThread );
 	}
 
+	// Make sure a second operation triggered before the first finished can still work:
+	// we will only start the second operation when the first one finished.
+	// Note we're not using locks because we still don't support parallel calls;
+	// just sequential calls that fail to wait for a previous (async) operation to finish.
 	@Override
 	public <T> CompletionStage<T> serialized(Supplier<CompletionStage<T>> operation) {
+		checkOpen();
+		if ( insideSerialized ) {
+			return operation.get();
+		}
 		final CompletionStage<T> result = previousOperation
-				.thenCompose( ignored -> operation.get() );
-		previousOperation = result.handle( (v, e) -> null );
+				.thenCompose( ignored -> {
+					insideSerialized = true;
+					return operation.get();
+				} );
+		previousOperation = result.handle( (v, e) -> {
+			insideSerialized = false;
+			return null;
+		} );
 		return result;
 	}
 
@@ -323,13 +338,7 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 		return serialized( () -> doReactiveFetch( association, unproxy ) );
 	}
 
-	@Override
-	public <T> CompletionStage<T> internalReactiveFetch(T association, boolean unproxy) {
-		return doReactiveFetch( association, unproxy );
-	}
-
 	private <T> CompletionStage<T> doReactiveFetch(T association, boolean unproxy) {
-		checkOpen();
 		if ( association == null ) {
 			return nullFuture();
 		}
@@ -877,18 +886,12 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 
 	@Override
 	public CompletionStage<Void> reactivePersist(Object entity) {
-		return serialized( () -> {
-			checkOpen();
-			return firePersist( new PersistEvent( null, entity, this ) );
-		} );
+		return serialized( () -> firePersist( new PersistEvent( null, entity, this ) ) );
 	}
 
 	@Override
 	public CompletionStage<Void> reactivePersist(String entityName, Object entity) {
-		return serialized( () -> {
-			checkOpen();
-			return firePersist( new PersistEvent( entityName, entity, this ) );
-		} );
+		return serialized( () -> firePersist( new PersistEvent( entityName, entity, this ) ) );
 	}
 
 	@Override
@@ -951,10 +954,7 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 
 	@Override
 	public CompletionStage<Void> reactiveRemove(Object entity) {
-		return serialized( () -> {
-			checkOpen();
-			return fireRemove( new DeleteEvent( entity, this ) );
-		} );
+		return serialized( () -> fireRemove( new DeleteEvent( entity, this ) ) );
 	}
 
 	@Override
@@ -1021,10 +1021,7 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 
 	@Override
 	public <T> CompletionStage<T> reactiveMerge(T object) throws HibernateException {
-		return serialized( () -> {
-			checkOpen();
-			return fireMerge( new MergeEvent( null, object, this ) );
-		} );
+		return serialized( () -> fireMerge( new MergeEvent( null, object, this ) ) );
 	}
 
 	@Override
@@ -1085,10 +1082,7 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 
 	@Override
 	public CompletionStage<Void> reactiveFlush() {
-		return serialized( () -> {
-			checkOpen();
-			return doFlush();
-		} );
+		return serialized( this::doFlush );
 	}
 
 	@Override
@@ -1157,10 +1151,7 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 
 	@Override
 	public CompletionStage<Void> reactiveRefresh(Object entity, LockOptions lockOptions) {
-		return serialized( () -> {
-			checkOpen();
-			return fireRefresh( new RefreshEvent( entity, lockOptions, this ) );
-		} );
+		return serialized( () -> fireRefresh( new RefreshEvent( entity, lockOptions, this ) ) );
 	}
 
 	@Override
@@ -1224,10 +1215,7 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 
 	@Override
 	public CompletionStage<Void> reactiveLock(Object object, LockOptions lockOptions) {
-		return serialized( () -> {
-			checkOpen();
-			return fireLock( new LockEvent( object, lockOptions, this ) );
-		} );
+		return serialized( () -> fireLock( new LockEvent( object, lockOptions, this ) ) );
 	}
 
 	@Override
@@ -1237,10 +1225,7 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 
 	@Override
 	public CompletionStage<Void> reactiveLock(String entityName, Object object, LockOptions lockOptions) {
-		return serialized( () -> {
-			checkOpen();
-			return fireLock( new LockEvent( entityName, object, lockOptions, this ) );
-		} );
+		return serialized( () -> fireLock( new LockEvent( entityName, object, lockOptions, this ) ) );
 	}
 
 	private CompletionStage<Void> fireLock(LockEvent event) {
@@ -1263,11 +1248,6 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 		return serialized( () -> doReactiveGet( entityClass, id ) );
 	}
 
-	@Override
-	public <T> CompletionStage<T> internalReactiveGet(Class<T> entityClass, Object id) {
-		return doReactiveGet( entityClass, id );
-	}
-
 	private <T> CompletionStage<T> doReactiveGet(Class<T> entityClass, Object id) {
 		return reactiveById( entityClass ).load( id );
 	}
@@ -1286,9 +1266,7 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 			Object id,
 			LockOptions lockOptions,
 			EntityGraph<T> fetchGraph) {
-		return serialized( () -> {
-			checkOpen();
-			return supplyStage( () -> {
+		return serialized( () -> supplyStage( () -> {
 				if ( fetchGraph != null ) {
 					getLoadQueryInfluencers()
 							.getEffectiveEntityGraph()
@@ -1305,8 +1283,8 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 					.whenComplete( (v, e) -> {
 						getLoadQueryInfluencers().getEffectiveEntityGraph().clear();
 						getLoadQueryInfluencers().setReadOnly( null );
-					} );
-		} );
+					} )
+		);
 	}
 
 	@Override

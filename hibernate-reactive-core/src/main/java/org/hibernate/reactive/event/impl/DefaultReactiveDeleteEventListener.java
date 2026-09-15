@@ -199,7 +199,7 @@ public class DefaultReactiveDeleteEventListener
 
 		//Object entity = persistenceContext.unproxyAndReassociate( event.getObject() );
 		return ( (ReactiveQueryProducer) source )
-				.internalReactiveFetch( objectEvent, true )
+				.reactiveFetch( objectEvent, true )
 				.thenCompose( entity -> delete( event, transientEntities, entity ) );
 
 	}

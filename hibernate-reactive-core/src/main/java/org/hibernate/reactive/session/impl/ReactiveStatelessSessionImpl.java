@@ -124,7 +124,7 @@ import static org.hibernate.reactive.util.impl.CompletionStages.voidFuture;
  * preferred to delegation because there are places where
  * Hibernate core compares the identity of session instances.
  */
-public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implements ReactiveStatelessSession {
+public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implements ReactiveStatelessSession, OperationSerializer {
 
 	private static final Log LOG = make( Log.class, lookup() );
 
@@ -134,6 +134,7 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 	private final PersistenceContext persistenceContext;
 	private final boolean connectionProvided;
 	private CompletionStage<Void> previousOperation = voidFuture();
+	private boolean insideSerialized;
 
 	public ReactiveStatelessSessionImpl(SessionFactoryImpl factory, SessionCreationOptions options, ReactiveConnection connection) {
 		super( factory, options );
@@ -187,10 +188,25 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 		// FIXME: We should check the threads like we do in ReactiveSessionImpl
 	}
 
-	private <T> CompletionStage<T> serialized(Supplier<CompletionStage<T>> operation) {
+	// Make sure a second operation triggered before the first finished can still work:
+	// we will only start the second operation when the first one finished.
+	// Note we're not using locks because we still don't support parallel calls;
+	// just sequential calls that fail to wait for a previous (async) operation to finish.
+	@Override
+	public <T> CompletionStage<T> serialized(Supplier<CompletionStage<T>> operation) {
+		checkOpen();
+		if ( insideSerialized ) {
+			return operation.get();
+		}
 		final CompletionStage<T> result = previousOperation
-				.thenCompose( ignored -> operation.get() );
-		previousOperation = result.handle( (v, e) -> null );
+				.thenCompose( ignored -> {
+					insideSerialized = true;
+					return operation.get();
+				} );
+		previousOperation = result.handle( (v, e) -> {
+			insideSerialized = false;
+			return null;
+		} );
 		return result;
 	}
 
@@ -227,7 +243,6 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 	@Override
 	public <T> CompletionStage<List<T>> reactiveGet(Class<T> entityClass, Object... ids) {
 		return serialized( () -> {
-			checkOpen();
 			for ( Object id : ids ) {
 				if ( id == null ) {
 					return failedFuture( new IllegalArgumentException( "Null id" ) );
@@ -269,8 +284,6 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 	}
 
 	private <T> CompletionStage<T> doReactiveGet(String entityName, Object id, LockMode lockMode, EntityGraph<T> fetchGraph) {
-		checkOpen();
-
 		// differs from core, because core doesn't let us pass an EntityGraph
 		if ( fetchGraph != null ) {
 			getLoadQueryInfluencers()
@@ -310,7 +323,6 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 	@Override
 	public CompletionStage<Void> reactiveInsert(Object entity) {
 		return serialized( () -> {
-			checkOpen();
 			final ReactiveEntityPersister persister = getEntityPersister( null, entity );
 			final Object[] state = persister.getValues( entity );
 			return reactiveInsert( entity, state, persister )
@@ -470,7 +482,6 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 	@Override
 	public CompletionStage<Void> reactiveDelete(Object entity) {
 		return serialized( () -> {
-			checkOpen();
 			final ReactiveEntityPersister persister = getEntityPersister( null, entity );
 			final Object id = persister.getIdentifier( entity, this );
 			final Object version = persister.getVersion( entity );
@@ -535,7 +546,6 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 	@Override
 	public CompletionStage<Void> reactiveUpdate(Object entity) {
 		return serialized( () -> {
-			checkOpen();
 			if ( entity instanceof HibernateProxy proxy ) {
 				final LazyInitializer hibernateLazyInitializer = proxy.getHibernateLazyInitializer();
 				return hibernateLazyInitializer.isUninitialized()
@@ -634,7 +644,6 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 	}
 
 	private CompletionStage<Void> doReactiveRefresh(String entityName, Object entity, LockMode lockMode) {
-		checkOpen();
 		final ReactiveEntityPersister persister = getEntityPersister( entityName, entity );
 		final Object id = persister.getIdentifier( entity, this );
 
@@ -674,7 +683,6 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 	@Override
 	public CompletionStage<Void> reactiveUpsert(Object entity) {
 		return serialized( () -> {
-			checkOpen();
 			final ReactiveEntityPersister persister = getEntityPersister( null, entity );
 			final Object id = idToUpsert( entity, persister );
 			final Object[] state = persister.getValues( entity );
@@ -860,16 +868,7 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 
 	@Override
 	public <T> CompletionStage<T> reactiveFetch(T association, boolean unproxy) {
-		return serialized( () -> {
-			checkOpen();
-			return doReactiveFetch( association, unproxy );
-		} );
-	}
-
-	@Override
-	public <T> CompletionStage<T> internalReactiveFetch(T association, boolean unproxy) {
-		checkOpen();
-		return doReactiveFetch( association, unproxy );
+		return serialized( () -> doReactiveFetch( association, unproxy ) );
 	}
 
 	private <T> CompletionStage<T> doReactiveFetch(T association, boolean unproxy) {

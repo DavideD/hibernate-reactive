@@ -87,9 +87,9 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 		ThreadPerCommandExecutor executor = new ThreadPerCommandExecutor();
 
 		test( testContext, assertThrown( IllegalStateException.class, sessionUni
-				.emitOn( executor )
 				.call( session -> session
-						.persist( new Competition( "Cheese Rolling" ) ) ) )
+						.persist( new Competition( "Cheese Rolling" ) )
+						.runSubscriptionOn( executor ) ) )
 				.invoke( InternalStateAssertionsTest::assertException )
 		);
 	}
