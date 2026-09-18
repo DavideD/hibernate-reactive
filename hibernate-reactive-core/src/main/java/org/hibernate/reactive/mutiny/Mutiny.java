@@ -155,7 +155,7 @@ public interface Mutiny {
 		 *
 		 * @since 2.1
 		 */
-		@Incubating
+		@Incubating(since = "2.1")
 		SelectionQuery<R> setPage(Page page);
 
 		/**
@@ -206,7 +206,7 @@ public interface Mutiny {
 		 *
 		 * @return the size of the list that would be returned
 		 */
-		@Incubating
+		@Incubating(since = "2.4")
 		Uni<Long> getResultCount();
 
 		/**
@@ -1074,7 +1074,7 @@ public interface Mutiny {
 		 *
 		 * @return a persistent instance or null via a {@code Uni}
 		 */
-		@Incubating
+		@Incubating(since = "1.0")
 		<T> Uni<T> find(Class<T> entityClass, Identifier<T> naturalId);
 
 		/**
@@ -1868,7 +1868,7 @@ public interface Mutiny {
 		 *
 		 * @see org.hibernate.StatelessSession#upsert(Object)
 		 */
-		@Incubating
+		@Incubating(since = "2.1")
 		Uni<Void> upsert(Object entity);
 
 		/**
@@ -1880,7 +1880,7 @@ public interface Mutiny {
 		 *
 		 * @see org.hibernate.StatelessSession#upsert(Object)
 		 */
-		@Incubating
+		@Incubating(since = "3.0")
 		Uni<Void> upsertAll(Object... entities);
 
 		/**
@@ -1892,7 +1892,7 @@ public interface Mutiny {
 		 *
 		 * @see org.hibernate.StatelessSession#upsert(Object)
 		 */
-		@Incubating
+		@Incubating(since = "3.0")
 		Uni<Void> upsertAll(int batchSize, Object... entities);
 
 		/**
@@ -1904,7 +1904,7 @@ public interface Mutiny {
 		 *
 		 * @see org.hibernate.StatelessSession#upsert(Object)
 		 */
-		@Incubating
+		@Incubating(since = "3.0")
 		Uni<Void> upsertMultiple(List<?> entities);
 
 		/**
@@ -2100,7 +2100,7 @@ public interface Mutiny {
 		 * <p>
 		 * The client must close the session using {@link Session#close()}.
 		 */
-		@Incubating
+		@Incubating(since = "3.2")
 		Session createSession();
 
 		/**
@@ -2113,7 +2113,7 @@ public interface Mutiny {
 		 * The client must close the session using {@link Session#close()}.
 		 * @param tenantId the id of the tenant
 		 */
-		@Incubating
+		@Incubating(since = "3.2")
 		Session createSession(String tenantId);
 
 		/**
@@ -2125,7 +2125,7 @@ public interface Mutiny {
 		 * <p>
 		 * The client must close the session using {@link Session#close()}.
 		 */
-		@Incubating
+		@Incubating(since = "3.2")
 		StatelessSession createStatelessSession();
 
 		/**
@@ -2139,7 +2139,7 @@ public interface Mutiny {
 		 *
 		 * @param tenantId the id of the tenant
 		 */
-		@Incubating
+		@Incubating(since = "3.2")
 		StatelessSession createStatelessSession(String tenantId);
 
 		/**
