@@ -38,7 +38,7 @@ import static org.hibernate.type.descriptor.DateTimeUtils.adjustToDefaultPrecisi
  * Test adapted from {@link org.hibernate.orm.test.timezones.JDBCTimeZoneZonedTest}
  */
 @Timeout(value = 10, timeUnit = MINUTES)
-@DisabledFor(value = DB2, reason = "Exception: IllegalStateException: Needed to have 6 in buffer but only had 0")
+@DisabledFor(value = DB2, reason = "An error occurred with a DB2 operation, SQLCODE=-30020  SQLSTATE=58009")
 public class JDBCTimeZoneZonedTest extends BaseReactiveTest {
 
 	@Override
