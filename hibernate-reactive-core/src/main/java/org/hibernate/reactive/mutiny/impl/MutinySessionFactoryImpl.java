@@ -5,13 +5,9 @@
  */
 package org.hibernate.reactive.mutiny.impl;
 
-import java.lang.invoke.MethodHandles;
-import java.util.Objects;
-import java.util.concurrent.CompletionStage;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
+import io.smallrye.mutiny.Uni;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.metamodel.Metamodel;
 import org.hibernate.Cache;
 import org.hibernate.internal.SessionCreationOptions;
 import org.hibernate.internal.SessionFactoryImpl;
@@ -29,9 +25,12 @@ import org.hibernate.reactive.session.impl.ReactiveStatelessSessionImpl;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.stat.Statistics;
 
-import io.smallrye.mutiny.Uni;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.metamodel.Metamodel;
+import java.lang.invoke.MethodHandles;
+import java.util.Objects;
+import java.util.concurrent.CompletionStage;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static org.hibernate.reactive.common.InternalStateAssertions.assertUseOnEventLoop;
 
@@ -107,12 +106,7 @@ public class MutinySessionFactoryImpl implements Mutiny.SessionFactory, Implemen
 	 */
 	private <S> Uni<S> create(ReactiveConnection connection, Supplier<S> supplier) {
 		return Uni.createFrom().item( supplier )
-				.onCancellation().call( () -> close( connection ) )
-				.onFailure().call( () -> close( connection ) );
-	}
-
-	private static Uni<Void> close(ReactiveConnection connection) {
-		return Uni.createFrom().completionStage( connection.close() );
+				.onFailure().call( () -> Uni.createFrom().completionStage( connection.close() ) );
 	}
 
 	@Override
@@ -215,8 +209,8 @@ public class MutinySessionFactoryImpl implements Mutiny.SessionFactory, Implemen
 		return sessionUni.chain( session -> Uni.createFrom().voidItem()
 				.invoke( () -> context.put( contextKey, session ) )
 				.chain( () -> work.apply( session ) )
-				.onTermination().invoke( () -> context.remove( contextKey ) )
-				.onTermination().call( session::close )
+				.eventually( () -> context.remove( contextKey ) )
+				.eventually(session::close)
 		);
 	}
 
