@@ -45,6 +45,7 @@ import org.hibernate.reactive.query.ReactiveQueryImplementor;
 import org.hibernate.reactive.query.sqm.ReactiveSqmSelectionQuery;
 import org.hibernate.sql.exec.spi.Callback;
 import org.hibernate.reactive.query.sqm.spi.ReactiveSelectQueryPlan;
+import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.enqueue;
 import org.hibernate.reactive.sql.results.spi.ReactiveSingleResultConsumer;
 import org.hibernate.sql.results.internal.TupleMetadata;
 
@@ -238,6 +239,10 @@ public class ReactiveSelectionQueryImpl<R> extends SelectionQueryImpl<R> impleme
 
 	@Override
 	public CompletionStage<List<R>> reactiveList() {
+		return enqueue( getSession(), this::executeReactiveList );
+	}
+
+	private CompletionStage<List<R>> executeReactiveList() {
 		final HashSet<String> fetchProfiles = reactiveBeforeQuery();
 		final boolean[] success = {false};
 		return doReactiveList()
@@ -288,6 +293,10 @@ public class ReactiveSelectionQueryImpl<R> extends SelectionQueryImpl<R> impleme
 
 	@Override
 	public CompletionStage<Long> getReactiveResultCount() {
+		return enqueue( getSession(), this::executeReactiveResultCount );
+	}
+
+	private CompletionStage<Long> executeReactiveResultCount() {
 		final DelegatingDomainQueryExecutionContext context = new DelegatingDomainQueryExecutionContext( this ) {
 			@Override
 			public QueryOptions getQueryOptions() {
