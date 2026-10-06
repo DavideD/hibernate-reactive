@@ -44,7 +44,8 @@ import org.hibernate.reactive.query.internal.ReactiveAbstractSelectionQuery;
 import org.hibernate.reactive.query.sql.spi.ReactiveNativeQueryImplementor;
 import org.hibernate.reactive.query.sql.spi.ReactiveNonSelectQueryPlan;
 import org.hibernate.reactive.query.sqm.spi.ReactiveSelectQueryPlan;
-import org.hibernate.reactive.session.ReactiveSession;
+import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.enqueue;
+import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.internalReactiveFlush;
 import org.hibernate.sql.exec.spi.Callback;
 import org.hibernate.type.BasicTypeReference;
 
@@ -175,8 +176,9 @@ public class ReactiveNativeQueryImpl<R> extends NativeQueryImpl<R>
 			// TransactionRequiredException which would potentially break existing
 			// apps, so we only do the flush if a transaction is in progress.
 			if ( shouldFlush() ) {
-				return ( (ReactiveSession) getSession() )
-						.reactiveFlush()
+				// Use internal flush to avoid re-entering the operation queue
+				// (this method is already called from within an enqueued operation)
+				return internalReactiveFlush( getSession() )
 						.thenAccept( v -> resetCallback() );
 			}
 			// Reset the callback before every execution
@@ -211,7 +213,7 @@ public class ReactiveNativeQueryImpl<R> extends NativeQueryImpl<R>
 
 	@Override
 	public CompletionStage<Integer> reactiveExecute() {
-		return reactiveResolveNonSelectQueryPlan().executeReactiveUpdate( this );
+		return enqueue( getSession(), () -> reactiveResolveNonSelectQueryPlan().executeReactiveUpdate( this ) );
 	}
 
 	// NativeQueryImpl.parameterOccurrences is private with no getter (ORM 8.0),
