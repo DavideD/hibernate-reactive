@@ -4,11 +4,9 @@
  */
 package org.hibernate.reactive.session.internal;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
-import org.hibernate.LockOptions;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.reactive.session.ReactiveQueryProducer;
 import org.hibernate.reactive.session.ReactiveSession;
@@ -18,8 +16,12 @@ import org.hibernate.reactive.session.ReactiveSession;
  * the public API.
  * <p>
  * {@link #enqueue} queues an operation behind any previously-started async
- * work on the same session.  {@link #internalReactiveFetch} fetches an
- * association bypassing that queue, for use inside already-queued operations.
+ * work on the same session. The other methods bypass that queue, and must be
+ * used by operations that are already queued (otherwise they would wait for
+ * themselves to complete).
+ * <p>
+ * Sessions that are not {@link ReactiveSessionImpl} or {@link ReactiveStatelessSessionImpl}
+ * don't have a queue, so we can safely delegate to their public methods.
  */
 public final class ReactiveSessionInternals {
 
@@ -47,7 +49,8 @@ public final class ReactiveSessionInternals {
 		if ( session instanceof ReactiveSessionImpl impl ) {
 			return impl.doFlush();
 		}
-		return CompletableFuture.completedStage( null );
+		// Sessions without an operation queue can't deadlock
+		return ( (ReactiveSession) session ).reactiveFlush();
 	}
 
 	public static <T> CompletionStage<T> internalReactiveGet(
@@ -58,17 +61,6 @@ public final class ReactiveSessionInternals {
 			return impl.internalReactiveGet( entityClass, id );
 		}
 		return ( (ReactiveSession) session ).reactiveGet( entityClass, id );
-	}
-
-	public static CompletionStage<Void> internalReactiveLock(
-			SharedSessionContractImplementor session,
-			String entityName,
-			Object entity,
-			LockOptions lockOptions) {
-		if ( session instanceof ReactiveSessionImpl impl ) {
-			return impl.internalReactiveLock( entityName, entity, lockOptions );
-		}
-		return ( (ReactiveSession) session ).reactiveLock( entityName, entity, lockOptions );
 	}
 
 	public static <T> CompletionStage<T> internalReactiveFetch(
