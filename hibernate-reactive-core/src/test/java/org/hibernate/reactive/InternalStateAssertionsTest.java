@@ -11,6 +11,7 @@ import java.util.concurrent.Executor;
 
 import org.hibernate.reactive.mutiny.Mutiny;
 import org.hibernate.reactive.stage.Stage.Session;
+import org.hibernate.reactive.stage.Stage.StatelessSession;
 import org.hibernate.reactive.annotations.EnabledFor;
 
 import org.junit.jupiter.api.AfterEach;
@@ -118,6 +119,48 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 				.chain( session -> session
 						.find( Competition.class, "Chess boxing" )
 						.runSubscriptionOn( executor ) ) )
+				.invoke( InternalStateAssertionsTest::assertException )
+		);
+	}
+
+	@Test
+	public void testInsertWithStatelessStage(VertxTestContext testContext) {
+		CompletionStage<StatelessSession> sessionStage = getSessionFactory().openStatelessSession();
+		currentSession = sessionStage;
+
+		ThreadPerCommandExecutor executor = new ThreadPerCommandExecutor();
+
+		test( testContext, assertThrown( IllegalStateException.class, sessionStage
+				.thenComposeAsync( session -> session.insert( new Competition( "Cheese Rolling" ) ), executor ) )
+				.thenAccept( InternalStateAssertionsTest::assertException )
+		);
+	}
+
+	@Test
+	public void testGetWithStatelessStage(VertxTestContext testContext) {
+		CompletionStage<StatelessSession> sessionStage = getSessionFactory().openStatelessSession();
+		currentSession = sessionStage;
+
+		ThreadPerCommandExecutor executor = new ThreadPerCommandExecutor();
+
+		test( testContext, assertThrown( IllegalStateException.class, sessionStage
+				.thenComposeAsync( session -> session.get( Competition.class, "Chess boxing" ), executor ) )
+				.thenAccept( InternalStateAssertionsTest::assertException )
+		);
+	}
+
+	@Test
+	public void testInsertWithStatelessMutiny(VertxTestContext testContext) {
+		// Memoize the session, so that we can close it after the test
+		Uni<Mutiny.StatelessSession> sessionUni = getMutinySessionFactory().openStatelessSession().memoize().indefinitely();
+		currentSession = sessionUni;
+
+		ThreadPerCommandExecutor executor = new ThreadPerCommandExecutor();
+
+		test( testContext, assertThrown( IllegalStateException.class, sessionUni
+				.emitOn( executor )
+				.call( session -> session
+						.insert( new Competition( "Cheese Rolling" ) ) ) )
 				.invoke( InternalStateAssertionsTest::assertException )
 		);
 	}
