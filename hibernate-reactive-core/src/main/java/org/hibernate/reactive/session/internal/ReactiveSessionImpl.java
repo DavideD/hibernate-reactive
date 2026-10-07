@@ -1363,25 +1363,32 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 			Object id,
 			LockOptions lockOptions,
 			EntityGraph<T> fetchGraph) {
-		return enqueue( () -> supplyStage( () -> {
-				if ( fetchGraph != null ) {
-					getLoadQueryInfluencers()
-							.getEffectiveEntityGraph()
-							.applyGraph( (RootGraphImplementor<T>) fetchGraph, GraphSemantic.FETCH );
-				}
-				getLoadQueryInfluencers().setReadOnly( readOnlyHint( null ) );
+		return enqueue( () -> doReactiveFind( entityClass, id, lockOptions, fetchGraph ) );
+	}
 
-				return reactiveById( entityClass )
-						.with( determineAppropriateLocalCacheMode( null ) )
-						.with( lockOptions )
-						.load( id );
-			} ).handle( CompletionStages::handle )
-					.thenCompose( handler -> handleReactiveFindException( entityClass, id, lockOptions, handler ) )
-					.whenComplete( (v, e) -> {
-						getLoadQueryInfluencers().getEffectiveEntityGraph().clear();
-						getLoadQueryInfluencers().setReadOnly( null );
-					} )
-		);
+	private <T> CompletionStage<T> doReactiveFind(
+			Class<T> entityClass,
+			Object id,
+			LockOptions lockOptions,
+			EntityGraph<T> fetchGraph) {
+		return supplyStage( () -> {
+			if ( fetchGraph != null ) {
+				getLoadQueryInfluencers()
+						.getEffectiveEntityGraph()
+						.applyGraph( (RootGraphImplementor<T>) fetchGraph, GraphSemantic.FETCH );
+			}
+			getLoadQueryInfluencers().setReadOnly( readOnlyHint( null ) );
+
+			return reactiveById( entityClass )
+					.with( determineAppropriateLocalCacheMode( null ) )
+					.with( lockOptions )
+					.load( id );
+		} ).handle( CompletionStages::handle )
+				.thenCompose( handler -> handleReactiveFindException( entityClass, id, lockOptions, handler ) )
+				.whenComplete( (v, e) -> {
+					getLoadQueryInfluencers().getEffectiveEntityGraph().clear();
+					getLoadQueryInfluencers().setReadOnly( null );
+				} );
 	}
 
 	@Override
@@ -1453,7 +1460,8 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 			final Object normalizedIdValues = persister.getNaturalIdMapping().normalizeInput( ids );
 			return new NaturalIdLoadAccessImpl<T>( this, persister, requireEntityPersister( entityClass ) )
 					.resolveNaturalId( normalizedIdValues )
-					.thenCompose( id -> reactiveById( entityClass ).load( id ) );
+					// Already enqueued: call the find logic directly to avoid a deadlock
+					.thenCompose( id -> doReactiveFind( entityClass, id, null, null ) );
 		} );
 	}
 
