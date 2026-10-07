@@ -543,7 +543,9 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 						final Object ck = lockCacheItem( id, version, persister );
 						final EventMonitor eventMonitor = getEventMonitor();
 						final DiagnosticEvent event = eventMonitor.beginEntityDeleteEvent();
+						// try-block
 						return supplyStage( () -> persister.deleteReactive( id, version, entity, this ) )
+								// finally-block
 								.whenComplete( (unused, throwable) -> eventMonitor
 										.completeEntityDeleteEvent( event, id, persister.getEntityName(), throwable != null, this )
 								)
@@ -755,10 +757,10 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 						final StatisticsImplementor statistics = getFactory().getStatistics();
 						if ( statistics.isStatisticsEnabled() ) {
 							statistics.upsertEntity( persister.getEntityName() );
-					}
-				} )
-				.thenCompose( v -> removeAndRecreateCollections( entity, id, persister ) )
-				.thenAccept( v -> firePostUpsert( entity, id, state, persister ) );
+						}
+					} )
+					.thenCompose( v -> removeAndRecreateCollections( entity, id, persister ) )
+					.thenAccept( v -> firePostUpsert( entity, id, state, persister ) );
 		} );
 	}
 

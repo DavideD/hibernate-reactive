@@ -52,7 +52,6 @@ import org.hibernate.reactive.query.ReactiveSelectionQuery;
 import org.hibernate.reactive.query.sql.spi.ReactiveNonSelectQueryPlan;
 import org.hibernate.reactive.query.sqm.mutation.spi.ReactiveSqmMultiTableInsertStrategy;
 import org.hibernate.reactive.query.sqm.mutation.spi.ReactiveSqmMultiTableMutationStrategy;
-import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.enqueue;
 import org.hibernate.reactive.session.ReactiveSqmQueryImplementor;
 
 import jakarta.persistence.CacheRetrieveMode;
@@ -64,6 +63,7 @@ import jakarta.persistence.TemporalType;
 import jakarta.persistence.metamodel.Type;
 
 import static org.hibernate.query.hql.internal.QuerySplitter.split;
+import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.enqueue;
 
 /**
  * A reactive mutation query backed by HQL/JPQL or criteria.

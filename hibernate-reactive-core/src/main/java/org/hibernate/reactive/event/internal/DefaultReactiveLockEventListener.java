@@ -29,11 +29,11 @@ import org.hibernate.reactive.event.ReactiveLockEventListener;
 import org.hibernate.reactive.logging.internal.Log;
 import org.hibernate.reactive.persister.entity.internal.ReactiveEntityPersister;
 import org.hibernate.reactive.session.ReactiveSession;
-import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.internalReactiveFetch;
 
 import static java.lang.invoke.MethodHandles.lookup;
 import static org.hibernate.pretty.MessageHelper.infoString;
 import static org.hibernate.reactive.logging.internal.LoggerFactory.make;
+import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.internalReactiveFetch;
 import static org.hibernate.reactive.util.internal.CompletionStages.voidFuture;
 
 public class DefaultReactiveLockEventListener extends DefaultLockEventListener implements LockEventListener, ReactiveLockEventListener {

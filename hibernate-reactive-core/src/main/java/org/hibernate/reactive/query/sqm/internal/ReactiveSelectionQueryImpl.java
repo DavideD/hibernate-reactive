@@ -45,7 +45,6 @@ import org.hibernate.reactive.query.ReactiveQueryImplementor;
 import org.hibernate.reactive.query.sqm.ReactiveSqmSelectionQuery;
 import org.hibernate.sql.exec.spi.Callback;
 import org.hibernate.reactive.query.sqm.spi.ReactiveSelectQueryPlan;
-import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.enqueue;
 import org.hibernate.reactive.sql.results.spi.ReactiveSingleResultConsumer;
 import org.hibernate.sql.results.internal.TupleMetadata;
 
@@ -64,6 +63,7 @@ import java.util.Date;
 import java.util.Map;
 
 import static org.hibernate.query.internal.SqlOmittingQueryOptions.omitSqlQueryOptions;
+import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.enqueue;
 
 /**
  * A reactive {@link SelectionQueryImpl}

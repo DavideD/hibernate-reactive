@@ -66,7 +66,6 @@ public class MutinySessionImpl implements Mutiny.Session {
 		return factory.uni( stageSupplier );
 	}
 
-
 	@Override
 	public Uni<Void> flush() {
 //		checkOpen();
