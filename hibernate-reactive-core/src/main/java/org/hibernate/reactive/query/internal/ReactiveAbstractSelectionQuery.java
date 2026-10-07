@@ -36,7 +36,6 @@ import org.hibernate.query.sqm.tree.spi.select.SqmSelectStatement;
 import org.hibernate.reactive.engine.internal.ReactiveCallbackImpl;
 import org.hibernate.reactive.logging.internal.Log;
 import org.hibernate.reactive.logging.internal.LoggerFactory;
-import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.enqueue;
 import org.hibernate.reactive.query.sqm.internal.ReactiveAggregatedSelectQueryPlan;
 import org.hibernate.reactive.query.sqm.internal.ReactiveConcreteSqmSelectQueryPlan;
 import org.hibernate.reactive.query.sqm.internal.ReactiveSelectionQueryImpl;
@@ -45,6 +44,8 @@ import org.hibernate.sql.exec.spi.Callback;
 import org.hibernate.sql.results.internal.TupleMetadata;
 
 import jakarta.persistence.NoResultException;
+
+import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.enqueue;
 
 
 /**

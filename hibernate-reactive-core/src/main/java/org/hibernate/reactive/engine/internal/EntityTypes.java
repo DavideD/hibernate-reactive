@@ -22,7 +22,6 @@ import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.reactive.engine.spi.ReactiveSharedSessionContractImplementor;
 import org.hibernate.reactive.persister.entity.internal.ReactiveEntityPersister;
-import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.internalReactiveFetch;
 import org.hibernate.reactive.session.internal.ReactiveQueryExecutorLookup;
 import org.hibernate.type.CollectionType;
 import org.hibernate.type.EntityType;
@@ -36,6 +35,7 @@ import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttrib
 import static org.hibernate.property.access.spi.PropertyValueAccessor.UNKNOWN;
 import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
 import static org.hibernate.reactive.engine.internal.ForeignKeys.getEntityIdentifierIfNotUnsaved;
+import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.internalReactiveFetch;
 import static org.hibernate.reactive.session.internal.SessionUtil.checkEntityFound;
 import static org.hibernate.reactive.util.internal.CompletionStages.completedFuture;
 import static org.hibernate.reactive.util.internal.CompletionStages.loop;
