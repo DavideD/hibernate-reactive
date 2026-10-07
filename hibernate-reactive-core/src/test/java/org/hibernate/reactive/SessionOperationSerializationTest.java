@@ -32,6 +32,7 @@ import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.POS
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Timeout(value = 10, timeUnit = MINUTES)
@@ -436,6 +437,34 @@ public class SessionOperationSerializationTest extends BaseReactiveTest {
 						.invoke( count -> assertEquals( 1L, count,
 								"Native query should see the flushed entity" ) );
 		} ) );
+	}
+
+	@Test
+	public void testOperationOnClosedSessionThrowsImmediately(VertxTestContext context) {
+		test( context, openSession()
+				.thenCompose( s -> s.close()
+						.thenAccept( v -> {
+							// The exception is thrown by the method, not reported in the returned stage
+							assertThrows( IllegalStateException.class, () -> s.persist( new SimpleEntity( "closed" ) ) );
+							assertThrows( IllegalStateException.class, s::flush );
+							assertThrows( IllegalStateException.class, () -> s.find( SimpleEntity.class, 1L, 2L ) );
+						} )
+				)
+		);
+	}
+
+	@Test
+	public void testOperationOnClosedStatelessSessionThrowsImmediately(VertxTestContext context) {
+		test( context, openStatelessSession()
+				.thenCompose( s -> s.close()
+						.thenAccept( v -> {
+							// The exception is thrown by the method, not reported in the returned stage
+							assertThrows( IllegalStateException.class, () -> s.insert( new SimpleEntity( "closed" ) ) );
+							assertThrows( IllegalStateException.class, () -> s.get( SimpleEntity.class, 1L ) );
+							assertThrows( IllegalStateException.class, () -> s.refresh( new SimpleEntity( "closed" ) ) );
+						} )
+				)
+		);
 	}
 
 	@Entity(name = "SimpleEntity")
