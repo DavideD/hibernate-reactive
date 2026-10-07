@@ -13,6 +13,7 @@ import org.hibernate.reactive.mutiny.Mutiny;
 import org.hibernate.reactive.stage.Stage.Session;
 import org.hibernate.reactive.annotations.EnabledFor;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import io.smallrye.mutiny.Uni;
@@ -42,11 +43,21 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 	 */
 	private static final String ERROR_CODE = "HR000069";
 
+	/**
+	 * The session opened by the test, so that we can close it
+	 * (otherwise we run out of connections in the pool).
+	 */
 	private Object currentSession;
 
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
 		return List.of( Competition.class );
+	}
+
+	@AfterEach
+	public void closeCurrentSession(VertxTestContext context) {
+		test( context, closeSession( currentSession )
+				.thenAccept( v -> currentSession = null ) );
 	}
 
 	@Test
@@ -81,7 +92,8 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 
 	@Test
 	public void testOnPersistWithMutiny(VertxTestContext testContext) {
-		Uni<Mutiny.Session> sessionUni = getMutinySessionFactory().openSession();
+		// Memoize the session, so that we can close it after the test
+		Uni<Mutiny.Session> sessionUni = getMutinySessionFactory().openSession().memoize().indefinitely();
 		currentSession = sessionUni;
 
 		ThreadPerCommandExecutor executor = new ThreadPerCommandExecutor();
@@ -96,7 +108,8 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 
 	@Test
 	public void testFindWithMutiny(VertxTestContext testContext) {
-		Uni<Mutiny.Session> sessionUni = getMutinySessionFactory().openSession();
+		// Memoize the session, so that we can close it after the test
+		Uni<Mutiny.Session> sessionUni = getMutinySessionFactory().openSession().memoize().indefinitely();
 		currentSession = sessionUni;
 
 		ThreadPerCommandExecutor executor = new ThreadPerCommandExecutor();
