@@ -58,6 +58,22 @@ public class ReactiveCompositeNestedGeneratedValueGenerator extends CompositeNes
 		return plans;
 	}
 
+	/**
+	 * ORM considers a generator declared with {@link org.hibernate.annotations.GenericGenerator}
+	 * as generated on execution, because the wrapper implements {@link org.hibernate.generator.OnExecutionGenerator}.
+	 * We check the generators of the plans instead, which have already been unwrapped.
+	 */
+	@Override
+	public boolean generatedOnExecution() {
+		for ( GenerationPlan plan : getGenerationPlans() ) {
+			final Generator generator = plan.getGenerator();
+			if ( generator.generatesOnInsert() && generator.generatedOnExecution() ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	@Override
 	public CompletionStage<Object> generate(ReactiveConnectionSupplier reactiveConnectionSupplier, Object object) {
 		final SharedSessionContractImplementor session = (SharedSessionContractImplementor) reactiveConnectionSupplier;
