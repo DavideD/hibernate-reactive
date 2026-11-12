@@ -12,7 +12,6 @@ import java.util.concurrent.CompletableFuture;
 
 import org.hibernate.FlushMode;
 import org.hibernate.Hibernate;
-import org.hibernate.reactive.annotations.EnabledFor;
 
 import org.junit.jupiter.api.Test;
 
@@ -31,10 +30,8 @@ import jakarta.persistence.Table;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.POSTGRESQL;
 
 @Timeout(value = 10, timeUnit = MINUTES)
-@EnabledFor(POSTGRESQL)
 public class SessionOperationSerializationTest extends BaseReactiveTest {
 
 	private static final int ENTITY_COUNT = 100;
