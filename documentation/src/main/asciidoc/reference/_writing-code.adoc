@@ -664,6 +664,15 @@ session.find(Book.class, id)
        .thenCompose( v -> session.flush() )
 ----
 
+Two things to keep in mind, though:
+
+- The stream you return must still end with an operation on the session,
+  like the `flush()` above: it waits for the operations you didn't chain,
+  so that the session isn't closed while they're still running.
+- If an operation you didn't chain fails, the exception is only reported in
+  the `CompletionStage` you discarded, but the transaction is still marked
+  for rollback, as explained in <<transactions>>.
+
 However, this is _not_ the case with the Mutiny API!
 Since Mutiny ``Uni``s are lazy, an operation that isn't subscribed to will
 never execute at all. For example, in the following code the `flush()`
@@ -838,6 +847,7 @@ have very specific requirements. It's almost always more efficient to fetch
 all the fields of an entity at once. Field-level lazy fetching is every bit
 as vulnerable to N+1 selects as lazy association fetching.
 
+[[transactions]]
 == Transactions
 
 The `withTransaction()` method performs work within the scope of a database
