@@ -1076,12 +1076,13 @@ public class ReactiveSessionImpl extends SessionImpl implements ReactiveSession,
 
 	@Override
 	public CompletionStage<Void> reactivePersistAll(Object... entities) {
-		checkOpen();
-		checkNoUnresolvedActionsBeforeOperation();
+		return enqueue( () -> {
+			checkNoUnresolvedActionsBeforeOperation();
 
-		// A single operation: an entity can reference another entity that appears later in the array
-		return loop( entities, entity -> firePersistEvent( new PersistEvent( null, entity, this ) ) )
-				.handle( (v, e) -> returnNullorRethrow( checkNoUnresolvedActionsAfterOperation( e ) ) );
+			// A single operation: an entity can reference another entity that appears later in the array
+			return loop( entities, entity -> firePersistEvent( new PersistEvent( null, entity, this ) ) )
+					.handle( (v, e) -> returnNullorRethrow( checkNoUnresolvedActionsAfterOperation( e ) ) );
+		} );
 	}
 
 	private CompletionStage<Void> firePersistEvent(PersistEvent event) {
