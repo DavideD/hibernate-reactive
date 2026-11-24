@@ -42,8 +42,6 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 	 */
 	private static final String ERROR_CODE = "HR000069";
 
-	private Object currentSession;
-
 	@Override
 	protected Collection<Class<?>> annotatedEntities() {
 		return List.of( Competition.class );
@@ -51,8 +49,7 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 
 	@Test
 	public void testPersistWithStage(VertxTestContext testContext) {
-		CompletionStage<Session> sessionStage = getSessionFactory().openSession();
-		currentSession = sessionStage;
+		CompletionStage<Session> sessionStage = openSession();
 
 		ThreadPerCommandExecutor executor = new ThreadPerCommandExecutor();
 
@@ -64,8 +61,7 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 
 	@Test
 	public void testFindWithStage(VertxTestContext testContext) {
-		CompletionStage<Session> sessionStage = getSessionFactory().openSession();
-		currentSession = sessionStage;
+		CompletionStage<Session> sessionStage = openSession();
 
 		ThreadPerCommandExecutor executor = new ThreadPerCommandExecutor();
 
@@ -81,8 +77,7 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 
 	@Test
 	public void testOnPersistWithMutiny(VertxTestContext testContext) {
-		Uni<Mutiny.Session> sessionUni = getMutinySessionFactory().openSession();
-		currentSession = sessionUni;
+		Uni<Mutiny.Session> sessionUni = openMutinySession();
 
 		ThreadPerCommandExecutor executor = new ThreadPerCommandExecutor();
 
@@ -96,8 +91,7 @@ public class InternalStateAssertionsTest extends BaseReactiveTest {
 
 	@Test
 	public void testFindWithMutiny(VertxTestContext testContext) {
-		Uni<Mutiny.Session> sessionUni = getMutinySessionFactory().openSession();
-		currentSession = sessionUni;
+		Uni<Mutiny.Session> sessionUni = openMutinySession();
 
 		ThreadPerCommandExecutor executor = new ThreadPerCommandExecutor();
 
