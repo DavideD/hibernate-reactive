@@ -82,6 +82,42 @@ public class SessionOperationSerializationTest extends BaseReactiveTest {
 	}
 
 	@Test
+	public void testConcurrentPersistOfMultipleEntitiesWithStages(VertxTestContext context) {
+		// Like testConcurrentPersistWithStages, but each call persists several entities
+		test( context, getSessionFactory().withSession( s -> {
+			for ( int i = 0; i < ENTITY_COUNT; i++ ) {
+				s.persist( new SimpleEntity( "entity-" + i + "-a" ), new SimpleEntity( "entity-" + i + "-b" ) );
+			}
+			return s.flush()
+					.thenCompose( $ -> s.createSelectionQuery(
+							"select count(*) from SimpleEntity", Long.class
+					).getSingleResult() )
+					.thenAccept( count -> assertThat( count )
+							.as( "All persisted entities should be in the database" )
+							.isEqualTo( 2L * ENTITY_COUNT ) );
+		} ) );
+	}
+
+	@Test
+	public void testCombineAllPersistOfMultipleEntitiesWithMutiny(VertxTestContext context) {
+		// Like testCombineAllWithMutiny, but each call persists several entities
+		test( context, getMutinySessionFactory().withSession( s -> {
+			List<Uni<Void>> unis = new ArrayList<>();
+			for ( int i = 0; i < ENTITY_COUNT; i++ ) {
+				unis.add( s.persistAll( new SimpleEntity( "entity-" + i + "-a" ), new SimpleEntity( "entity-" + i + "-b" ) ) );
+			}
+			return Uni.combine().all().unis( unis ).discardItems()
+					.call( s::flush )
+					.chain( () -> s.createSelectionQuery(
+							"select count(*) from SimpleEntity", Long.class
+					).getSingleResult() )
+					.invoke( count -> assertThat( count )
+							.as( "All persisted entities should be in the database" )
+							.isEqualTo( 2L * ENTITY_COUNT ) );
+		} ) );
+	}
+
+	@Test
 	public void testAllOfWithStages(VertxTestContext context) {
 		test( context, getSessionFactory().withSession( s -> {
 			CompletableFuture<?>[] futures = new CompletableFuture[ENTITY_COUNT];
