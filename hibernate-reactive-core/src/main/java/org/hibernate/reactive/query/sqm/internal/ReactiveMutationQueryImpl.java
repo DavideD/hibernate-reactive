@@ -52,6 +52,7 @@ import org.hibernate.reactive.query.internal.ReactiveMutationExecution;
 import org.hibernate.reactive.query.sql.spi.ReactiveNonSelectQueryPlan;
 import org.hibernate.reactive.query.sqm.mutation.spi.ReactiveSqmMultiTableInsertStrategy;
 import org.hibernate.reactive.query.sqm.mutation.spi.ReactiveSqmMultiTableMutationStrategy;
+import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.enqueue;
 import org.hibernate.reactive.session.ReactiveSqmQueryImplementor;
 
 import jakarta.persistence.CacheRetrieveMode;
@@ -130,6 +131,10 @@ public class ReactiveMutationQueryImpl<R> extends MutationQueryImpl<R> implement
 	 */
 	@Override
 	public CompletionStage<Integer> reactiveExecute() {
+		return enqueue( getSession(), this::doReactiveExecute );
+	}
+
+	private CompletionStage<Integer> doReactiveExecute() {
 		getSession().checkTransactionNeededForUpdateOperation( "Executing an update/delete query" );
 		return executeReactiveMutation(
 				// applies the flush mode (and cache mode) of the query to the session while executing it
