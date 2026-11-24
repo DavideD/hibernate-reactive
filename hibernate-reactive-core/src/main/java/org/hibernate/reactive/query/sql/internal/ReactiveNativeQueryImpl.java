@@ -44,8 +44,6 @@ import org.hibernate.reactive.query.internal.ReactiveAbstractSelectionQuery;
 import org.hibernate.reactive.query.sql.spi.ReactiveNativeQueryImplementor;
 import org.hibernate.reactive.query.sql.spi.ReactiveNonSelectQueryPlan;
 import org.hibernate.reactive.query.sqm.spi.ReactiveSelectQueryPlan;
-import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.enqueue;
-import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.internalReactiveFlush;
 import org.hibernate.sql.exec.spi.Callback;
 import org.hibernate.type.BasicTypeReference;
 
@@ -61,6 +59,8 @@ import jakarta.persistence.metamodel.Type;
 
 import static org.hibernate.reactive.query.internal.ReactiveMutationExecution.adjustFetchProfiles;
 import static org.hibernate.reactive.query.internal.ReactiveMutationExecution.executeReactiveMutation;
+import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.enqueue;
+import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.internalReactiveFlush;
 import static org.hibernate.reactive.util.internal.CompletionStages.voidFuture;
 
 

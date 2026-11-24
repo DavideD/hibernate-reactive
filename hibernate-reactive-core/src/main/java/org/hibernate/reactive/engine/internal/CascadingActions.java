@@ -22,13 +22,13 @@ import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.reactive.logging.internal.Log;
 import org.hibernate.reactive.logging.internal.LoggerFactory;
 import org.hibernate.reactive.session.ReactiveSession;
-import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.internalReactiveFetch;
 import org.hibernate.reactive.stage.Stage;
 import org.hibernate.type.CollectionType;
 import org.hibernate.type.EntityType;
 import org.hibernate.type.Type;
 
 import static org.hibernate.engine.internal.ManagedTypeHelper.isHibernateProxy;
+import static org.hibernate.reactive.session.internal.ReactiveSessionInternals.internalReactiveFetch;
 import static org.hibernate.reactive.util.internal.CompletionStages.completedFuture;
 import static org.hibernate.reactive.util.internal.CompletionStages.failedFuture;
 import static org.hibernate.reactive.util.internal.CompletionStages.falseFuture;
