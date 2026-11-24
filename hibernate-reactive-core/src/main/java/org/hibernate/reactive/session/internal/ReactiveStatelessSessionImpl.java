@@ -251,7 +251,9 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 	}
 
 	public <T> CompletionStage<T> enqueue(Supplier<CompletionStage<T>> operation) {
-		threadCheck();
+		// Throw directly instead of failing the returned stage
+		// (this also checks that we are on the right thread)
+		checkOpen();
 		// Make sure a second operation triggered before the first finished can still work:
 		// we will only start the second operation when the first one finished.
 		// Note we're not using locks because we still don't support parallel calls;
@@ -294,7 +296,6 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 
 	@Override
 	public <T> CompletionStage<List<T>> reactiveGet(Class<T> entityClass, Object... ids) {
-		checkOpen();
 		return enqueue( () -> {
 			for ( Object id : ids ) {
 				if ( id == null ) {
@@ -377,7 +378,6 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 
 	@Override
 	public CompletionStage<Void> reactiveInsert(Object entity) {
-		checkOpen();
 		return enqueue( () -> {
 			final ReactiveEntityPersister persister = getEntityPersister( null, entity );
 			final Object[] state = persister.getValues( entity );
@@ -537,7 +537,6 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 
 	@Override
 	public CompletionStage<Void> reactiveDelete(Object entity) {
-		checkOpen();
 		return enqueue( () -> {
 			final ReactiveEntityPersister persister = getEntityPersister( null, entity );
 			final Object id = persister.getIdentifier( entity, this );
@@ -604,7 +603,6 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 
 	@Override
 	public CompletionStage<Void> reactiveUpdate(Object entity) {
-		checkOpen();
 		return enqueue( () -> {
 			if ( entity instanceof HibernateProxy proxy ) {
 				final LazyInitializer hibernateLazyInitializer = proxy.getHibernateLazyInitializer();
@@ -743,7 +741,6 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 	 */
 	@Override
 	public CompletionStage<Void> reactiveUpsert(Object entity) {
-		checkOpen();
 		return enqueue( () -> {
 			final ReactiveEntityPersister persister = getEntityPersister( null, entity );
 			final Object id = idToUpsert( entity, persister );
@@ -930,7 +927,6 @@ public class ReactiveStatelessSessionImpl extends StatelessSessionImpl implement
 
 	@Override
 	public <T> CompletionStage<T> reactiveFetch(T association, boolean unproxy) {
-		checkOpen();
 		return enqueue( () -> doReactiveFetch( association, unproxy ) );
 	}
 
