@@ -30,6 +30,7 @@ import jakarta.persistence.Table;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hibernate.reactive.containers.DatabaseConfiguration.DBType.POSTGRESQL;
 
 @Timeout(value = 10, timeUnit = MINUTES)
@@ -428,6 +429,40 @@ public class SessionOperationSerializationTest extends BaseReactiveTest {
 								.as( "Native query should see the flushed entity" )
 								.isEqualTo( 1L ) );
 		} ) );
+	}
+
+	@Test
+	public void testOperationOnClosedSessionThrowsImmediately(VertxTestContext context) {
+		test( context, openSession()
+				.thenCompose( s -> s.close()
+						.thenAccept( v -> {
+							// The exception is thrown by the method, not reported in the returned stage
+							assertThatThrownBy( () -> s.persist( new SimpleEntity( "closed" ) ) )
+									.isInstanceOf( IllegalStateException.class );
+							assertThatThrownBy( s::flush )
+									.isInstanceOf( IllegalStateException.class );
+							assertThatThrownBy( () -> s.find( SimpleEntity.class, 1L, 2L ) )
+									.isInstanceOf( IllegalStateException.class );
+						} )
+				)
+		);
+	}
+
+	@Test
+	public void testOperationOnClosedStatelessSessionThrowsImmediately(VertxTestContext context) {
+		test( context, openStatelessSession()
+				.thenCompose( s -> s.close()
+						.thenAccept( v -> {
+							// The exception is thrown by the method, not reported in the returned stage
+							assertThatThrownBy( () -> s.insert( new SimpleEntity( "closed" ) ) )
+									.isInstanceOf( IllegalStateException.class );
+							assertThatThrownBy( () -> s.get( SimpleEntity.class, 1L ) )
+									.isInstanceOf( IllegalStateException.class );
+							assertThatThrownBy( () -> s.refresh( new SimpleEntity( "closed" ) ) )
+									.isInstanceOf( IllegalStateException.class );
+						} )
+				)
+		);
 	}
 
 	@Entity(name = "SimpleEntity")
